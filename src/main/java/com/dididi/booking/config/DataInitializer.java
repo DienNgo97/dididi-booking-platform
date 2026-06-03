@@ -8,6 +8,7 @@ import com.dididi.booking.identity.domain.enums.UserStatus;
 import com.dididi.booking.identity.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +28,10 @@ public class DataInitializer implements CommandLineRunner {
     private final HotelRepository hotelRepository;
     private final PasswordEncoder passwordEncoder;
 
+    // Seed admin password - PROD/CI lay tu ENV APP_ADMIN_PASSWORD; fallback dev de chay local.
+    @Value("${app.admin.password:Admin@123}")
+    private String adminPassword;
+
     public DataInitializer(UserRepository userRepository,
                            HotelRepository hotelRepository,
                            PasswordEncoder passwordEncoder) {
@@ -40,12 +45,12 @@ public class DataInitializer implements CommandLineRunner {
         if (!userRepository.existsByEmail("admin@dididi.local")) {
             User admin = new User();
             admin.setEmail("admin@dididi.local");
-            admin.setPasswordHash(passwordEncoder.encode("Admin@123"));
+            admin.setPasswordHash(passwordEncoder.encode(adminPassword));
             admin.setFullName("Dididi Admin");
             admin.setRole(Role.ADMIN);
             admin.setStatus(UserStatus.ACTIVE);
             userRepository.save(admin);
-            log.info("Seeded admin user: admin@dididi.local / Admin@123");
+            log.info("Seeded admin user: admin@dididi.local (password tu app.admin.password / ENV APP_ADMIN_PASSWORD)");
         }
 
         if (hotelRepository.count() == 0) {

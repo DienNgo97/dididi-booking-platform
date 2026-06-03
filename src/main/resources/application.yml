@@ -5,8 +5,8 @@ spring:
     active: dev
   datasource:
     url: jdbc:mysql://localhost:3306/booking?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=LOCAL&allowPublicKeyRetrieval=true&useSSL=false
-    username: booking
-    password: booking_dev_pass
+    username: ${DB_USERNAME:booking}
+    password: ${DB_PASSWORD:booking_dev_pass}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -52,8 +52,9 @@ management:
 
 app:
   jwt:
-    # Dev secret - PROD lay tu ENV (xem application-prod.yml). Toi thieu 32 bytes cho HS256.
-    secret: "dev-secret-change-me-please-use-a-long-random-string-min-32-bytes"
+    # PROD lay tu ENV (xem application-prod.yml). Fallback dev de chay local khong can set ENV.
+    # Toi thieu 32 bytes cho HS256.
+    secret: ${JWT_SECRET:dev-secret-change-me-please-use-a-long-random-string-min-32-bytes}
     access-token-minutes: 60
     issuer: dididi-booking-platform
   # ---- Integration (Phase 1.5): pull tu flight-provider + hotel-pms ----
