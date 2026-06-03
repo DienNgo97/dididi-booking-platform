@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Chuyến bay — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <form action="/flights" method="get" style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <input type="text" name="from" th:value="${from}" placeholder="Từ (HAN)" style="padding:9px;border:1px solid #cdd3dd;border-radius:9px"/>
+        <input type="text" name="to" th:value="${to}" placeholder="Đến (SGN)" style="padding:9px;border:1px solid #cdd3dd;border-radius:9px"/>
+        <input type="date" name="date" th:value="${date}" style="padding:9px;border:1px solid #cdd3dd;border-radius:9px"/>
+        <button class="btn" type="submit">Tìm</button>
+    </form>
+    <h1>Chuyến bay</h1>
+    <div class="list-item" th:each="f : ${flights}">
+        <div>
+            <h3 style="margin:0"><span th:text="${f.airlineCode}"></span> <span th:text="${f.flightNumber}"></span></h3>
+            <div class="muted"><span th:text="${f.fromAirport}"></span> → <span th:text="${f.toAirport}"></span>
+                · <span th:text="${f.departureTime}"></span>
+                · còn <span th:text="${f.availableSeats}"></span> ghế</div>
+        </div>
+        <div style="text-align:right">
+            <div class="price">
+                <span th:text="${f.price != null ? #numbers.formatInteger(f.price,1,'COMMA') : ''}"></span>
+                <span th:text="${f.currency}"></span>
+            </div>
+            <a class="btn" th:href="@{'/booking/flight/' + ${f.id}}" style="margin-top:6px">Đặt</a>
+        </div>
+    </div>
+    <p class="muted" th:if="${#lists.isEmpty(flights)}">
+        Không có chuyến bay. Đảm bảo flight-provider (8081) đang chạy và đã sync.
+    </p>
+</div>
+</body>
+</html>

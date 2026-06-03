@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Đặt vé — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:560px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <p class="muted"><a href="/flights">← Chuyến bay</a></p>
+    <h1>Đặt vé</h1>
+    <div class="card">
+        <h3 style="margin:0"><span th:text="${flight.airlineCode}"></span> <span th:text="${flight.flightNumber}"></span></h3>
+        <div class="muted"><span th:text="${flight.fromAirport}"></span> → <span th:text="${flight.toAirport}"></span>
+            · <span th:text="${flight.departureTime}"></span></div>
+        <div class="price" style="margin-top:6px">
+            <span th:text="${flight.price != null ? #numbers.formatInteger(flight.price,1,'COMMA') : ''}"></span>
+            <span th:text="${flight.currency}"></span> / ghế</div>
+        <form th:action="@{/booking/flight}" method="post" style="margin-top:16px">
+            <input type="hidden" name="flightId" th:value="${flight.id}"/>
+            <label class="muted">Tên hành khách</label><br/>
+            <input type="text" name="passengerName" th:value="${fullName}" required
+                   style="width:100%;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:10px"/>
+            <label class="muted">Email liên hệ</label><br/>
+            <input type="email" name="contactEmail"
+                   style="width:100%;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:10px"/>
+            <label class="muted">Số ghế</label><br/>
+            <input type="number" name="seats" value="1" min="1"
+                   style="width:90px;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:14px"/><br/>
+            <button class="btn" type="submit">Tiếp tục thanh toán</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

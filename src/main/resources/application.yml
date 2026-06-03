@@ -1,0 +1,95 @@
+spring:
+  application:
+    name: dididi-booking-platform
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:mysql://localhost:3306/booking?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=LOCAL&allowPublicKeyRetrieval=true&useSSL=false
+    username: booking
+    password: booking_dev_pass
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+  jpa:
+    hibernate:
+      ddl-auto: update          # CHI dung cho dev
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 30
+  # Boot 3.x: property nam duoi spring.data.redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  thymeleaf:
+    cache: false
+    encoding: UTF-8
+  messages:
+    basename: i18n/messages,i18n/booking,i18n/error
+    encoding: UTF-8
+    cache-duration: 0           # dev only
+  session:
+    timeout: 30m
+
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+app:
+  jwt:
+    # Dev secret - PROD lay tu ENV (xem application-prod.yml). Toi thieu 32 bytes cho HS256.
+    secret: "dev-secret-change-me-please-use-a-long-random-string-min-32-bytes"
+    access-token-minutes: 60
+    issuer: dididi-booking-platform
+  # ---- Integration (Phase 1.5): pull tu flight-provider + hotel-pms ----
+  integration:
+    flight-provider:
+      endpoint: http://localhost:8081/api
+      api-key: ${FLIGHT_PROVIDER_API_KEY:dev-flight-key-12345}
+    hotel-pms:
+      endpoint: http://localhost:8082/api/pms/v1
+      api-key: ${HOTEL_PMS_API_KEY:dev-pms-key-67890}
+
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.springframework.security: info
+
+resilience4j:
+  retry:
+    instances:
+      flightProvider:
+        max-attempts: 3
+        wait-duration: 1s
+      hotelPms:
+        max-attempts: 3
+        wait-duration: 1s
+  circuitbreaker:
+    instances:
+      flightProvider:
+        sliding-window-size: 10
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+      hotelPms:
+        sliding-window-size: 10
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2

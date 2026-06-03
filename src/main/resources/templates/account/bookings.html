@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Đơn của tôi — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <h1>Đơn của tôi</h1>
+    <div class="list-item" th:each="b : ${bookings}">
+        <div>
+            <h3 style="margin:0"><a th:href="@{'/account/bookings/' + ${b.publicCode}}" th:text="${b.publicCode}"></a>
+                <span class="muted" th:text="'(' + ${b.type} + ')'"></span></h3>
+            <div class="muted" th:text="${b.title}"></div>
+            <div class="muted">Trạng thái: <b th:text="${b.status}"></b></div>
+        </div>
+        <div class="price">
+            <span th:text="${b.amount != null ? #numbers.formatInteger(b.amount,1,'COMMA') : ''}"></span>
+            <span th:text="${b.currency}"></span>
+        </div>
+    </div>
+    <p class="muted" th:if="${#lists.isEmpty(bookings)}">Chưa có đơn nào. <a href="/hotels">Đặt phòng</a> hoặc <a href="/flights">đặt vé</a>.</p>
+</div>
+</body>
+</html>

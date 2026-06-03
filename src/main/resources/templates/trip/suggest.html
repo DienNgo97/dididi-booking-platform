@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Gợi ý chuyến đi — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <p class="muted"><a href="/trip-planner">← Trip Planner</a></p>
+    <h1>Chuyến đi tới <span th:text="${suggestion.city()}"></span></h1>
+
+    <h2>Chuyến bay
+        <span class="muted" th:if="${suggestion.destinationAirport() != null}"
+              th:text="'(tới ' + ${suggestion.destinationAirport()} + ')'"></span></h2>
+    <div class="list-item" th:each="f : ${suggestion.flights()}">
+        <div>
+            <h3 style="margin:0"><span th:text="${f.airlineCode}"></span> <span th:text="${f.flightNumber}"></span></h3>
+            <div class="muted"><span th:text="${f.fromAirport}"></span> → <span th:text="${f.toAirport}"></span>
+                · <span th:text="${f.departureTime}"></span></div>
+        </div>
+        <a class="btn" th:href="@{'/booking/flight/' + ${f.id}}">Đặt</a>
+    </div>
+    <p class="muted" th:if="${#lists.isEmpty(suggestion.flights())}">Không có chuyến bay phù hợp tới điểm đến này.</p>
+
+    <h2 style="margin-top:20px">Khách sạn</h2>
+    <div class="list-item" th:each="h : ${suggestion.hotels()}">
+        <div>
+            <h3 style="margin:0"><a th:href="@{'/hotels/' + ${h.id}}" th:text="${h.name}"></a></h3>
+            <div class="muted"><span th:text="${h.city}"></span>
+                <span class="stars" th:if="${h.starRating != null}" th:text="${h.starRating + '★'}"></span></div>
+        </div>
+        <a class="btn" th:href="@{'/hotels/' + ${h.id}}">Xem phòng</a>
+    </div>
+    <p class="muted" th:if="${#lists.isEmpty(suggestion.hotels())}">Không có khách sạn ở thành phố này.</p>
+</div>
+</body>
+</html>

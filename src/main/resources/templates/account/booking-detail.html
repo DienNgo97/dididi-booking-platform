@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Chi tiết đơn — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:560px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <p class="muted"><a href="/account/bookings">← Đơn của tôi</a></p>
+    <h1 th:text="${booking.publicCode}">DD-XXXXXX</h1>
+    <div class="card">
+        <p th:text="${booking.title}"></p>
+        <div class="muted" th:text="'Loại: ' + ${booking.type}"></div>
+        <div class="muted">Trạng thái: <b th:text="${booking.status}"></b></div>
+        <div class="muted" th:if="${booking.providerConfirmation != null}"
+             th:text="'Mã xác nhận NCC: ' + ${booking.providerConfirmation}"></div>
+        <div th:if="${booking.checkIn != null}" class="muted">
+            <span th:text="${booking.checkIn}"></span> → <span th:text="${booking.checkOut}"></span></div>
+        <div th:if="${booking.travelDate != null}" class="muted">
+            Khởi hành: <span th:text="${booking.travelDate}"></span></div>
+        <div class="price" style="margin-top:8px">
+            <span th:text="${booking.amount != null ? #numbers.formatInteger(booking.amount,1,'COMMA') : ''}"></span>
+            <span th:text="${booking.currency}"></span></div>
+        <div class="muted" th:if="${payment != null}" style="margin-top:6px"
+             th:text="'Thanh toán: ' + ${payment.status} + ' · ' + ${payment.transactionRef}"></div>
+
+        <form th:if="${booking.status.name() != 'CANCELLED'}"
+              th:action="@{'/account/bookings/' + ${booking.publicCode} + '/cancel'}" method="post" style="margin-top:14px">
+            <button class="btn ghost" type="submit">Huỷ đơn</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

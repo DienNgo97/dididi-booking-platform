@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Trip Planner — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:560px">
+    <h1>Trip Planner</h1>
+    <p class="muted">Nhập điểm đến, Dididi gợi ý chuyến bay + khách sạn phù hợp.</p>
+    <form action="/trip-planner/suggest" method="get" class="card">
+        <label class="muted">Điểm đến (thành phố)</label><br/>
+        <input type="text" name="city" placeholder="VD: Da Nang, Ha Noi, TP.HCM" required
+               style="width:100%;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:10px"/>
+        <label class="muted">Đi từ sân bay (tuỳ chọn)</label><br/>
+        <input type="text" name="from" placeholder="VD: HAN"
+               style="width:100%;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:14px"/>
+        <button class="btn" type="submit">Gợi ý chuyến đi</button>
+    </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<div th:fragment="nav">
+    <div class="nav">
+        <a class="brand" href="/">Dididi</a>
+        <a href="/hotels">Khách sạn</a>
+        <a href="/flights">Chuyến bay</a>
+        <a href="/trip-planner">Trip Planner</a>
+        <span class="sp"></span>
+        <span sec:authorize="isAuthenticated()">
+            <a href="/account/bookings">Đơn của tôi</a> ·
+            Xin chào, <b sec:authentication="name">user</b> ·
+            <form th:action="@{/logout}" method="post" style="display:inline">
+                <button class="btn ghost" type="submit" style="padding:6px 12px">Đăng xuất</button>
+            </form>
+        </span>
+        <span sec:authorize="!isAuthenticated()">
+            <a href="/login">Đăng nhập</a> ·
+            <a class="btn" href="/register" style="padding:6px 12px">Đăng ký</a>
+        </span>
+    </div>
+</div>
+<div th:fragment="flash">
+    <div class="flash" th:if="${message}" th:text="${message}"></div>
+    <div class="flash err" th:if="${error}" th:text="${error}"></div>
+</div>
+</body>
+</html>

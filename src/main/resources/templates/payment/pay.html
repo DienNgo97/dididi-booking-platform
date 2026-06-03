@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Thanh toán — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:520px">
+    <h1>Thanh toán</h1>
+    <div class="card">
+        <div class="muted">Mã đơn</div>
+        <h2 style="margin:2px 0" th:text="${booking.publicCode}">DD-XXXXXX</h2>
+        <p th:text="${booking.title}"></p>
+        <div th:if="${booking.checkIn != null}" class="muted">
+            <span th:text="${booking.checkIn}"></span> → <span th:text="${booking.checkOut}"></span>
+            · <span th:text="${booking.quantity}"></span> phòng</div>
+        <div th:if="${booking.travelDate != null}" class="muted">
+            Khởi hành: <span th:text="${booking.travelDate}"></span> · <span th:text="${booking.quantity}"></span> ghế</div>
+        <div class="price" style="font-size:22px;margin-top:10px">
+            <span th:text="${booking.amount != null ? #numbers.formatInteger(booking.amount,1,'COMMA') : ''}"></span>
+            <span th:text="${booking.currency}"></span></div>
+        <p class="muted" style="margin-top:8px">Cổng thanh toán giả lập (demo) — bấm để xác nhận.</p>
+        <form th:action="@{'/payment/' + ${booking.publicCode}}" method="post">
+            <button class="btn" type="submit" style="width:100%;margin-top:8px">Thanh toán ngay (giả lập)</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

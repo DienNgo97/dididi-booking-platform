@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Đăng ký — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="authbox">
+    <h1>Đăng ký</h1>
+    <div class="flash err" th:if="${error}" th:text="${error}"></div>
+    <form th:action="@{/register}" method="post">
+        <label>Họ tên</label>
+        <input type="text" name="fullName"/>
+        <label>Email</label>
+        <input type="email" name="email" required/>
+        <label>Mật khẩu</label>
+        <input type="password" name="password" required/>
+        <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%">Tạo tài khoản</button></div>
+    </form>
+    <p class="muted" style="margin-top:14px">Đã có tài khoản? <a href="/login">Đăng nhập</a></p>
+</div>
+</body>
+</html>

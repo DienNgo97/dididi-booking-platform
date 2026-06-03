@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${hotel.name} + ' — Dididi'">Hotel</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <p class="muted"><a href="/hotels">← Khách sạn</a></p>
+    <h1 th:text="${hotel.name}">Hotel</h1>
+    <div class="card">
+        <div class="muted"><span th:text="${hotel.city}"></span> · <span th:text="${hotel.address}"></span>
+            <span class="stars" th:if="${hotel.starRating != null}" th:text="${hotel.starRating + '★'}"></span></div>
+        <p th:text="${hotel.description}"></p>
+    </div>
+
+    <h2 style="margin-top:24px">Chọn phòng & đặt</h2>
+    <p class="muted" th:if="${#lists.isEmpty(rooms)}">
+        Chưa lấy được loại phòng (kiểm tra hotel-pms 8082 đang chạy).
+    </p>
+
+    <div class="card" th:each="r : ${rooms}" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+            <div>
+                <h3 style="margin:0" th:text="${r.name()}">Room</h3>
+                <div class="muted" th:text="${r.description()}"></div>
+                <div class="muted">Sức chứa: <span th:text="${r.capacity()}"></span> ·
+                    <span class="price">
+                        <span th:text="${r.basePrice() != null ? #numbers.formatInteger(r.basePrice(),1,'COMMA') : ''}"></span>
+                        <span th:text="${r.currency()}"></span></span> / đêm</div>
+            </div>
+        </div>
+        <form th:action="@{/booking/hotel}" method="post" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:end"
+              sec:authorize="isAuthenticated()">
+            <input type="hidden" name="hotelId" th:value="${hotel.id}"/>
+            <input type="hidden" name="roomTypeId" th:value="${r.id()}"/>
+            <input type="hidden" name="roomName" th:value="${r.name()}"/>
+            <div><label class="muted">Tên khách</label><br/>
+                <input type="text" name="guestName" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
+            <div><label class="muted">Nhận phòng</label><br/>
+                <input type="date" name="checkIn" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
+            <div><label class="muted">Trả phòng</label><br/>
+                <input type="date" name="checkOut" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
+            <div><label class="muted">Số phòng</label><br/>
+                <input type="number" name="rooms" value="1" min="1" style="width:70px;padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
+            <button class="btn" type="submit">Đặt phòng</button>
+        </form>
+        <p class="muted" sec:authorize="!isAuthenticated()" style="margin-top:10px">
+            <a href="/login">Đăng nhập</a> để đặt phòng.
+        </p>
+    </div>
+</div>
+</body>
+</html>

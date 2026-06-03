@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dididi — Đặt khách sạn & vé máy bay</title>
+    <link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="hero">
+    <div style="max-width:1008px;margin:0 auto">
+        <h1>Đặt phòng & vé máy bay cùng Dididi</h1>
+        <p>Chọn điểm đến, để chúng tôi lo phần còn lại.</p>
+    </div>
+    <form class="searchbox" action="/hotels" method="get">
+        <div><label>Thành phố</label><input type="text" name="city" placeholder="VD: Da Nang"/></div>
+        <div><label>Nhận phòng</label><input type="date"/></div>
+        <div><label>Trả phòng</label><input type="date"/></div>
+        <button class="btn" type="submit">Tìm khách sạn</button>
+    </form>
+</div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <h2>Khách sạn nổi bật</h2>
+    <div class="grid">
+        <div class="card" th:each="h : ${featured}">
+            <h3><a th:href="@{'/hotels/' + ${h.id}}" th:text="${h.name}">Hotel</a></h3>
+            <div class="muted"><span th:text="${h.city}"></span> ·
+                <span class="stars" th:if="${h.starRating != null}" th:text="${h.starRating + '★'}"></span></div>
+            <p class="muted" th:text="${h.description}"></p>
+        </div>
+        <p class="muted" th:if="${#lists.isEmpty(featured)}">
+            Chưa có khách sạn. Đảm bảo hotel-pms (8082) đang chạy và đợi sync (~10s sau khởi động).
+        </p>
+    </div>
+</div>
+</body>
+</html>

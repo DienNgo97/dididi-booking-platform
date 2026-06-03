@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+  thymeleaf:
+    cache: true
+  messages:
+    cache-duration: 3600
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-minutes: ${JWT_ACCESS_MINUTES:30}
+    issuer: dididi-booking-platform
+
+logging:
+  level:
+    root: WARN
+    com.dididi.booking: INFO
+    org.hibernate.SQL: WARN
