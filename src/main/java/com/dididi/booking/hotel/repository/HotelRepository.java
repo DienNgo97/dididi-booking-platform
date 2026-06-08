@@ -10,4 +10,7 @@ public interface HotelRepository extends JpaRepository<Hotel, Long> {
     Optional<Hotel> findByExternalId(Long externalId);
     List<Hotel> findByActiveTrue();
     List<Hotel> findByActiveTrueAndCityContainingIgnoreCase(String city);
+
+    // ---- Phase 7 (vendor / DIRECT) ----
+    Optional<Hotel> findByVendorId(Long vendorId);
 }

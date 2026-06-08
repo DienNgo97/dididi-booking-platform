@@ -1,7 +1,9 @@
 package com.dididi.booking.hotel.web;
 
 import com.dididi.booking.hotel.domain.entity.Hotel;
+import com.dididi.booking.hotel.domain.enums.HotelSource;
 import com.dididi.booking.hotel.repository.HotelRepository;
+import com.dididi.booking.hotel.repository.RoomTypeRepository;
 import com.dididi.booking.integration.dto.RoomTypeItem;
 import com.dididi.booking.integration.service.PmsApiAdapter;
 import org.slf4j.Logger;
@@ -21,10 +23,13 @@ public class HotelWebController {
 
     private final HotelRepository hotelRepository;
     private final PmsApiAdapter pmsAdapter;
+    private final RoomTypeRepository roomTypeRepository;
 
-    public HotelWebController(HotelRepository hotelRepository, PmsApiAdapter pmsAdapter) {
+    public HotelWebController(HotelRepository hotelRepository, PmsApiAdapter pmsAdapter,
+                              RoomTypeRepository roomTypeRepository) {
         this.hotelRepository = hotelRepository;
         this.pmsAdapter = pmsAdapter;
+        this.roomTypeRepository = roomTypeRepository;
     }
 
     @GetMapping("/hotels")
@@ -44,7 +49,14 @@ public class HotelWebController {
             return "redirect:/hotels";
         }
         List<RoomTypeItem> rooms = List.of();
-        if (hotel.getExternalId() != null) {
+        if (hotel.getSource() == HotelSource.DIRECT) {
+            // Khach san vendor tu quan: lay loai phong tu DB noi bo, map sang RoomTypeItem
+            // de tai dung dung template + form dat phong.
+            rooms = roomTypeRepository.findByHotelIdOrderByBasePrice(hotel.getId()).stream()
+                    .map(rt -> new RoomTypeItem(rt.getId(), rt.getHotelId(), rt.getName(), rt.getDescription(),
+                            rt.getCapacity(), rt.getBasePrice(), rt.getCurrency(), rt.getTotalRooms()))
+                    .toList();
+        } else if (hotel.getExternalId() != null) {
             try {
                 rooms = pmsAdapter.fetchRooms(hotel.getExternalId());
             } catch (Exception ex) {
