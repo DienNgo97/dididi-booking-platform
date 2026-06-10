@@ -2,23 +2,24 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Đăng nhập — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{auth.loginTitle}">Đăng nhập - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="authbox">
-    <h1>Đăng nhập</h1>
+    <h1 th:text="#{nav.login}">Đăng nhập</h1>
     <div class="flash" th:if="${message}" th:text="${message}"></div>
-    <div class="flash err" th:if="${param.error}">Email hoặc mật khẩu không đúng.</div>
-    <div class="flash" th:if="${param.logout}">Đã đăng xuất.</div>
+    <div class="flash err" th:if="${param.error}" th:text="#{auth.badCredentials}">Email hoặc mật khẩu không đúng.</div>
+    <div class="flash" th:if="${param.logout}" th:text="#{auth.loggedOut}">Đã đăng xuất.</div>
     <form th:action="@{/login}" method="post">
-        <label>Email</label>
+        <label th:text="#{auth.email}">Email</label>
         <input type="email" name="username" required autofocus/>
-        <label>Mật khẩu</label>
+        <label th:text="#{auth.password}">Mật khẩu</label>
         <input type="password" name="password" required/>
-        <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%">Đăng nhập</button></div>
+        <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%" th:text="#{nav.login}">Đăng nhập</button></div>
     </form>
-    <p class="muted" style="margin-top:14px">Chưa có tài khoản? <a href="/register">Đăng ký</a></p>
+    <p class="muted" style="margin-top:14px"><span th:text="#{auth.noAccount}">Chưa có tài khoản?</span> <a href="/register" th:text="#{nav.register}">Đăng ký</a></p>
+    <p class="muted" style="margin-top:6px"><span th:text="#{auth.areYouHotelOwner}">Bạn là chủ khách sạn?</span> <a href="/vendor-register" th:text="#{auth.vendorRegister}">Đăng ký bán phòng</a></p>
 </div>
 </body>
 </html>

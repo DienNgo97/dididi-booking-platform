@@ -2,6 +2,7 @@ package com.dididi.booking.hotel.api.dto;
 
 import com.dididi.booking.hotel.domain.entity.Hotel;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 public record HotelApiDto(
@@ -12,7 +13,9 @@ public record HotelApiDto(
         String description,
         Integer starRating,
         BigDecimal minPrice,
-        String currency) {
+        String currency) implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     public static HotelApiDto from(Hotel h) {
         return new HotelApiDto(h.getId(), h.getName(), h.getCity(), h.getAddress(),

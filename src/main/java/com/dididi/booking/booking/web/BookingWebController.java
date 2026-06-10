@@ -5,6 +5,7 @@ import com.dididi.booking.booking.service.BookingService;
 import com.dididi.booking.flight.domain.entity.Flight;
 import com.dididi.booking.flight.repository.FlightRepository;
 import com.dididi.booking.web.CurrentUser;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -32,9 +33,16 @@ public class BookingWebController {
     }
 
     @GetMapping("/booking/flight/{flightId}")
-    public String flightForm(@PathVariable Long flightId, Authentication auth, Model model) {
+    public String flightForm(@PathVariable Long flightId,
+                             @RequestParam(required = false) String tripCity,
+                             @RequestParam(required = false) String tripAirport,
+                             Authentication auth, Model model, HttpSession session) {
         Flight f = flightRepository.findById(flightId).orElse(null);
         if (f == null) return "redirect:/flights";
+        if (tripCity != null && !tripCity.isBlank()) {
+            session.setAttribute("tripCity", tripCity);
+            session.setAttribute("tripAirport", tripAirport);
+        }
         model.addAttribute("flight", f);
         model.addAttribute("fullName", currentUser.require(auth).getFullName());
         return "booking/flight-form";

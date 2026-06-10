@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{bulk.result}">Kết quả đặt theo nhóm - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:720px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <h1 th:text="#{bulk.result}">Kết quả đặt theo nhóm</h1>
+
+    <table class="tbl">
+        <thead>
+        <tr>
+            <th>#</th>
+            <th th:text="#{bulk.guest}">Tên khách</th>
+            <th>Mã đơn</th>
+            <th>Trạng thái</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${results}">
+            <td th:text="${r.no()}">1</td>
+            <td th:text="${r.guestName()}">Khách</td>
+            <td>
+                <a th:if="${r.code() != null}" th:href="@{'/account/bookings/' + ${r.code()}}" th:text="${r.code()}">DD-XXXX</a>
+                <span th:if="${r.code() == null}">—</span>
+            </td>
+            <td>
+                <span th:switch="${r.status()}">
+                    <span th:case="'CONFIRMED'" style="color:#2e7d32;font-weight:600" th:text="#{bulk.st.confirmed}">Đã xác nhận</span>
+                    <span th:case="'PENDING_APPROVAL'" style="color:#b26a00;font-weight:600" th:text="#{bulk.st.pendingApproval}">Chờ phê duyệt</span>
+                    <span th:case="'PENDING_PAYMENT'" style="color:#555" th:text="#{bulk.st.pendingPayment}">Chờ thanh toán</span>
+                    <span th:case="*" style="color:#c0392b;font-weight:600" th:text="#{bulk.st.failed}">Lỗi</span>
+                </span>
+                <a th:if="${r.status() == 'PENDING_PAYMENT' and r.code() != null}"
+                   th:href="@{'/payment/' + ${r.code()}}" style="margin-left:8px" th:text="#{bulk.payNow}">Thanh toán</a>
+                <div class="muted" th:if="${r.message()}" th:text="${r.message()}"></div>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(results)}"><td colspan="4" class="muted">Không có dòng nào được tạo.</td></tr>
+        </tbody>
+    </table>
+
+    <p class="muted" style="margin-top:16px">
+        <a href="/account/bookings">← <span th:text="#{nav.myBookings}">Đơn của tôi</span></a>
+    </p>
+</div>
+</body>
+</html>

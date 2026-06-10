@@ -38,6 +38,10 @@ public class User extends BaseEntity {
     @Column(name = "vendor_id")
     private Long vendorId;
 
+    /** Cong ty (B2B) nhan vien truc thuoc - null neu khach le. */
+    @Column(name = "company_id")
+    private Long companyId;
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
@@ -58,4 +62,7 @@ public class User extends BaseEntity {
 
     public Long getVendorId() { return vendorId; }
     public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
+
+    public Long getCompanyId() { return companyId; }
+    public void setCompanyId(Long companyId) { this.companyId = companyId; }
 }

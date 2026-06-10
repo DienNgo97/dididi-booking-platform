@@ -47,9 +47,21 @@ public class Booking extends BaseEntity {
     @Column(length = 3)
     private String currency = "VND";
 
+    // DIRECT hotel only: luu de hoan tra ton kho khi huy/hoan tien. CHANNEL/flight = null.
+    @Column(name = "room_type_id")
+    private Long roomTypeId;
+
+    // Doi tuong duoc dat: hotelId (don HOTEL) hoac flightId (don FLIGHT). Dung cho review/rating.
+    @Column(name = "target_id")
+    private Long targetId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private BookingStatus status = BookingStatus.PENDING_PAYMENT;
+
+    /** Cong ty thanh toan (B2B) - null neu khach le tu tra. */
+    @Column(name = "company_id")
+    private Long companyId;
 
     public String getPublicCode() { return publicCode; }
     public void setPublicCode(String publicCode) { this.publicCode = publicCode; }
@@ -75,4 +87,10 @@ public class Booking extends BaseEntity {
     public void setCurrency(String currency) { this.currency = currency; }
     public BookingStatus getStatus() { return status; }
     public void setStatus(BookingStatus status) { this.status = status; }
+    public Long getRoomTypeId() { return roomTypeId; }
+    public void setRoomTypeId(Long roomTypeId) { this.roomTypeId = roomTypeId; }
+    public Long getTargetId() { return targetId; }
+    public void setTargetId(Long targetId) { this.targetId = targetId; }
+    public Long getCompanyId() { return companyId; }
+    public void setCompanyId(Long companyId) { this.companyId = companyId; }
 }

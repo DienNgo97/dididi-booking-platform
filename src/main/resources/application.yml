@@ -5,8 +5,8 @@ spring:
     active: dev
   datasource:
     url: jdbc:mysql://localhost:3306/booking?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=LOCAL&allowPublicKeyRetrieval=true&useSSL=false
-    username: ${DB_USERNAME:booking}
-    password: ${DB_PASSWORD:booking_dev_pass}
+    username: booking
+    password: booking_dev_pass
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -33,6 +33,21 @@ spring:
     cache-duration: 0           # dev only
   session:
     timeout: 30m
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:ngotrungdientdt@gmail.com}
+    password: ${MAIL_PASSWORD:fwzhqihdfocepplx}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 server:
   port: 8080
@@ -52,11 +67,21 @@ management:
 
 app:
   jwt:
-    # PROD lay tu ENV (xem application-prod.yml). Fallback dev de chay local khong can set ENV.
-    # Toi thieu 32 bytes cho HS256.
-    secret: ${JWT_SECRET:dev-secret-change-me-please-use-a-long-random-string-min-32-bytes}
+    # Dev secret - PROD lay tu ENV (xem application-prod.yml). Toi thieu 32 bytes cho HS256.
+    secret: "dev-secret-change-me-please-use-a-long-random-string-min-32-bytes"
     access-token-minutes: 60
     issuer: dididi-booking-platform
+    refresh-token-days: 7
+  # ---- VNPay sandbox (Phase 8a). Lay tmn-code + hash-secret tu dang ky sandbox tai sandbox.vnpayment.vn ----
+  vnpay:
+    tmn-code: DM4DR3V5
+    hash-secret: 0QFKNRA45GZVV4MZ673LDH0KXY8GLAZW
+    pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+    return-url: ${VNPAY_RETURN_URL:http://localhost:8080/payment/vnpay-return}
+    version: "2.1.0"
+    command: pay
+    order-type: other
+    locale: vn
   # ---- Integration (Phase 1.5): pull tu flight-provider + hotel-pms ----
   integration:
     flight-provider:
@@ -65,6 +90,20 @@ app:
     hotel-pms:
       endpoint: http://localhost:8082/api/pms/v1
       api-key: ${HOTEL_PMS_API_KEY:dev-pms-key-67890}
+  # ---- Email (Phase Dot1 #2). from nen trung MAIL_USERNAME (Gmail se tu rewrite From). ----
+  mail:
+    enabled: ${MAIL_ENABLED:true}
+    from: ${MAIL_FROM:Dididi <ngotrungdientdt@gmail.com>}
+  # ---- Caching @Cacheable (Dot1 #4). TTL cho API doc hotel/flight tren Redis. Khong khai -> mac dinh 10 phut. ----
+  cache:
+    ttl-minutes: 10
+  # ---- Rate limit (Dot1 #4). Gioi han /api/auth/* theo IP (token bucket). Khong khai -> mac dinh 10 req/phut. ----
+  rate-limit:
+    auth:
+      requests-per-minute: 10
+  # ---- Refund (Dot2 Super Admin). Hoan tien > nguong nay can SuperAdmin duyet (<= nguong: Admin duyet). ----
+  refund:
+    super-admin-threshold: 100000
 
 logging:
   level:

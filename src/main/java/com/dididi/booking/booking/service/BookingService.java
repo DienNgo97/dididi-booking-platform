@@ -5,6 +5,7 @@ import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.domain.enums.BookingType;
 import com.dididi.booking.booking.repository.BookingRepository;
 import com.dididi.booking.common.exception.BusinessException;
+import com.dididi.booking.notification.EmailService;
 import com.dididi.booking.flight.domain.entity.Flight;
 import com.dididi.booking.flight.repository.FlightRepository;
 import com.dididi.booking.hotel.domain.entity.Hotel;
@@ -40,11 +41,12 @@ public class BookingService {
     private final PmsApiAdapter pmsAdapter;
     private final RoomTypeRepository roomTypeRepository;
     private final RoomInventoryRepository roomInventoryRepository;
+    private final EmailService emailService;
 
     public BookingService(BookingRepository bookingRepository, FlightRepository flightRepository,
                           HotelRepository hotelRepository, MockFlightProviderAdapter flightAdapter,
                           PmsApiAdapter pmsAdapter, RoomTypeRepository roomTypeRepository,
-                          RoomInventoryRepository roomInventoryRepository) {
+                          RoomInventoryRepository roomInventoryRepository, EmailService emailService) {
         this.bookingRepository = bookingRepository;
         this.flightRepository = flightRepository;
         this.hotelRepository = hotelRepository;
@@ -52,6 +54,7 @@ public class BookingService {
         this.pmsAdapter = pmsAdapter;
         this.roomTypeRepository = roomTypeRepository;
         this.roomInventoryRepository = roomInventoryRepository;
+        this.emailService = emailService;
     }
 
     public Booking createFlightBooking(Long userId, Long flightId, String passengerName,
@@ -71,6 +74,7 @@ public class BookingService {
         b.setPublicCode(generateCode());
         b.setUserId(userId);
         b.setType(BookingType.FLIGHT);
+        b.setTargetId(f.getId());
         b.setTitle(safe(f.getAirlineCode()) + safe(f.getFlightNumber()) + " "
                 + safe(f.getFromAirport()) + "→" + safe(f.getToAirport()));
         b.setProviderConfirmation(res != null ? res.confirmationCode() : null);
@@ -114,6 +118,7 @@ public class BookingService {
         b.setPublicCode(generateCode());
         b.setUserId(userId);
         b.setType(BookingType.HOTEL);
+        b.setTargetId(h.getId());
         b.setTitle(h.getName() + (roomName != null ? " — " + roomName : ""));
         b.setProviderConfirmation(res != null ? res.confirmationCode() : null);
         b.setCheckIn(checkIn);
@@ -170,6 +175,7 @@ public class BookingService {
         b.setPublicCode(generateCode());
         b.setUserId(userId);
         b.setType(BookingType.HOTEL);
+        b.setTargetId(h.getId());
         String label = (roomName != null && !roomName.isBlank()) ? roomName : rt.getName();
         b.setTitle(h.getName() + " — " + label);
         b.setCheckIn(checkIn);
@@ -177,6 +183,7 @@ public class BookingService {
         b.setQuantity(rooms);
         b.setAmount(amount);
         b.setCurrency(rt.getCurrency() != null ? rt.getCurrency() : "VND");
+        b.setRoomTypeId(rt.getId());   // de hoan tra ton kho khi huy/hoan tien
         b.setStatus(BookingStatus.PENDING_PAYMENT);
         return bookingRepository.save(b);
     }
@@ -194,15 +201,40 @@ public class BookingService {
         return bookingRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
 
+    @Transactional
     public Booking cancel(String publicCode, Long userId) {
         Booking b = getForUser(publicCode, userId);
+        if (b.getStatus() == BookingStatus.PENDING_PAYMENT || b.getStatus() == BookingStatus.CONFIRMED) {
+            restoreDirectInventory(b);
+        }
         b.setStatus(BookingStatus.CANCELLED);
         return bookingRepository.save(b);
     }
 
     public Booking markConfirmed(Booking b) {
         b.setStatus(BookingStatus.CONFIRMED);
-        return bookingRepository.save(b);
+        Booking saved = bookingRepository.save(b);
+        emailService.sendBookingConfirmed(saved);   // email xac nhan (phong thu, khong lam hong luong)
+        return saved;
+    }
+
+    /**
+     * Cong tra ton kho cho don khach san DIRECT: theo roomTypeId + tung dem [checkIn, checkOut) x so phong.
+     * Chi goi khi don dang o trang thai active (xem cancel()/RefundService) de tranh cong tra 2 lan.
+     * Don CHANNEL/flight hoac don cu (roomTypeId null) -> bo qua an toan.
+     */
+    public void restoreDirectInventory(Booking b) {
+        if (b.getType() != BookingType.HOTEL) return;
+        Long roomTypeId = b.getRoomTypeId();
+        if (roomTypeId == null || b.getCheckIn() == null || b.getCheckOut() == null) return;
+        int rooms = b.getQuantity();
+        for (LocalDate d = b.getCheckIn(); d.isBefore(b.getCheckOut()); d = d.plusDays(1)) {
+            final LocalDate day = d;
+            roomInventoryRepository.findByRoomTypeIdAndDate(roomTypeId, day).ifPresent(inv -> {
+                inv.setAvailableRooms(inv.getAvailableRooms() + rooms);
+                roomInventoryRepository.save(inv);
+            });
+        }
     }
 
     private String generateCode() {

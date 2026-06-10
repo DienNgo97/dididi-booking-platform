@@ -2,26 +2,35 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Khách sạn — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{hotels.pageTitle}">Khách sạn - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="wrap">
     <form action="/hotels" method="get" style="margin-bottom:16px">
-        <input type="text" name="city" th:value="${city}" placeholder="Lọc theo thành phố"
+        <input type="text" name="city" th:value="${city}" th:placeholder="#{hotels.filterCity}" placeholder="Lọc theo thành phố"
                style="padding:9px;border:1px solid #cdd3dd;border-radius:9px"/>
-        <button class="btn" type="submit">Tìm</button>
+        <button class="btn" type="submit" th:text="#{flights.search}">Tìm</button>
     </form>
-    <h1>Khách sạn <span class="muted" th:if="${city}">tại <span th:text="${city}"></span></span></h1>
+    <h1><span th:text="#{hotels.title}">Khách sạn</span><span class="muted" th:if="${city}"> · <span th:text="${city}"></span></span></h1>
     <div class="list-item" th:each="h : ${hotels}">
-        <div>
-            <h3 style="margin:0"><a th:href="@{'/hotels/' + ${h.id}}" th:text="${h.name}"></a></h3>
-            <div class="muted"><span th:text="${h.city}"></span> · <span th:text="${h.address}"></span>
-                <span class="stars" th:if="${h.starRating != null}" th:text="${h.starRating + '★'}"></span></div>
+        <div style="display:flex;align-items:center;gap:14px">
+            <img th:if="${covers.get(h.id) != null}" th:src="${covers.get(h.id)}" alt="ảnh"
+                 style="width:120px;height:90px;object-fit:cover;border-radius:8px;flex:none"/>
+            <div>
+                <h3 style="margin:0"><a th:href="@{'/hotels/' + ${h.id}}" th:text="${h.name}"></a></h3>
+                <div class="muted"><span th:text="${h.city}"></span> · <span th:text="${h.address}"></span>
+                    <span class="stars" th:if="${h.starRating != null}" th:text="${h.starRating + '★'}"></span></div>
+                <div class="muted">
+                    <span class="stars" th:if="${ratings.get(h.id) > 0}"
+                          th:text="#{hotels.guestRating} + ' ' + ${ratings.get(h.id)} + '★'"></span>
+                    <span th:if="${ratings.get(h.id) == 0}" th:text="#{hotels.noRating}">Chưa có đánh giá</span>
+                </div>
+            </div>
         </div>
-        <a class="btn" th:href="@{'/hotels/' + ${h.id}}">Xem</a>
+        <a class="btn" th:href="@{'/hotels/' + ${h.id}}" th:text="#{hotels.view}">Xem</a>
     </div>
-    <p class="muted" th:if="${#lists.isEmpty(hotels)}">Không có khách sạn phù hợp.</p>
+    <p class="muted" th:if="${#lists.isEmpty(hotels)}" th:text="#{hotels.empty}">Không có khách sạn phù hợp.</p>
 </div>
 </body>
 </html>

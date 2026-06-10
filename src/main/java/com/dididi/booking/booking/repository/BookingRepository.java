@@ -17,4 +17,10 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Page<Booking> findByStatus(BookingStatus status, Pageable pageable);
     long countByStatus(BookingStatus status);
     List<Booking> findTop5ByOrderByCreatedAtDesc();
+
+    // ---- Corporate B2B (Dot 3) ----
+    List<Booking> findByCompanyIdOrderByCreatedAtDesc(Long companyId);
+
+    // ---- Commission report (Dot 3) ----
+    List<Booking> findByStatusOrderByCreatedAtDesc(BookingStatus status);
 }
