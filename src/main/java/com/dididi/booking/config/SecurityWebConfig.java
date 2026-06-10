@@ -17,7 +17,9 @@ public class SecurityWebConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain webChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain webChain(HttpSecurity http,
+                                        com.dididi.booking.identity.security.CustomOAuth2UserService oauth2UserService,
+                                        com.dididi.booking.identity.security.OAuth2LoginSuccessHandler oauth2SuccessHandler) throws Exception {
         http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/", "/home", "/hotels/**", "/flights/**", "/trip-planner/**",
@@ -33,6 +35,10 @@ public class SecurityWebConfig {
                         .loginPage("/login")
                         .defaultSuccessUrl("/", false)
                         .permitAll())
+                .oauth2Login(o -> o
+                        .loginPage("/login")
+                        .userInfoEndpoint(ui -> ui.userService(oauth2UserService))
+                        .successHandler(oauth2SuccessHandler))
                 .logout(l -> l.logoutUrl("/logout").logoutSuccessUrl("/"))
                 .sessionManagement(s -> s.maximumSessions(3));
         return http.build();

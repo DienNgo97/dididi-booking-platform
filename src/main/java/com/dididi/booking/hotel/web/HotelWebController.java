@@ -10,6 +10,9 @@ import com.dididi.booking.integration.dto.RoomTypeItem;
 import com.dididi.booking.integration.service.PmsApiAdapter;
 import com.dididi.booking.review.domain.entity.Review;
 import com.dididi.booking.review.service.ReviewService;
+import com.dididi.booking.web.CurrentUser;
+import com.dididi.booking.wishlist.service.WishlistService;
+import org.springframework.security.core.Authentication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -34,19 +37,24 @@ public class HotelWebController {
     private final RoomTypeRepository roomTypeRepository;
     private final ReviewService reviewService;
     private final HotelImageService hotelImageService;
+    private final WishlistService wishlistService;
+    private final CurrentUser currentUser;
 
     public HotelWebController(HotelRepository hotelRepository, PmsApiAdapter pmsAdapter,
                               RoomTypeRepository roomTypeRepository, ReviewService reviewService,
-                              HotelImageService hotelImageService) {
+                              HotelImageService hotelImageService, WishlistService wishlistService,
+                              CurrentUser currentUser) {
         this.hotelRepository = hotelRepository;
         this.pmsAdapter = pmsAdapter;
         this.roomTypeRepository = roomTypeRepository;
         this.reviewService = reviewService;
         this.hotelImageService = hotelImageService;
+        this.wishlistService = wishlistService;
+        this.currentUser = currentUser;
     }
 
     @GetMapping("/hotels")
-    public String list(@RequestParam(required = false) String city, Model model) {
+    public String list(@RequestParam(required = false) String city, Authentication auth, Model model) {
         List<Hotel> hotels = (city == null || city.isBlank())
                 ? hotelRepository.findByActiveTrue()
                 : hotelRepository.findByActiveTrueAndCityContainingIgnoreCase(city);
@@ -61,6 +69,8 @@ public class HotelWebController {
         model.addAttribute("ratings", ratings);
         model.addAttribute("covers", covers);
         model.addAttribute("city", city);
+        Long uid = currentUser.idOrNull(auth);
+        if (uid != null) model.addAttribute("wishlistedIds", wishlistService.wishlistedHotelIds(uid));
         return "hotels/list";
     }
 
@@ -68,7 +78,7 @@ public class HotelWebController {
     public String detail(@PathVariable Long id,
                          @RequestParam(required = false) String tripCity,
                          @RequestParam(required = false) String tripAirport,
-                         Model model, HttpSession session) {
+                         Authentication auth, Model model, HttpSession session) {
         Hotel hotel = hotelRepository.findById(id).orElse(null);
         if (hotel == null) {
             return "redirect:/hotels";
@@ -100,6 +110,8 @@ public class HotelWebController {
         model.addAttribute("avgRating", reviewService.averageRating(BookingType.HOTEL, hotel.getId()));
         model.addAttribute("reviewCount", rp.getTotalElements());
         model.addAttribute("reviews", rp.getContent());
+        Long uid = currentUser.idOrNull(auth);
+        model.addAttribute("wishlisted", uid != null && wishlistService.isWishlisted(uid, hotel.getId()));
         return "hotels/detail";
     }
 }

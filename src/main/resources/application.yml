@@ -2,11 +2,11 @@ spring:
   application:
     name: dididi-booking-platform
   profiles:
-    active: dev
+    active: dev,local
   datasource:
     url: jdbc:mysql://localhost:3306/booking?useUnicode=true&characterEncoding=UTF-8&connectionTimeZone=LOCAL&allowPublicKeyRetrieval=true&useSSL=false
     username: booking
-    password: booking_dev_pass
+    password: ${DB_PASSWORD:booking_dev_pass}
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
@@ -37,7 +37,7 @@ spring:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:ngotrungdientdt@gmail.com}
-    password: ${MAIL_PASSWORD:fwzhqihdfocepplx}
+    password: ${MAIL_PASSWORD:}
     default-encoding: UTF-8
     properties:
       mail:
@@ -48,6 +48,14 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:162637437619-hmrebs48150iuvoomplt650ugo7tpg00.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            scope: profile,email
 
 server:
   port: 8080
@@ -68,14 +76,14 @@ management:
 app:
   jwt:
     # Dev secret - PROD lay tu ENV (xem application-prod.yml). Toi thieu 32 bytes cho HS256.
-    secret: "dev-secret-change-me-please-use-a-long-random-string-min-32-bytes"
+    secret: ${JWT_SECRET:dev-secret-change-me-please-use-a-long-random-string-min-32-bytes}
     access-token-minutes: 60
     issuer: dididi-booking-platform
     refresh-token-days: 7
   # ---- VNPay sandbox (Phase 8a). Lay tmn-code + hash-secret tu dang ky sandbox tai sandbox.vnpayment.vn ----
   vnpay:
-    tmn-code: DM4DR3V5
-    hash-secret: 0QFKNRA45GZVV4MZ673LDH0KXY8GLAZW
+    tmn-code: ${VNPAY_TMN_CODE:}
+    hash-secret: ${VNPAY_HASH_SECRET:}
     pay-url: ${VNPAY_PAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
     return-url: ${VNPAY_RETURN_URL:http://localhost:8080/payment/vnpay-return}
     version: "2.1.0"

@@ -23,4 +23,8 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     // ---- Commission report (Dot 3) ----
     List<Booking> findByStatusOrderByCreatedAtDesc(BookingStatus status);
+
+    // ---- Voucher usage (nice-to-have) ----
+    long countByVoucherCodeAndStatus(String voucherCode, BookingStatus status);
+    long countByUserIdAndVoucherCodeAndStatus(Long userId, String voucherCode, BookingStatus status);
 }

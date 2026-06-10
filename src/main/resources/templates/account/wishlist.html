@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{wishlist.title}">Khách sạn yêu thích - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <h1 th:text="#{wishlist.title}">Khách sạn yêu thích</h1>
+    <p class="muted" th:if="${#lists.isEmpty(hotels)}" th:text="#{wishlist.empty}">Bạn chưa lưu khách sạn nào.</p>
+
+    <div class="list-item" th:each="h : ${hotels}">
+        <div>
+            <h3 style="margin:0"><a th:href="@{'/hotels/' + ${h.id}}" th:text="${h.name}"></a></h3>
+            <div class="muted"><span th:text="${h.city}"></span>
+                · <span class="price" th:text="${#numbers.formatInteger(h.minPrice,1,'COMMA')} + ' ' + ${h.currency}"></span></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex:none">
+            <a class="btn" th:href="@{'/hotels/' + ${h.id}}" th:text="#{hotels.view}">Xem</a>
+            <form th:action="@{/account/wishlist/toggle}" method="post">
+                <input type="hidden" name="hotelId" th:value="${h.id}"/>
+                <input type="hidden" name="back" value="/account/wishlist"/>
+                <button class="btn ghost" type="submit" style="color:#c0392b;border-color:#c0392b"
+                        th:text="'♥ ' + #{wishlist.remove}">♥ Bỏ lưu</button>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -19,6 +19,8 @@ import com.dididi.booking.integration.dto.FlightBookResult;
 import com.dididi.booking.integration.dto.ReserveResult;
 import com.dididi.booking.integration.service.MockFlightProviderAdapter;
 import com.dididi.booking.integration.service.PmsApiAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,8 @@ import java.util.List;
 @Service
 public class BookingService {
 
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
+
     private static final SecureRandom RND = new SecureRandom();
     private static final String ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -42,11 +46,13 @@ public class BookingService {
     private final RoomTypeRepository roomTypeRepository;
     private final RoomInventoryRepository roomInventoryRepository;
     private final EmailService emailService;
+    private final com.dididi.booking.loyalty.service.LoyaltyService loyaltyService;
 
     public BookingService(BookingRepository bookingRepository, FlightRepository flightRepository,
                           HotelRepository hotelRepository, MockFlightProviderAdapter flightAdapter,
                           PmsApiAdapter pmsAdapter, RoomTypeRepository roomTypeRepository,
-                          RoomInventoryRepository roomInventoryRepository, EmailService emailService) {
+                          RoomInventoryRepository roomInventoryRepository, EmailService emailService,
+                          com.dididi.booking.loyalty.service.LoyaltyService loyaltyService) {
         this.bookingRepository = bookingRepository;
         this.flightRepository = flightRepository;
         this.hotelRepository = hotelRepository;
@@ -55,6 +61,7 @@ public class BookingService {
         this.roomTypeRepository = roomTypeRepository;
         this.roomInventoryRepository = roomInventoryRepository;
         this.emailService = emailService;
+        this.loyaltyService = loyaltyService;
     }
 
     public Booking createFlightBooking(Long userId, Long flightId, String passengerName,
@@ -215,6 +222,11 @@ public class BookingService {
         b.setStatus(BookingStatus.CONFIRMED);
         Booking saved = bookingRepository.save(b);
         emailService.sendBookingConfirmed(saved);   // email xac nhan (phong thu, khong lam hong luong)
+        try {
+            loyaltyService.earnForBooking(saved);    // tich diem (idempotent; loi khong lam hong xac nhan)
+        } catch (Exception ex) {
+            log.warn("Loyalty earn failed for booking {}: {}", saved.getPublicCode(), ex.toString());
+        }
         return saved;
     }
 
