@@ -17,15 +17,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
     private final long accessTokenMinutes;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
+                       RefreshTokenService refreshTokenService,
                        @Value("${app.jwt.access-token-minutes:60}") long accessTokenMinutes) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
         this.accessTokenMinutes = accessTokenMinutes;
     }
 
@@ -44,7 +47,32 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user);
-        return new LoginResponse(token, "Bearer", accessTokenMinutes,
+        String refreshToken = refreshTokenService.issue(user.getId());
+        return new LoginResponse(token, refreshToken, "Bearer", accessTokenMinutes,
                 user.getEmail(), user.getRole().name());
+    }
+
+    /** Cấp access token mới từ refresh token (xoay vòng refresh token). */
+    public LoginResponse refresh(String refreshToken) {
+        Long userId = refreshTokenService.userIdOf(refreshToken);
+        if (userId == null) {
+            throw new BusinessException("INVALID_REFRESH",
+                    "Refresh token không hợp lệ hoặc đã hết hạn", HttpStatus.UNAUTHORIZED);
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("INVALID_REFRESH",
+                        "Refresh token không hợp lệ", HttpStatus.UNAUTHORIZED));
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException("ACCOUNT_INACTIVE", "Account is not active", HttpStatus.FORBIDDEN);
+        }
+        String newAccess = jwtService.generateToken(user);
+        String newRefresh = refreshTokenService.rotate(userId, refreshToken);
+        return new LoginResponse(newAccess, newRefresh, "Bearer", accessTokenMinutes,
+                user.getEmail(), user.getRole().name());
+    }
+
+    /** Thu hồi refresh token (logout). */
+    public void logout(String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
     }
 }

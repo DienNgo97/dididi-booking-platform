@@ -29,6 +29,19 @@ public class Payment extends BaseEntity {
     @Column(name = "transaction_ref", length = 50)
     private String transactionRef;
 
+    // ---- VNPay (Phase 8a) ----
+    @Column(name = "gateway_txn_no", length = 50)
+    private String gatewayTxnNo;          // vnp_TransactionNo
+
+    @Column(name = "bank_code", length = 20)
+    private String bankCode;              // vnp_BankCode
+
+    @Column(name = "response_code", length = 4)
+    private String responseCode;          // vnp_ResponseCode
+
+    @Column(name = "pay_date", length = 14)
+    private String payDate;               // vnp_PayDate (yyyyMMddHHmmss)
+
     public Long getBookingId() { return bookingId; }
     public void setBookingId(Long bookingId) { this.bookingId = bookingId; }
     public BigDecimal getAmount() { return amount; }
@@ -41,4 +54,12 @@ public class Payment extends BaseEntity {
     public void setStatus(PaymentStatus status) { this.status = status; }
     public String getTransactionRef() { return transactionRef; }
     public void setTransactionRef(String transactionRef) { this.transactionRef = transactionRef; }
+    public String getGatewayTxnNo() { return gatewayTxnNo; }
+    public void setGatewayTxnNo(String gatewayTxnNo) { this.gatewayTxnNo = gatewayTxnNo; }
+    public String getBankCode() { return bankCode; }
+    public void setBankCode(String bankCode) { this.bankCode = bankCode; }
+    public String getResponseCode() { return responseCode; }
+    public void setResponseCode(String responseCode) { this.responseCode = responseCode; }
+    public String getPayDate() { return payDate; }
+    public void setPayDate(String payDate) { this.payDate = payDate; }
 }

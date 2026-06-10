@@ -21,10 +21,12 @@ public class SecurityWebConfig {
         http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/", "/home", "/hotels/**", "/flights/**", "/trip-planner/**",
-                                "/login", "/register",
+                                "/login", "/register", "/vendor-register",
                                 "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/account/**", "/booking/**", "/payment/**", "/checkout/**").authenticated()
+                        .requestMatchers("/payment/vnpay-return", "/payment/vnpay-ipn").permitAll()
+                        .requestMatchers("/account/**", "/booking/**", "/payment/**", "/checkout/**",
+                                "/company-invite/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .formLogin(f -> f

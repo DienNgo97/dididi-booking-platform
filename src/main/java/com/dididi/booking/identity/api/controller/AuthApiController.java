@@ -4,6 +4,7 @@ import com.dididi.booking.common.dto.ApiResponse;
 import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.identity.api.dto.LoginRequest;
 import com.dididi.booking.identity.api.dto.LoginResponse;
+import com.dididi.booking.identity.api.dto.RefreshRequest;
 import com.dididi.booking.identity.api.dto.RegisterRequest;
 import com.dididi.booking.identity.api.dto.UserDto;
 import com.dididi.booking.identity.domain.entity.User;
@@ -39,6 +40,19 @@ public class AuthApiController {
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(authService.login(request));
+    }
+
+    @Operation(summary = "Cấp access token mới bằng refresh token (xoay vòng refresh token)")
+    @PostMapping("/refresh")
+    public ApiResponse<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ApiResponse.ok(authService.refresh(request.refreshToken()), "Token refreshed");
+    }
+
+    @Operation(summary = "Đăng xuất - thu hồi refresh token")
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(@Valid @RequestBody RefreshRequest request) {
+        authService.logout(request.refreshToken());
+        return ApiResponse.ok(null, "Đã đăng xuất");
     }
 
     @Operation(summary = "Đăng ký tài khoản CUSTOMER")

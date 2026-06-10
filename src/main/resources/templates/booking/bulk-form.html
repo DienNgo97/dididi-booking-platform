@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{bulk.title}">Đặt theo nhóm - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:760px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <p class="muted"><a th:href="@{'/hotels/' + ${hotelId}}">← <span th:text="#{bulk.back}">Quay lại khách sạn</span></a></p>
+    <h1 th:text="#{bulk.title}">Đặt theo nhóm</h1>
+    <p class="muted" th:text="#{bulk.intro}">Nhập danh sách khách.</p>
+
+    <div class="card">
+        <p><b th:text="${roomName}">Phòng</b> — <span th:text="${hotelName}">Khách sạn</span></p>
+        <form th:action="@{/booking/bulk}" method="post">
+            <input type="hidden" name="hotelId" th:value="${hotelId}"/>
+            <input type="hidden" name="roomTypeId" th:value="${roomTypeId}"/>
+            <input type="hidden" name="roomName" th:value="${roomName}"/>
+            <table class="tbl">
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th th:text="#{bulk.guest}">Tên khách</th>
+                    <th th:text="#{home.checkin}">Nhận phòng</th>
+                    <th th:text="#{home.checkout}">Trả phòng</th>
+                    <th th:text="#{hotels.numRooms}">Số phòng</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="i : ${#numbers.sequence(1, rows)}">
+                    <td th:text="${i}">1</td>
+                    <td><input type="text" name="guestName" style="padding:8px;border:1px solid #cdd3dd;border-radius:8px;width:100%"/></td>
+                    <td><input type="date" name="checkIn" style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></td>
+                    <td><input type="date" name="checkOut" style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></td>
+                    <td><input type="number" name="rooms" value="1" min="1" style="width:70px;padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></td>
+                </tr>
+                </tbody>
+            </table>
+            <label class="chk" style="display:block;margin:12px 0">
+                <input type="checkbox" name="payByCompany" value="true"/>
+                <span th:text="#{bulk.payByCompany}">Thanh toán bằng ngân sách công ty</span>
+            </label>
+            <button class="btn" type="submit" th:text="#{bulk.submit}">Tạo các đơn</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

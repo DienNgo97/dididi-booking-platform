@@ -5,20 +5,26 @@
 <div th:fragment="nav">
     <div class="nav">
         <a class="brand" href="/">Dididi</a>
-        <a href="/hotels">Khách sạn</a>
-        <a href="/flights">Chuyến bay</a>
-        <a href="/trip-planner">Trip Planner</a>
+        <a href="/hotels" th:text="#{nav.hotels}">Khách sạn</a>
+        <a href="/flights" th:text="#{nav.flights}">Chuyến bay</a>
+        <a href="/trip-planner" th:text="#{nav.trip}">Trip Planner</a>
         <span class="sp"></span>
         <span sec:authorize="isAuthenticated()">
-            <a href="/account/bookings">Đơn của tôi</a> ·
-            Xin chào, <b sec:authentication="name">user</b> ·
+            <a href="/account/bookings" th:text="#{nav.myBookings}">Đơn của tôi</a> ·
+            <span th:text="#{nav.hello}">Xin chào</span>, <b sec:authentication="name">user</b> ·
             <form th:action="@{/logout}" method="post" style="display:inline">
-                <button class="btn ghost" type="submit" style="padding:6px 12px">Đăng xuất</button>
+                <button class="btn ghost" type="submit" style="padding:6px 12px" th:text="#{nav.logout}">Đăng xuất</button>
             </form>
         </span>
         <span sec:authorize="!isAuthenticated()">
-            <a href="/login">Đăng nhập</a> ·
-            <a class="btn" href="/register" style="padding:6px 12px">Đăng ký</a>
+            <a href="/vendor-register" th:text="#{nav.sell}">Bán phòng</a> ·
+            <a href="/login" th:text="#{nav.login}">Đăng nhập</a> ·
+            <a class="btn" href="/register" style="padding:6px 12px" th:text="#{nav.register}">Đăng ký</a>
+        </span>
+        <span class="lang" style="margin-left:10px;font-size:13px" th:title="#{nav.language}">
+            <a href="?lang=vi">VI</a> ·
+            <a href="?lang=en">EN</a> ·
+            <a href="?lang=zh">中文</a>
         </span>
     </div>
 </div>

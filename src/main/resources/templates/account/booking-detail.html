@@ -2,33 +2,88 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Chi tiết đơn — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{account.bookingDetailTitle}">Chi tiết đơn - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="wrap" style="max-width:560px">
     <div th:replace="~{fragments/site :: flash}"></div>
-    <p class="muted"><a href="/account/bookings">← Đơn của tôi</a></p>
+    <p class="muted"><a href="/account/bookings">← <span th:text="#{nav.myBookings}">Đơn của tôi</span></a></p>
     <h1 th:text="${booking.publicCode}">DD-XXXXXX</h1>
     <div class="card">
         <p th:text="${booking.title}"></p>
-        <div class="muted" th:text="'Loại: ' + ${booking.type}"></div>
-        <div class="muted">Trạng thái: <b th:text="${booking.status}"></b></div>
+        <div class="muted" th:text="#{account.type} + ' ' + ${booking.type}"></div>
+        <div class="muted"><span th:text="#{account.status}">Trạng thái:</span> <b th:text="${booking.status}"></b></div>
+        <div th:if="${pendingApproval}" style="margin-top:6px;color:#b26a00;font-weight:600"
+             th:text="'⏳ ' + #{approval.pending}">Đang chờ phê duyệt</div>
         <div class="muted" th:if="${booking.providerConfirmation != null}"
-             th:text="'Mã xác nhận NCC: ' + ${booking.providerConfirmation}"></div>
+             th:text="#{account.providerConfirmation} + ' ' + ${booking.providerConfirmation}"></div>
         <div th:if="${booking.checkIn != null}" class="muted">
             <span th:text="${booking.checkIn}"></span> → <span th:text="${booking.checkOut}"></span></div>
         <div th:if="${booking.travelDate != null}" class="muted">
-            Khởi hành: <span th:text="${booking.travelDate}"></span></div>
+            <span th:text="#{account.departure}">Khởi hành:</span> <span th:text="${booking.travelDate}"></span></div>
         <div class="price" style="margin-top:8px">
             <span th:text="${booking.amount != null ? #numbers.formatInteger(booking.amount,1,'COMMA') : ''}"></span>
             <span th:text="${booking.currency}"></span></div>
         <div class="muted" th:if="${payment != null}" style="margin-top:6px"
-             th:text="'Thanh toán: ' + ${payment.status} + ' · ' + ${payment.transactionRef}"></div>
+             th:text="#{account.paymentLabel} + ' ' + ${payment.status} + ' · ' + ${payment.transactionRef}"></div>
 
         <form th:if="${booking.status.name() != 'CANCELLED'}"
               th:action="@{'/account/bookings/' + ${booking.publicCode} + '/cancel'}" method="post" style="margin-top:14px">
-            <button class="btn ghost" type="submit">Huỷ đơn</button>
+            <button class="btn ghost" type="submit" th:text="#{account.cancel}">Huỷ đơn</button>
+        </form>
+
+        <a th:if="${booking.companyId != null and booking.status.name() == 'CONFIRMED'}"
+           class="btn ghost" target="_blank"
+           th:href="@{'/account/bookings/' + ${booking.publicCode} + '/invoice'}"
+           style="margin-top:10px;display:inline-block" th:text="#{invoice.download}">Tải hóa đơn VAT (PDF)</a>
+    </div>
+
+    <!-- Tiếp tục chuyến đi (Trip Planner) -->
+    <div class="card" th:if="${tripCity != null and booking.status.name() == 'CONFIRMED'}"
+         style="margin-top:16px;border:1px solid #2e7d32;background:#f1f8f2">
+        <h3 style="margin-top:0"><span th:text="#{trip.tripTo}">Chuyến đi tới</span> <span th:text="${tripCity}"></span></h3>
+        <p class="muted" th:if="${booking.type.name() == 'FLIGHT'}" th:text="#{trip.flightBookedNext}">Đã đặt vé!</p>
+        <p class="muted" th:if="${booking.type.name() == 'HOTEL'}" th:text="#{trip.hotelBookedNext}">Đã đặt phòng!</p>
+        <a th:if="${booking.type.name() == 'FLIGHT'}" class="btn"
+           th:href="@{'/hotels'(city=${tripCity})}"><span th:text="#{trip.bookHotelAt}">Đặt khách sạn tại</span> <span th:text="${tripCity}"></span> →</a>
+        <a th:if="${booking.type.name() == 'HOTEL'}" class="btn"
+           th:href="@{'/flights'(to=${tripAirport})}"><span th:text="#{trip.bookFlightTo}">Đặt vé tới</span> <span th:text="${tripCity}"></span> →</a>
+        <a class="btn ghost" th:href="@{'/account/bookings/' + ${booking.publicCode}(endTrip=1)}"
+           style="margin-left:8px" th:text="#{trip.endTrip}">Kết thúc chuyến đi</a>
+    </div>
+
+    <!-- Đánh giá -->
+    <div class="card" style="margin-top:16px"
+         th:if="${myReview != null or (booking.status.name() == 'CONFIRMED' and booking.targetId != null)}">
+        <h3 style="margin-top:0" th:text="#{account.yourReview}">Đánh giá của bạn</h3>
+
+        <div th:if="${myReview != null}">
+            <span class="stars" th:text="${myReview.rating + '★'}"></span>
+            <p th:if="${myReview.comment}" th:text="${myReview.comment}" style="margin:6px 0"></p>
+            <div th:if="${myReview.vendorReply}" class="muted"
+                 style="margin-top:8px;padding-left:12px;border-left:3px solid #cdd3dd">
+                <b th:text="#{review.vendorReply}">Phản hồi từ khách sạn:</b> <span th:text="${myReview.vendorReply}"></span>
+            </div>
+        </div>
+
+        <form th:if="${myReview == null}"
+              th:action="@{'/account/bookings/' + ${booking.publicCode} + '/review'}" method="post">
+            <label class="muted" th:text="#{review.rating}">Số sao</label><br/>
+            <select name="rating" style="padding:8px;border:1px solid #cdd3dd;border-radius:8px">
+                <option value="5" th:text="'5★ — ' + #{review.rate5}">5★ — Tuyệt vời</option>
+                <option value="4" th:text="'4★ — ' + #{review.rate4}">4★ — Tốt</option>
+                <option value="3" th:text="'3★ — ' + #{review.rate3}">3★ — Ổn</option>
+                <option value="2" th:text="'2★ — ' + #{review.rate2}">2★ — Tạm</option>
+                <option value="1" th:text="'1★ — ' + #{review.rate1}">1★ — Tệ</option>
+            </select>
+            <br/><br/>
+            <label class="muted" th:text="#{review.comment}">Nhận xét</label><br/>
+            <textarea name="comment" rows="3" maxlength="2000"
+                      style="width:100%;padding:8px;border:1px solid #cdd3dd;border-radius:8px"
+                      th:placeholder="#{review.commentPlaceholder}" placeholder="Chia sẻ trải nghiệm của bạn (không bắt buộc)"></textarea>
+            <br/>
+            <button class="btn" type="submit" style="margin-top:10px" th:text="#{review.submit}">Gửi đánh giá</button>
         </form>
     </div>
 </div>

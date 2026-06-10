@@ -2,28 +2,40 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Thanh toán — Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{payment.title}">Thanh toán - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="wrap" style="max-width:520px">
-    <h1>Thanh toán</h1>
+    <h1 th:text="#{payment.heading}">Thanh toán</h1>
+    <div th:replace="~{fragments/site :: flash}"></div>
     <div class="card">
-        <div class="muted">Mã đơn</div>
+        <div class="muted" th:text="#{payment.bookingCode}">Mã đơn</div>
         <h2 style="margin:2px 0" th:text="${booking.publicCode}">DD-XXXXXX</h2>
         <p th:text="${booking.title}"></p>
         <div th:if="${booking.checkIn != null}" class="muted">
             <span th:text="${booking.checkIn}"></span> → <span th:text="${booking.checkOut}"></span>
-            · <span th:text="${booking.quantity}"></span> phòng</div>
+            · <span th:text="${booking.quantity}"></span> <span th:text="#{common.roomsUnit}">phòng</span></div>
         <div th:if="${booking.travelDate != null}" class="muted">
-            Khởi hành: <span th:text="${booking.travelDate}"></span> · <span th:text="${booking.quantity}"></span> ghế</div>
+            <span th:text="#{account.departure}">Khởi hành:</span> <span th:text="${booking.travelDate}"></span> · <span th:text="${booking.quantity}"></span> <span th:text="#{common.seatsUnit}">ghế</span></div>
         <div class="price" style="font-size:22px;margin-top:10px">
             <span th:text="${booking.amount != null ? #numbers.formatInteger(booking.amount,1,'COMMA') : ''}"></span>
             <span th:text="${booking.currency}"></span></div>
-        <p class="muted" style="margin-top:8px">Cổng thanh toán giả lập (demo) — bấm để xác nhận.</p>
+        <p class="muted" style="margin-top:8px" th:text="#{payment.vnpaySafe}">Thanh toán an toàn qua cổng VNPay (sandbox).</p>
         <form th:action="@{'/payment/' + ${booking.publicCode}}" method="post">
-            <button class="btn" type="submit" style="width:100%;margin-top:8px">Thanh toán ngay (giả lập)</button>
+            <button class="btn" type="submit" style="width:100%;margin-top:8px" th:text="#{payment.payVnpay}">Thanh toán qua VNPay</button>
         </form>
+        <p class="muted" style="margin-top:6px;font-size:12px"><span th:text="#{payment.testCard}">Thẻ test NCB:</span> 9704198526191432198 · NGUYEN VAN A · 07/15 · OTP 123456</p>
+    </div>
+
+    <div class="card" th:if="${company != null}" style="margin-top:12px;border:1px solid #2e7d32;background:#f1f8f2">
+        <div class="muted"><span th:text="#{payment.companyAccount}">Tài khoản công ty:</span> <b th:text="${company.name()}"></b></div>
+        <div class="muted"><span th:text="#{payment.budgetRemaining}">Hạn mức còn lại:</span>
+            <b th:text="${#numbers.formatInteger(company.remaining(),1,'COMMA')} + ' VND'"></b></div>
+        <form th:action="@{'/payment/' + ${booking.publicCode} + '/company'}" method="post">
+            <button class="btn" type="submit" style="width:100%;margin-top:8px" th:text="#{payment.payCompany}">Thanh toán bằng ngân sách công ty</button>
+        </form>
+        <p class="muted" style="margin-top:6px;font-size:12px" th:text="#{payment.companyNote}">Đơn sẽ được xác nhận ngay và trừ vào hạn mức công ty (không qua VNPay).</p>
     </div>
 </div>
 </body>

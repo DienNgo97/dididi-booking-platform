@@ -9,16 +9,26 @@
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="wrap">
     <div th:replace="~{fragments/site :: flash}"></div>
-    <p class="muted"><a href="/hotels">← Khách sạn</a></p>
+    <p class="muted"><a href="/hotels">← <span th:text="#{nav.hotels}">Khách sạn</span></a></p>
     <h1 th:text="${hotel.name}">Hotel</h1>
     <div class="card">
         <div class="muted"><span th:text="${hotel.city}"></span> · <span th:text="${hotel.address}"></span>
             <span class="stars" th:if="${hotel.starRating != null}" th:text="${hotel.starRating + '★'}"></span></div>
+        <div class="muted" th:if="${reviewCount > 0}">
+            <span class="stars" th:text="#{hotels.guestRating} + ' ' + ${avgRating} + '★'"></span>
+            (<span th:text="${reviewCount}"></span> <span th:text="#{hotels.reviewsCount}">đánh giá</span>)</div>
         <p th:text="${hotel.description}"></p>
     </div>
 
-    <h2 style="margin-top:24px">Chọn phòng & đặt</h2>
-    <p class="muted" th:if="${#lists.isEmpty(rooms)}">
+    <div class="card" th:if="${!#lists.isEmpty(images)}" style="margin-top:12px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <img th:each="img : ${images}" th:src="${img.url()}" alt="ảnh khách sạn"
+                 style="width:210px;height:150px;object-fit:cover;border-radius:10px"/>
+        </div>
+    </div>
+
+    <h2 style="margin-top:24px" th:text="#{hotels.chooseRoom}">Chọn phòng & đặt</h2>
+    <p class="muted" th:if="${#lists.isEmpty(rooms)}" th:text="#{hotels.noRooms}">
         Chưa lấy được loại phòng (kiểm tra hotel-pms 8082 đang chạy).
     </p>
 
@@ -27,10 +37,10 @@
             <div>
                 <h3 style="margin:0" th:text="${r.name()}">Room</h3>
                 <div class="muted" th:text="${r.description()}"></div>
-                <div class="muted">Sức chứa: <span th:text="${r.capacity()}"></span> ·
+                <div class="muted"><span th:text="#{hotels.capacity}">Sức chứa:</span> <span th:text="${r.capacity()}"></span> ·
                     <span class="price">
                         <span th:text="${r.basePrice() != null ? #numbers.formatInteger(r.basePrice(),1,'COMMA') : ''}"></span>
-                        <span th:text="${r.currency()}"></span></span> / đêm</div>
+                        <span th:text="${r.currency()}"></span></span> <span th:text="#{hotels.perNight}">/ đêm</span></div>
             </div>
         </div>
         <form th:action="@{/booking/hotel}" method="post" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:end"
@@ -38,19 +48,42 @@
             <input type="hidden" name="hotelId" th:value="${hotel.id}"/>
             <input type="hidden" name="roomTypeId" th:value="${r.id()}"/>
             <input type="hidden" name="roomName" th:value="${r.name()}"/>
-            <div><label class="muted">Tên khách</label><br/>
+            <div><label class="muted" th:text="#{hotels.guestName}">Tên khách</label><br/>
                 <input type="text" name="guestName" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
-            <div><label class="muted">Nhận phòng</label><br/>
+            <div><label class="muted" th:text="#{home.checkin}">Nhận phòng</label><br/>
                 <input type="date" name="checkIn" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
-            <div><label class="muted">Trả phòng</label><br/>
+            <div><label class="muted" th:text="#{home.checkout}">Trả phòng</label><br/>
                 <input type="date" name="checkOut" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
-            <div><label class="muted">Số phòng</label><br/>
+            <div><label class="muted" th:text="#{hotels.numRooms}">Số phòng</label><br/>
                 <input type="number" name="rooms" value="1" min="1" style="width:70px;padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
-            <button class="btn" type="submit">Đặt phòng</button>
+            <button class="btn" type="submit" th:text="#{hotels.bookRoom}">Đặt phòng</button>
         </form>
-        <p class="muted" sec:authorize="!isAuthenticated()" style="margin-top:10px">
-            <a href="/login">Đăng nhập</a> để đặt phòng.
+        <p class="muted" sec:authorize="isAuthenticated()" style="margin-top:8px">
+            <a th:href="@{/booking/bulk(hotelId=${hotel.id},roomTypeId=${r.id()},roomName=${r.name()})}"
+               th:text="#{bulk.link}">Đặt theo nhóm (nhiều phòng)</a>
         </p>
+        <p class="muted" sec:authorize="!isAuthenticated()" style="margin-top:10px">
+            <a href="/login" th:text="#{nav.login}">Đăng nhập</a> <span th:text="#{hotels.toBook}">để đặt phòng.</span>
+        </p>
+    </div>
+
+    <h2 style="margin-top:28px"><span th:text="#{hotels.guestReviews}">Đánh giá của khách</span>
+        <span class="muted" th:if="${reviewCount > 0}">
+            — <span class="stars" th:text="${avgRating} + '★'"></span>
+            (<span th:text="${reviewCount}"></span>)</span>
+    </h2>
+    <p class="muted" th:if="${reviewCount == 0}" th:text="#{hotels.noReviewsYet}">Chưa có đánh giá nào cho khách sạn này.</p>
+    <div class="card" th:each="rv : ${reviews}" style="margin-bottom:10px">
+        <div>
+            <b th:text="${rv.reviewerName}">Khách</b>
+            <span class="stars" th:text="${rv.rating + '★'}"></span>
+            <span class="muted" style="float:right" th:text="${rv.createdAt.toString().substring(0,10)}"></span>
+        </div>
+        <p th:if="${rv.comment}" th:text="${rv.comment}" style="margin:6px 0"></p>
+        <div th:if="${rv.vendorReply}" class="muted"
+             style="margin-top:8px;padding-left:12px;border-left:3px solid #cdd3dd">
+            <b th:text="#{review.vendorReply}">Phản hồi từ khách sạn:</b> <span th:text="${rv.vendorReply}"></span>
+        </div>
     </div>
 </div>
 </body>

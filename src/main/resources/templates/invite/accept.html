@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Lời mời tham gia công ty - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:520px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <h1>Lời mời tham gia công ty</h1>
+
+    <div class="card" th:if="${invalid}">
+        <p style="color:#c0392b" th:text="${invalid}">Lời mời không hợp lệ.</p>
+        <p class="muted"><a href="/account/bookings">← Về đơn của tôi</a></p>
+    </div>
+
+    <div class="card" th:if="${canAccept}">
+        <p>Bạn được mời tham gia công ty <b th:text="${companyName}">Công ty</b>.</p>
+        <p class="muted">Sau khi tham gia, bạn có thể thanh toán đơn bằng <b>ngân sách công ty</b>
+            (đơn vượt ngưỡng sẽ cần phê duyệt).</p>
+        <form th:action="@{'/company-invite/' + ${token} + '/accept'}" method="post">
+            <button class="btn" type="submit">Chấp nhận lời mời</button>
+            <a class="btn ghost" href="/account/bookings" style="margin-left:8px">Để sau</a>
+        </form>
+    </div>
+</div>
+</body>
+</html>
