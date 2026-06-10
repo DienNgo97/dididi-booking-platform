@@ -11,6 +11,8 @@
         <span class="sp"></span>
         <span sec:authorize="isAuthenticated()">
             <a href="/account/bookings" th:text="#{nav.myBookings}">Đơn của tôi</a> ·
+            <a href="/account/wishlist" th:text="#{nav.wishlist}">Yêu thích</a> ·
+            <a href="/account/points" th:text="#{nav.points}">Điểm thưởng</a> ·
             <span th:text="#{nav.hello}">Xin chào</span>, <b sec:authentication="name">user</b> ·
             <form th:action="@{/logout}" method="post" style="display:inline">
                 <button class="btn ghost" type="submit" style="padding:6px 12px" th:text="#{nav.logout}">Đăng xuất</button>

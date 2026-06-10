@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title th:text="#{hotels.pageTitle}">Khách sạn - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
@@ -28,7 +29,17 @@
                 </div>
             </div>
         </div>
-        <a class="btn" th:href="@{'/hotels/' + ${h.id}}" th:text="#{hotels.view}">Xem</a>
+        <div style="display:flex;gap:8px;align-items:center;flex:none">
+            <a class="btn" th:href="@{'/hotels/' + ${h.id}}" th:text="#{hotels.view}">Xem</a>
+            <form sec:authorize="isAuthenticated()" th:action="@{/account/wishlist/toggle}" method="post">
+                <input type="hidden" name="hotelId" th:value="${h.id}"/>
+                <input type="hidden" name="back"
+                       th:value="${city != null and !#strings.isEmpty(city)} ? @{/hotels(city=${city})} : '/hotels'"/>
+                <button class="btn ghost" type="submit" th:title="#{nav.wishlist}"
+                        th:style="${wishlistedIds != null and wishlistedIds.contains(h.id)} ? 'color:#c0392b;border-color:#c0392b' : ''"
+                        th:text="${wishlistedIds != null and wishlistedIds.contains(h.id)} ? '♥' : '♡'">♡</button>
+            </form>
+        </div>
     </div>
     <p class="muted" th:if="${#lists.isEmpty(hotels)}" th:text="#{hotels.empty}">Không có khách sạn phù hợp.</p>
 </div>

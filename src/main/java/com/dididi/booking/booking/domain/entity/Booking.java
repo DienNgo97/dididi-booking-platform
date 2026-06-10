@@ -44,6 +44,16 @@ public class Booking extends BaseEntity {
     @Column(precision = 12, scale = 2)
     private BigDecimal amount;
 
+    /** Gia goc truoc khi ap voucher (null = chua ap voucher). amount = gia phai tra sau giam. */
+    @Column(name = "original_amount", precision = 18, scale = 2)
+    private BigDecimal originalAmount;
+
+    @Column(name = "discount_amount", precision = 18, scale = 2)
+    private BigDecimal discountAmount;
+
+    @Column(name = "voucher_code", length = 40)
+    private String voucherCode;
+
     @Column(length = 3)
     private String currency = "VND";
 
@@ -83,6 +93,12 @@ public class Booking extends BaseEntity {
     public void setQuantity(int quantity) { this.quantity = quantity; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public BigDecimal getOriginalAmount() { return originalAmount; }
+    public void setOriginalAmount(BigDecimal originalAmount) { this.originalAmount = originalAmount; }
+    public BigDecimal getDiscountAmount() { return discountAmount; }
+    public void setDiscountAmount(BigDecimal discountAmount) { this.discountAmount = discountAmount; }
+    public String getVoucherCode() { return voucherCode; }
+    public void setVoucherCode(String voucherCode) { this.voucherCode = voucherCode; }
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
     public BookingStatus getStatus() { return status; }

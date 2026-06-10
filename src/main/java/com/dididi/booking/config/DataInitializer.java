@@ -32,6 +32,7 @@ public class DataInitializer implements CommandLineRunner {
     private final HotelRepository hotelRepository;
     private final PasswordEncoder passwordEncoder;
     private final CompanyRepository companyRepository;
+    private final com.dididi.booking.voucher.repository.VoucherRepository voucherRepository;
 
     // Seed admin password - PROD/CI lay tu ENV APP_ADMIN_PASSWORD; fallback dev de chay local.
     @Value("${app.admin.password:Admin@123}")
@@ -40,11 +41,13 @@ public class DataInitializer implements CommandLineRunner {
     public DataInitializer(UserRepository userRepository,
                            HotelRepository hotelRepository,
                            PasswordEncoder passwordEncoder,
-                           CompanyRepository companyRepository) {
+                           CompanyRepository companyRepository,
+                           com.dididi.booking.voucher.repository.VoucherRepository voucherRepository) {
         this.userRepository = userRepository;
         this.hotelRepository = hotelRepository;
         this.passwordEncoder = passwordEncoder;
         this.companyRepository = companyRepository;
+        this.voucherRepository = voucherRepository;
     }
 
     @Override
@@ -109,6 +112,30 @@ public class DataInitializer implements CommandLineRunner {
             emp.setCompanyId(companyId);
             userRepository.save(emp);
             log.info("Seeded employee: employee@dididi.local / Employee@123 (company DDCORP)");
+        }
+
+        // ---- Voucher demo ----
+        if (voucherRepository.count() == 0) {
+            com.dididi.booking.voucher.domain.Voucher w = new com.dididi.booking.voucher.domain.Voucher();
+            w.setCode("WELCOME10");
+            w.setDescription("Giảm 10% (tối đa 200.000đ) cho đơn từ 500.000đ");
+            w.setDiscountType(com.dididi.booking.voucher.domain.VoucherDiscountType.PERCENT);
+            w.setDiscountValue(new BigDecimal("10"));
+            w.setMaxDiscount(new BigDecimal("200000"));
+            w.setMinOrderAmount(new BigDecimal("500000"));
+            w.setPerUserLimit(1);
+            w.setActive(true);
+            voucherRepository.save(w);
+
+            com.dididi.booking.voucher.domain.Voucher s = new com.dididi.booking.voucher.domain.Voucher();
+            s.setCode("SALE100K");
+            s.setDescription("Giảm 100.000đ cho đơn từ 1.000.000đ");
+            s.setDiscountType(com.dididi.booking.voucher.domain.VoucherDiscountType.FIXED);
+            s.setDiscountValue(new BigDecimal("100000"));
+            s.setMinOrderAmount(new BigDecimal("1000000"));
+            s.setActive(true);
+            voucherRepository.save(s);
+            log.info("Seeded vouchers: WELCOME10, SALE100K");
         }
     }
 }

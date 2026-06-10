@@ -18,9 +18,28 @@
             · <span th:text="${booking.quantity}"></span> <span th:text="#{common.roomsUnit}">phòng</span></div>
         <div th:if="${booking.travelDate != null}" class="muted">
             <span th:text="#{account.departure}">Khởi hành:</span> <span th:text="${booking.travelDate}"></span> · <span th:text="${booking.quantity}"></span> <span th:text="#{common.seatsUnit}">ghế</span></div>
+        <div th:if="${booking.discountAmount != null and booking.originalAmount != null}" class="muted" style="margin-top:10px">
+            <div><span th:text="#{voucher.original}">Giá gốc:</span>
+                <s th:text="${#numbers.formatInteger(booking.originalAmount,1,'COMMA')} + ' ' + ${booking.currency}"></s></div>
+            <div style="color:#2e7d32"><span th:text="#{voucher.applied}">Mã giảm giá</span>
+                (<b th:text="${booking.voucherCode}"></b>): −<span th:text="${#numbers.formatInteger(booking.discountAmount,1,'COMMA')}"></span>
+                <span th:text="${booking.currency}"></span></div>
+        </div>
         <div class="price" style="font-size:22px;margin-top:10px">
             <span th:text="${booking.amount != null ? #numbers.formatInteger(booking.amount,1,'COMMA') : ''}"></span>
             <span th:text="${booking.currency}"></span></div>
+
+        <div style="margin-top:10px">
+            <form th:if="${booking.voucherCode == null}" th:action="@{'/payment/' + ${booking.publicCode} + '/voucher'}" method="post"
+                  style="display:flex;gap:8px">
+                <input type="text" name="voucherCode" th:placeholder="#{voucher.placeholder}" required
+                       style="flex:1;padding:8px;border:1px solid #cdd3dd;border-radius:8px"/>
+                <button class="btn ghost" type="submit" th:text="#{voucher.apply}">Áp dụng</button>
+            </form>
+            <form th:if="${booking.voucherCode != null}" th:action="@{'/payment/' + ${booking.publicCode} + '/voucher/remove'}" method="post">
+                <button class="btn ghost" type="submit" th:text="#{voucher.remove}">Gỡ mã giảm giá</button>
+            </form>
+        </div>
         <p class="muted" style="margin-top:8px" th:text="#{payment.vnpaySafe}">Thanh toán an toàn qua cổng VNPay (sandbox).</p>
         <form th:action="@{'/payment/' + ${booking.publicCode}}" method="post">
             <button class="btn" type="submit" style="width:100%;margin-top:8px" th:text="#{payment.payVnpay}">Thanh toán qua VNPay</button>

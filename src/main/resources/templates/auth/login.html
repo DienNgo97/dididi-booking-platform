@@ -18,6 +18,10 @@
         <input type="password" name="password" required/>
         <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%" th:text="#{nav.login}">Đăng nhập</button></div>
     </form>
+    <div style="text-align:center;margin:14px 0;color:#9aa3af" th:text="#{auth.or}">hoặc</div>
+    <a class="btn ghost" href="/oauth2/authorization/google"
+       style="width:100%;display:block;text-align:center;box-sizing:border-box;text-decoration:none"
+       th:text="#{auth.google}">Đăng nhập với Google</a>
     <p class="muted" style="margin-top:14px"><span th:text="#{auth.noAccount}">Chưa có tài khoản?</span> <a href="/register" th:text="#{nav.register}">Đăng ký</a></p>
     <p class="muted" style="margin-top:6px"><span th:text="#{auth.areYouHotelOwner}">Bạn là chủ khách sạn?</span> <a href="/vendor-register" th:text="#{auth.vendorRegister}">Đăng ký bán phòng</a></p>
 </div>

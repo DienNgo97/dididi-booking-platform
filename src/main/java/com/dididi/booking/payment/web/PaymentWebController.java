@@ -46,11 +46,13 @@ public class PaymentWebController {
     private final CurrentUser currentUser;
     private final CompanyService companyService;
     private final CorporateBookingService corporateBookingService;
+    private final com.dididi.booking.voucher.service.VoucherService voucherService;
 
     public PaymentWebController(BookingService bookingService, BookingRepository bookingRepository,
                                 PaymentService paymentService, VnPayService vnPayService,
                                 CurrentUser currentUser, CompanyService companyService,
-                                CorporateBookingService corporateBookingService) {
+                                CorporateBookingService corporateBookingService,
+                                com.dididi.booking.voucher.service.VoucherService voucherService) {
         this.bookingService = bookingService;
         this.bookingRepository = bookingRepository;
         this.paymentService = paymentService;
@@ -58,6 +60,7 @@ public class PaymentWebController {
         this.currentUser = currentUser;
         this.companyService = companyService;
         this.corporateBookingService = corporateBookingService;
+        this.voucherService = voucherService;
     }
 
     @GetMapping("/payment/{code}")
@@ -67,6 +70,29 @@ public class PaymentWebController {
         companyService.forUser(currentUser.id(auth))
                 .ifPresent(c -> model.addAttribute("company", CompanyDto.from(c)));
         return "payment/pay";
+    }
+
+    /** Ap ma giam gia cho don. */
+    @PostMapping("/payment/{code}/voucher")
+    public String applyVoucher(@PathVariable String code, @RequestParam String voucherCode,
+                               Authentication auth, RedirectAttributes ra) {
+        try {
+            Booking b = bookingService.getForUser(code, currentUser.id(auth));
+            voucherService.apply(voucherCode, b, currentUser.id(auth));
+            ra.addFlashAttribute("message", "Đã áp dụng mã giảm giá.");
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/payment/" + code;
+    }
+
+    /** Go ma giam gia khoi don. */
+    @PostMapping("/payment/{code}/voucher/remove")
+    public String removeVoucher(@PathVariable String code, Authentication auth, RedirectAttributes ra) {
+        Booking b = bookingService.getForUser(code, currentUser.id(auth));
+        voucherService.remove(b);
+        ra.addFlashAttribute("message", "Đã gỡ mã giảm giá.");
+        return "redirect:/payment/" + code;
     }
 
     /** Thanh toan bang ngan sach cong ty (B2B) - khong qua VNPay. Het han muc -> chan + bao loi. */

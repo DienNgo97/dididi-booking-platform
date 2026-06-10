@@ -11,6 +11,13 @@
     <div th:replace="~{fragments/site :: flash}"></div>
     <p class="muted"><a href="/hotels">← <span th:text="#{nav.hotels}">Khách sạn</span></a></p>
     <h1 th:text="${hotel.name}">Hotel</h1>
+    <form sec:authorize="isAuthenticated()" th:action="@{/account/wishlist/toggle}" method="post" style="margin:-6px 0 10px">
+        <input type="hidden" name="hotelId" th:value="${hotel.id}"/>
+        <input type="hidden" name="back" th:value="@{'/hotels/' + ${hotel.id}}"/>
+        <button class="btn ghost" type="submit"
+                th:style="${wishlisted} ? 'color:#c0392b;border-color:#c0392b' : ''"
+                th:text="(${wishlisted} ? '♥ ' : '♡ ') + (${wishlisted} ? #{wishlist.saved} : #{wishlist.save})">♡ Lưu</button>
+    </form>
     <div class="card">
         <div class="muted"><span th:text="${hotel.city}"></span> · <span th:text="${hotel.address}"></span>
             <span class="stars" th:if="${hotel.starRating != null}" th:text="${hotel.starRating + '★'}"></span></div>

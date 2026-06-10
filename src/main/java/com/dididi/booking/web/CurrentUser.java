@@ -27,4 +27,12 @@ public class CurrentUser {
     public Long id(Authentication auth) {
         return require(auth).getId();
     }
+
+    /** Tra ve userId neu da dang nhap (khong phai anonymous), nguoc lai null - dung cho trang public. */
+    public Long idOrNull(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String name = auth.getName();
+        if (name == null || "anonymousUser".equals(name)) return null;
+        return userRepository.findByEmail(name).map(User::getId).orElse(null);
+    }
 }
