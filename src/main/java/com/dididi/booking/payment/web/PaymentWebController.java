@@ -14,6 +14,8 @@ import com.dididi.booking.payment.service.PaymentService;
 import com.dididi.booking.payment.vnpay.VnPayService;
 import com.dididi.booking.web.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,7 +27,10 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -47,12 +52,14 @@ public class PaymentWebController {
     private final CompanyService companyService;
     private final CorporateBookingService corporateBookingService;
     private final com.dididi.booking.voucher.service.VoucherService voucherService;
+    private final com.dididi.booking.group.service.GroupBookingService groupService;
 
     public PaymentWebController(BookingService bookingService, BookingRepository bookingRepository,
                                 PaymentService paymentService, VnPayService vnPayService,
                                 CurrentUser currentUser, CompanyService companyService,
                                 CorporateBookingService corporateBookingService,
-                                com.dididi.booking.voucher.service.VoucherService voucherService) {
+                                com.dididi.booking.voucher.service.VoucherService voucherService,
+                                com.dididi.booking.group.service.GroupBookingService groupService) {
         this.bookingService = bookingService;
         this.bookingRepository = bookingRepository;
         this.paymentService = paymentService;
@@ -61,12 +68,26 @@ public class PaymentWebController {
         this.companyService = companyService;
         this.corporateBookingService = corporateBookingService;
         this.voucherService = voucherService;
+        this.groupService = groupService;
     }
 
     @GetMapping("/payment/{code}")
-    public String payPage(@PathVariable String code, Authentication auth, Model model) {
-        Booking b = bookingService.getForUser(code, currentUser.id(auth));
+    public String payPage(@PathVariable String code, Authentication auth, Model model, RedirectAttributes ra) {
+        Booking b = bookingService.getForUserOrGroupOrganizer(code, currentUser.id(auth));
+        if (b.getStatus() == BookingStatus.CONFIRMED) {
+            return "redirect:/account/bookings/" + code;            // da thanh toan roi
+        }
+        if (b.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            ra.addFlashAttribute("error", "Đơn này không còn ở trạng thái chờ thanh toán.");
+            return "redirect:/account/bookings";
+        }
+        if (bookingService.isPaymentExpired(b)) {                   // qua 20' -> het han
+            bookingService.markPaymentExpired(b);
+            ra.addFlashAttribute("error", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng.");
+            return "redirect:/";
+        }
         model.addAttribute("booking", b);
+        model.addAttribute("remainingSeconds", bookingService.remainingHoldSeconds(b));
         companyService.forUser(currentUser.id(auth))
                 .ifPresent(c -> model.addAttribute("company", CompanyDto.from(c)));
         return "payment/pay";
@@ -95,9 +116,39 @@ public class PaymentWebController {
         return "redirect:/payment/" + code;
     }
 
+    /** Sua thong tin dat phong (don khach san DIRECT) ngay tai trang thanh toan -> quay lai trang thanh toan. */
+    @PostMapping("/payment/{code}/edit")
+    public String editBooking(@PathVariable String code,
+                              @RequestParam(defaultValue = "false") boolean dayUse,
+                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
+                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut,
+                              @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                              @RequestParam(required = false) @DateTimeFormat(pattern = "HH:mm") LocalTime timeIn,
+                              @RequestParam(required = false) @DateTimeFormat(pattern = "HH:mm") LocalTime timeOut,
+                              @RequestParam(defaultValue = "1") int rooms,
+                              Authentication auth, RedirectAttributes ra) {
+        try {
+            if (dayUse) {
+                bookingService.editDirectDayUse(code, currentUser.id(auth), date, timeIn, timeOut, rooms);
+            } else {
+                bookingService.editDirectOvernight(code, currentUser.id(auth), checkIn, checkOut, rooms);
+            }
+            ra.addFlashAttribute("message", "Đã cập nhật thông tin đặt phòng. Vui lòng kiểm tra lại số tiền.");
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/payment/" + code;
+    }
+
     /** Thanh toan bang ngan sach cong ty (B2B) - khong qua VNPay. Het han muc -> chan + bao loi. */
     @PostMapping("/payment/{code}/company")
     public String payByCompany(@PathVariable String code, Authentication auth, RedirectAttributes ra) {
+        Booking b = bookingService.getForUser(code, currentUser.id(auth));
+        if (bookingService.isPaymentExpired(b)) {
+            bookingService.markPaymentExpired(b);
+            ra.addFlashAttribute("error", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng.");
+            return "redirect:/";
+        }
         try {
             com.dididi.booking.corporate.service.CorporatePaymentOutcome outcome =
                     corporateBookingService.payWithCompanyBudget(code, currentUser.id(auth));
@@ -116,8 +167,14 @@ public class PaymentWebController {
 
     /** Tao giao dich PENDING roi chuyen huong sang cong VNPay. */
     @PostMapping("/payment/{code}")
-    public String startVnpay(@PathVariable String code, Authentication auth, HttpServletRequest req) {
-        Booking b = bookingService.getForUser(code, currentUser.id(auth));
+    public String startVnpay(@PathVariable String code, Authentication auth, HttpServletRequest req,
+                             RedirectAttributes ra) {
+        Booking b = bookingService.getForUserOrGroupOrganizer(code, currentUser.id(auth));
+        if (bookingService.isPaymentExpired(b)) {
+            bookingService.markPaymentExpired(b);
+            ra.addFlashAttribute("error", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng.");
+            return "redirect:/";
+        }
         Payment p = paymentService.initiateVnpay(b);
         String url = vnPayService.createPaymentUrl(b, p.getTransactionRef(), clientIp(req));
         return "redirect:" + url;
@@ -125,7 +182,7 @@ public class PaymentWebController {
 
     /** VNPay dieu huong trinh duyet nguoi dung ve day sau khi thanh toan. */
     @GetMapping("/payment/vnpay-return")
-    public String vnpayReturn(@RequestParam Map<String, String> params, RedirectAttributes ra) {
+    public String vnpayReturn(@RequestParam Map<String, String> params, RedirectAttributes ra, HttpSession session) {
         String txnRef = params.get("vnp_TxnRef");
         String responseCode = params.get("vnp_ResponseCode");
         String txnStatus = params.get("vnp_TransactionStatus");
@@ -142,15 +199,40 @@ public class PaymentWebController {
             return "redirect:/account/bookings";
         }
         Payment p = op.get();
-        Booking b = bookingRepository.findById(p.getBookingId()).orElse(null);
-
         boolean ok = "00".equals(responseCode) && "00".equals(txnStatus);
+
+        // === Thanh toan GOP CA NHOM (txnRef = "GRP{groupId}_{ts}") ===
+        if (txnRef != null && txnRef.startsWith("GRP")) {
+            Long groupId = parseGroupId(txnRef);
+            if (ok) {
+                if (p.getStatus() == PaymentStatus.PENDING) {
+                    paymentService.markPaid(p, params.get("vnp_TransactionNo"),
+                            params.get("vnp_BankCode"), responseCode, params.get("vnp_PayDate"));
+                }
+                String token = (groupId != null) ? groupService.confirmGroupBookings(groupId) : "";
+                ra.addFlashAttribute("message", "Thanh toan VNPay thanh cong! Da xac nhan toan bo phong cua nhom.");
+                return token.isEmpty() ? "redirect:/account/bookings" : "redirect:/g/" + token;
+            } else {
+                if (p.getStatus() == PaymentStatus.PENDING) {
+                    paymentService.markFailed(p, responseCode);
+                }
+                String token = (groupId != null) ? groupService.tokenOf(groupId) : "";
+                ra.addFlashAttribute("error", "Thanh toan khong thanh cong (ma " + responseCode + "). Ban co the thu lai.");
+                return token.isEmpty() ? "redirect:/account/bookings" : "redirect:/g/" + token;
+            }
+        }
+
+        Booking b = bookingRepository.findById(p.getBookingId()).orElse(null);
         if (ok) {
             if (p.getStatus() == PaymentStatus.PENDING) {
                 paymentService.markPaid(p, params.get("vnp_TransactionNo"),
                         params.get("vnp_BankCode"), responseCode, params.get("vnp_PayDate"));
             }
             if (b != null && b.getStatus() == BookingStatus.PENDING_PAYMENT) {
+                // Don thuoc nhom & tu tra le -> nguoi chi tien la chu phong (cho phieu chia tien nhom).
+                if (b.getGroupId() != null && b.getPaidByUserId() == null) {
+                    b.setPaidByUserId(b.getUserId());
+                }
                 bookingService.markConfirmed(b);
             }
             ra.addFlashAttribute("message", "Thanh toan VNPay thanh cong! Don da duoc xac nhan.");
@@ -161,7 +243,29 @@ public class PaymentWebController {
             ra.addFlashAttribute("error", "Thanh toan khong thanh cong (ma " + responseCode + "). Ban co the thu lai.");
         }
         String code = (b != null) ? b.getPublicCode() : publicCode;
+        // Trong luong Trip Planner: tra xong 1 don -> tu dong chuyen sang don ke tiep (ve di -> ve ve -> khach san).
+        if (ok && b != null && isTripBooking(session, b.getPublicCode())) {
+            return "redirect:/trip-planner/pay-next";
+        }
         return code.isEmpty() ? "redirect:/account/bookings" : "redirect:/account/bookings/" + code;
+    }
+
+    /** Don co nam trong gio "chuyen di" dang thanh toan tuan tu (luu trong session) khong? */
+    @SuppressWarnings("unchecked")
+    private static boolean isTripBooking(HttpSession session, String code) {
+        Object raw = session.getAttribute("tripBookingCodes");
+        return raw instanceof List && ((List<String>) raw).contains(code);
+    }
+
+    /** Tach groupId tu txnRef thanh toan gop ca nhom dang "GRP{groupId}_{ts}". */
+    private static Long parseGroupId(String txnRef) {
+        try {
+            int us = txnRef.indexOf('_');
+            String num = (us > 3) ? txnRef.substring(3, us) : txnRef.substring(3);
+            return Long.parseLong(num);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** IPN server-to-server tu VNPay. Can URL public (ngrok) khi cau hinh ben merchant. */

@@ -4,35 +4,340 @@
 <body>
 <div th:fragment="nav">
     <div class="nav">
-        <a class="brand" href="/">Dididi</a>
+        <a class="brand" href="/"><span class="wordmark">Dididi</span><span th:replace="~{fragments/site :: walkmark}"></span></a>
         <a href="/hotels" th:text="#{nav.hotels}">Khách sạn</a>
         <a href="/flights" th:text="#{nav.flights}">Chuyến bay</a>
         <a href="/trip-planner" th:text="#{nav.trip}">Trip Planner</a>
         <span class="sp"></span>
-        <span sec:authorize="isAuthenticated()">
-            <a href="/account/bookings" th:text="#{nav.myBookings}">Đơn của tôi</a> ·
-            <a href="/account/wishlist" th:text="#{nav.wishlist}">Yêu thích</a> ·
-            <a href="/account/points" th:text="#{nav.points}">Điểm thưởng</a> ·
-            <span th:text="#{nav.hello}">Xin chào</span>, <b sec:authentication="name">user</b> ·
-            <form th:action="@{/logout}" method="post" style="display:inline">
-                <button class="btn ghost" type="submit" style="padding:6px 12px" th:text="#{nav.logout}">Đăng xuất</button>
-            </form>
+        <span sec:authorize="isAuthenticated()" class="dd">
+            <button class="dd-btn" type="button">
+                <span aria-hidden="true">👤</span>
+                <b th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${navFullName} : #{nav.account}">Tài khoản</b>
+                <span class="dd-caret">▾</span>
+            </button>
+            <div class="dd-menu">
+                <a href="/account/bookings" th:text="#{nav.myBookings}">Đơn của tôi</a>
+                <a href="/account/wishlist" th:text="#{nav.wishlist}">Yêu thích</a>
+                <a href="/account/points" th:text="#{nav.points}">Điểm thưởng</a>
+                <div class="dd-sep"></div>
+                <form th:action="@{/logout}" method="post">
+                    <button class="dd-logout" type="submit" th:text="#{nav.logout}">Đăng xuất</button>
+                </form>
+            </div>
         </span>
         <span sec:authorize="!isAuthenticated()">
             <a href="/vendor-register" th:text="#{nav.sell}">Bán phòng</a> ·
             <a href="/login" th:text="#{nav.login}">Đăng nhập</a> ·
             <a class="btn" href="/register" style="padding:6px 12px" th:text="#{nav.register}">Đăng ký</a>
         </span>
-        <span class="lang" style="margin-left:10px;font-size:13px" th:title="#{nav.language}">
-            <a href="?lang=vi">VI</a> ·
-            <a href="?lang=en">EN</a> ·
-            <a href="?lang=zh">中文</a>
+        <span class="dd lang-dd" th:title="#{nav.language}">
+            <button class="dd-btn" type="button">
+                <span th:switch="${#locale.language}">
+                    <span th:case="'en'">🇬🇧 EN</span>
+                    <span th:case="'zh'">🇨🇳 中文</span>
+                    <span th:case="*">🇻🇳 VI</span>
+                </span>
+                <span class="dd-caret">▾</span>
+            </button>
+            <div class="dd-menu">
+                <a href="?lang=vi">🇻🇳 Tiếng Việt</a>
+                <a href="?lang=en">🇬🇧 English</a>
+                <a href="?lang=zh">🇨🇳 中文</a>
+            </div>
         </span>
     </div>
+    <script th:inline="javascript">
+    window.DD_T = window.DD_T || {
+        toastOk: /*[[#{toast.ok}]]*/ 'Thành công',
+        toastErr: /*[[#{toast.err}]]*/ 'Không thể hoàn tất',
+        toastClose: /*[[#{toast.close}]]*/ 'Đóng',
+        avatarYou: /*[[#{chat.avatarYou}]]*/ 'Bạn',
+        avatarAgent: /*[[#{chat.avatarAgent}]]*/ 'NV',
+        greeting: /*[[#{chat.greeting}]]*/ 'Chào bạn',
+        ctxPrefix: /*[[#{chat.ctxPrefix}]]*/ 'Bạn đang hỏi về đơn ',
+        prefillPre: /*[[#{chat.prefillPre}]]*/ 'Tôi muốn huỷ đơn ',
+        prefillPost: /*[[#{chat.prefillPost}]]*/ ' nhưng đã trong vòng 48 giờ',
+        botUnknown: /*[[#{chat.botUnknown}]]*/ 'Xin lỗi, mình chưa rõ câu hỏi.',
+        botBusy: /*[[#{chat.botBusy}]]*/ 'Xin lỗi, hệ thống đang bận.',
+        agentBtn: /*[[#{chat.agentBtn}]]*/ '📞 Gặp tổng đài viên',
+        reqAgent: /*[[#{chat.reqAgent}]]*/ 'Khách yêu cầu gặp tổng đài viên',
+        connecting: /*[[#{chat.connecting}]]*/ 'Đang kết nối tổng đài viên…',
+        agentGreet: /*[[#{chat.agentGreet}]]*/ 'Dạ em chào anh/chị',
+        agentCancel: /*[[#{chat.agentCancel}]]*/ 'Em đã ghi nhận yêu cầu huỷ',
+        agentRefund: /*[[#{chat.agentRefund}]]*/ 'Về hoàn tiền',
+        agentThanks: /*[[#{chat.agentThanks}]]*/ 'Dạ không có gì ạ',
+        agentDefault: /*[[#{chat.agentDefault}]]*/ 'Dạ em đã ghi nhận thông tin'
+    };
+    </script>
 </div>
 <div th:fragment="flash">
-    <div class="flash" th:if="${message}" th:text="${message}"></div>
-    <div class="flash err" th:if="${error}" th:text="${error}"></div>
+    <div class="toast-host" id="toast-host" aria-live="polite" aria-atomic="true">
+        <div class="toast toast-ok" th:if="${message}">
+            <span class="toast-ico" aria-hidden="true">&#10003;</span>
+            <div class="toast-body">
+                <div class="toast-title" th:text="#{toast.ok}">Thành công</div>
+                <div class="toast-msg" th:text="${message}">.</div>
+            </div>
+            <button type="button" class="toast-x" aria-label="Đóng" th:attr="aria-label=#{toast.close}">&times;</button>
+            <span class="toast-bar"></span>
+        </div>
+        <div class="toast toast-err" th:if="${error}">
+            <span class="toast-ico" aria-hidden="true">!</span>
+            <div class="toast-body">
+                <div class="toast-title" th:text="#{toast.err}">Không thể hoàn tất</div>
+                <div class="toast-msg" th:text="${error}">.</div>
+            </div>
+            <button type="button" class="toast-x" aria-label="Đóng" th:attr="aria-label=#{toast.close}">&times;</button>
+            <span class="toast-bar"></span>
+        </div>
+    </div>
+    <script>
+    (function () {
+        if (window.showToast) { window.__toastHydrate && window.__toastHydrate(); return; }
+        var AUTO = 5000;
+        function hostEl() {
+            var h = document.getElementById('toast-host');
+            if (!h) { h = document.createElement('div'); h.id = 'toast-host'; h.className = 'toast-host'; document.body.appendChild(h); }
+            return h;
+        }
+        function dismiss(t) {
+            if (t.__gone) return; t.__gone = true;
+            t.classList.add('hide');
+            setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 320);
+        }
+        function arm(t) {
+            if (t.__armed) return; t.__armed = true;
+            var bar = t.querySelector('.toast-bar'); if (bar) bar.classList.add('run');
+            var timer = setTimeout(function () { dismiss(t); }, AUTO);
+            var x = t.querySelector('.toast-x');
+            if (x) x.addEventListener('click', function () { clearTimeout(timer); dismiss(t); });
+        }
+        function hydrate() {
+            var h = document.getElementById('toast-host'); if (!h) return;
+            Array.prototype.forEach.call(h.querySelectorAll('.toast'), arm);
+        }
+        window.__toastHydrate = hydrate;
+        // Dung sau nay cho thong bao phia client: showToast('ok'|'err', 'noi dung', 'tieu de?')
+        window.showToast = function (type, message, title) {
+            var ok = (type !== 'err' && type !== 'error' && type !== false);
+            var t = document.createElement('div');
+            t.className = 'toast ' + (ok ? 'toast-ok' : 'toast-err');
+            t.innerHTML = '<span class="toast-ico" aria-hidden="true">' + (ok ? '\u2713' : '!') + '</span>'
+                + '<div class="toast-body"><div class="toast-title"></div><div class="toast-msg"></div></div>'
+                + '<button type="button" class="toast-x" aria-label="Đóng">\u00d7</button>'
+                + '<span class="toast-bar"></span>';
+            t.querySelector('.toast-title').textContent = title || (ok ? ((window.DD_T&&DD_T.toastOk)||'Thành công') : ((window.DD_T&&DD_T.toastErr)||'Không thể hoàn tất'));
+            t.querySelector('.toast-msg').textContent = message || '';
+            hostEl().appendChild(t); arm(t); return t;
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', hydrate);
+        else hydrate();
+    })();
+    </script>
 </div>
+<div th:fragment="footer" class="site-footer">
+    <footer class="footer">
+        <div class="brand"><span class="wordmark">Dididi</span><span th:replace="~{fragments/site :: walkmark}"></span></div>
+        <p th:text="#{footer.tagline}">Đặt khách sạn &amp; vé máy bay — nền tảng du lịch trực tuyến.</p>
+        <p>
+            <a href="/hotels" th:text="#{footer.hotels}">Khách sạn</a> ·
+            <a href="/flights" th:text="#{footer.flights}">Chuyến bay</a> ·
+            <a href="/trip-planner">Trip Planner</a> ·
+            <a href="/support" th:text="#{footer.support}">Hỗ trợ</a> ·
+            <a href="/legal/terms" th:text="#{footer.terms}">Điều khoản</a> ·
+            <a href="/legal/privacy" th:text="#{footer.privacy}">Bảo mật</a>
+        </p>
+        <p style="opacity:.65" th:text="#{footer.copyright}">© 2026 Dididi · Đồ án demo, không phải dịch vụ thương mại thật.</p>
+    </footer>
+    <script src="/js/site-fx.js" defer></script>
+    <div class="cfm-modal" id="cfmModal" aria-hidden="true">
+        <div class="cfm-card">
+            <h3 id="cfmTitle" th:text="#{cfm.title}">Xác nhận</h3>
+            <p id="cfmMsg"></p>
+            <div class="cfm-actions">
+                <button type="button" class="btn ghost" id="cfmCancel" th:text="#{cfm.cancel}">Huỷ</button>
+                <button type="button" class="btn" id="cfmOk" th:text="#{cfm.ok}">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Trợ lý CSKH: bong bóng chat nổi (mọi trang) ===== -->
+    <div id="dd-support">
+        <button type="button" id="dd-support-fab" th:attr="aria-label=#{support.fab},title=#{support.fab}" aria-label="Hỗ trợ khách hàng" title="Hỗ trợ khách hàng" onclick="DididiSupport.toggle()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><path d="M18 19.6a2 2 0 0 1-2 2h-2.4"/><rect x="2.6" y="13.5" width="3.8" height="6.4" rx="1.9"/><rect x="17.6" y="13.5" width="3.8" height="6.4" rx="1.9"/></svg>
+        </button>
+        <div id="dd-support-panel" hidden>
+            <div class="dds-head">
+                <div class="dds-ttl"><span class="dds-dot"></span> <span th:text="#{support.assistantName}">Trợ lý Dididi</span></div>
+                <a class="dds-full" href="/support" th:attr="title=#{support.openFull}" title="Mở trang hỗ trợ">⤢</a>
+                <button type="button" class="dds-x" th:attr="aria-label=#{support.close}" aria-label="Đóng" onclick="DididiSupport.close()">✕</button>
+            </div>
+            <div class="dds-body" id="dd-support-body"></div>
+            <div class="dds-quick" id="dd-support-quick">
+                <button type="button" onclick="DididiSupport.ask('Làm sao huỷ đơn?')" th:text="#{support.quickCancel}">Huỷ đơn</button>
+                <button type="button" onclick="DididiSupport.ask('Chính sách hoàn tiền thế nào?')" th:text="#{support.quickRefund}">Hoàn tiền</button>
+                <button type="button" onclick="DididiSupport.ask('Đổi ngày đơn được không?')" th:text="#{support.quickReschedule}">Đổi lịch</button>
+            </div>
+            <form class="dds-input" onsubmit="return DididiSupport.send(event)">
+                <input type="text" id="dd-support-text" autocomplete="off" th:attr="placeholder=#{support.inputPlaceholder}" placeholder="Nhập câu hỏi của bạn…"/>
+                <button type="submit" th:attr="aria-label=#{support.send}" aria-label="Gửi">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+    (function(){
+      function init(){
+        document.querySelectorAll('.paginate').forEach(function(box){
+          var size=parseInt(box.getAttribute('data-page-size')||'20',10);
+          var items=Array.prototype.filter.call(box.children,function(el){return el.nodeType===1;});
+          if(items.length<=size)return;
+          var pages=Math.ceil(items.length/size),cur=1;
+          var pager=document.createElement('nav');pager.className='pager';
+          var anchor=(box.tagName==='TBODY')?(box.closest('table')||box):box;
+          anchor.parentNode.insertBefore(pager,anchor.nextSibling);
+          function list(c,t){var r=[],i;if(t<=7){for(i=1;i<=t;i++)r.push(i);return r;}r.push(1);var s=Math.max(2,c-1),e=Math.min(t-1,c+1);if(s>2)r.push('…');for(i=s;i<=e;i++)r.push(i);if(e<t-1)r.push('…');r.push(t);return r;}
+          function draw(){
+            pager.innerHTML='';
+            function add(label,page,o){o=o||{};if(label==='…'){var g=document.createElement('span');g.className='gap';g.textContent='…';pager.appendChild(g);return;}var b=document.createElement('button');b.type='button';b.textContent=label;if(o.active)b.className='is-active';if(o.disabled)b.disabled=true;if(!o.disabled&&!o.active)b.addEventListener('click',function(){go(page,true);});pager.appendChild(b);}
+            add('‹',cur-1,{disabled:cur===1});
+            list(cur,pages).forEach(function(n){add(n,n,{active:n===cur});});
+            add('›',cur+1,{disabled:cur===pages});
+          }
+          function go(p,scroll){cur=Math.min(Math.max(1,p),pages);items.forEach(function(it,i){it.style.display=(i>=(cur-1)*size&&i<cur*size)?'':'none';});draw();if(scroll){var y=anchor.getBoundingClientRect().top+window.pageYOffset-130;window.scrollTo({top:Math.max(0,y),behavior:'smooth'});}}
+          go(1,false);
+        });
+        var full=document.querySelector('.search-full'),mini=document.querySelector('.search-mini');
+        if(full&&mini){
+          var on=function(){mini.classList.toggle('show',full.getBoundingClientRect().bottom<64);};
+          window.addEventListener('scroll',on,{passive:true});
+          window.addEventListener('resize',on,{passive:true});on();
+          mini.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+        }
+        // Hộp thoại xác nhận dùng chung (thay confirm() native): phần tử có data-confirm
+        var cfm=document.getElementById('cfmModal');
+        if(cfm){
+          var cfmMsg=document.getElementById('cfmMsg'),cfmOk=document.getElementById('cfmOk'),cfmCancel=document.getElementById('cfmCancel');
+          var pending=null;
+          var closeCfm=function(){cfm.classList.remove('show');pending=null;};
+          document.addEventListener('click',function(e){
+            var el=e.target.closest('[data-confirm]'); if(!el)return;
+            e.preventDefault();
+            pending=el; cfmMsg.textContent=el.getAttribute('data-confirm'); cfm.classList.add('show');
+          });
+          cfmCancel.addEventListener('click',closeCfm);
+          cfm.addEventListener('click',function(e){if(e.target===cfm)closeCfm();});
+          document.addEventListener('keydown',function(e){if(e.key==='Escape'&&cfm.classList.contains('show'))closeCfm();});
+          cfmOk.addEventListener('click',function(){
+            var el=pending; closeCfm(); if(!el)return;
+            if(el.tagName==='A'&&el.getAttribute('href')){window.location=el.getAttribute('href');return;}
+            var f=el.closest('form');
+            if(f){ if(f.requestSubmit){f.requestSubmit(el.tagName==='BUTTON'&&el.type==='submit'?el:null);} else {f.submit();} }
+          });
+        }
+        // Dropdown nav (tài khoản + ngôn ngữ)
+        document.querySelectorAll('.dd-btn').forEach(function(btn){
+          btn.addEventListener('click', function(e){
+            e.stopPropagation();
+            var dd=btn.closest('.dd'); var wasOpen=dd.classList.contains('open');
+            document.querySelectorAll('.dd.open').forEach(function(x){x.classList.remove('open');});
+            if(!wasOpen) dd.classList.add('open');
+          });
+        });
+        document.addEventListener('click', function(){ document.querySelectorAll('.dd.open').forEach(function(x){x.classList.remove('open');}); });
+      }
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+    })();
+    </script>
+
+    <!-- Trợ lý CSKH: KB + LLM (qua /support/ask) và mô phỏng tổng đài viên -->
+    <script>
+    window.DididiSupport = (function(){
+      var greeted=false, agentMode=false, els=null, typingEl=null, ctxBooking='', _cid=null;
+      // conversationId: gom các tin nhắn cùng 1 phiên chat (giữ trong tab qua sessionStorage)
+      function getCid(){
+        if(_cid) return _cid;
+        try{ _cid=sessionStorage.getItem('ddSupportCid'); }catch(e){}
+        if(!_cid){ _cid=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():('c-'+Date.now()+'-'+Math.random().toString(16).slice(2)); try{ sessionStorage.setItem('ddSupportCid',_cid); }catch(e){} }
+        return _cid;
+      }
+      // Ghi 1 tin nhắn (phần tổng đài/escalate) vào DB qua /support/log — fire-and-forget
+      function logMsg(role, content, escalated){
+        try{ fetch('/support/log',{ method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:'cid='+encodeURIComponent(getCid())+'&role='+encodeURIComponent(role)+'&content='+encodeURIComponent(content)+(ctxBooking?'&booking='+encodeURIComponent(ctxBooking):'')+(escalated?'&escalated=true':'') }); }catch(e){}
+      }
+      function E(){ if(!els){ els={ wrap:document.getElementById('dd-support'), panel:document.getElementById('dd-support-panel'),
+        body:document.getElementById('dd-support-body'), input:document.getElementById('dd-support-text') }; } return els; }
+      function scroll(){ var b=E().body; if(b) b.scrollTop=b.scrollHeight; }
+      function bubble(role, text){
+        var b=E().body; if(!b) return;
+        var row=document.createElement('div'); row.className='dds-msg dds-'+role;
+        if(role==='system'){ row.textContent=text; b.appendChild(row); scroll(); return; }
+        var av=document.createElement('span'); av.className='dds-av'; av.textContent = role==='user'?((window.DD_T&&DD_T.avatarYou)||'Bạn'):(role==='agent'?((window.DD_T&&DD_T.avatarAgent)||'NV'):'AI');
+        var bb=document.createElement('div'); bb.className='dds-bubble'; bb.textContent=text;
+        row.appendChild(av); row.appendChild(bb); b.appendChild(row); scroll();
+      }
+      function typing(on){
+        var b=E().body; if(!b) return;
+        if(on){ if(typingEl) return; typingEl=document.createElement('div'); typingEl.className='dds-msg dds-bot';
+          typingEl.innerHTML='<span class="dds-av">AI</span><div class="dds-bubble dds-typing"><i></i><i></i><i></i></div>'; b.appendChild(typingEl); scroll(); }
+        else if(typingEl){ b.removeChild(typingEl); typingEl=null; }
+      }
+      function open(code){
+        var w=E().wrap, p=E().panel; if(!p) return;
+        p.hidden=false; if(w) w.classList.add('open');
+        if(!greeted){ greeted=true; bubble('bot',(window.DD_T&&DD_T.greeting)||'Chào bạn 👋 Mình là trợ lý của Dididi. Mình giúp được về huỷ đơn, hoàn tiền, đổi lịch, thanh toán, điểm thưởng… Bạn cần hỗ trợ gì ạ?'); }
+        if(code){ ctxBooking=code; bubble('system',((window.DD_T&&DD_T.ctxPrefix)||'Bạn đang hỏi về đơn')+' '+code); if(E().input) E().input.value=((window.DD_T&&DD_T.prefillPre)||'Tôi muốn huỷ đơn')+' '+code+' '+((window.DD_T&&DD_T.prefillPost)||'nhưng đã trong vòng 48 giờ'); }
+        if(E().input) E().input.focus();
+      }
+      function close(){ var w=E().wrap, p=E().panel; if(p) p.hidden=true; if(w) w.classList.remove('open'); }
+      function toggle(){ var p=E().panel; if(!p) return; if(p.hidden) open(); else close(); }
+      function ask(text){ open(); bubble('user', text); respond(text); }
+      function send(ev){ if(ev) ev.preventDefault(); var i=E().input; if(!i) return false; var t=(i.value||'').trim(); if(!t) return false; i.value=''; bubble('user',t); respond(t); return false; }
+      function respond(text){
+        if(agentMode){ logMsg('USER', text); agentReply(text); return; }
+        typing(true);
+        fetch('/support/ask',{ method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'q='+encodeURIComponent(text)+'&cid='+encodeURIComponent(getCid())+(ctxBooking?'&booking='+encodeURIComponent(ctxBooking):'') })
+          .then(function(r){ return r.json(); })
+          .then(function(d){ typing(false); bubble('bot', (d && d.answer) ? d.answer : ((window.DD_T&&DD_T.botUnknown)||'Xin lỗi, mình chưa rõ câu hỏi.')); if(d && d.escalate) agentButton(); })
+          .catch(function(){ typing(false); bubble('bot',(window.DD_T&&DD_T.botBusy)||'Xin lỗi, hệ thống đang bận. Bạn thử lại hoặc gặp tổng đài viên nhé.'); agentButton(); });
+      }
+      function agentButton(){
+        var b=E().body; if(!b || b.querySelector('.dds-agentbtn')) return;
+        var wrap=document.createElement('div'); wrap.className='dds-msg dds-bot';
+        var btn=document.createElement('button'); btn.type='button'; btn.className='dds-agentbtn'; btn.textContent=(window.DD_T&&DD_T.agentBtn)||'📞 Gặp tổng đài viên';
+        btn.addEventListener('click', connectAgent); wrap.appendChild(btn); b.appendChild(wrap); scroll();
+      }
+      function connectAgent(){
+        if(agentMode) return;
+        var ex=E().body.querySelector('.dds-agentbtn'); if(ex){ var row=ex.closest('.dds-msg'); if(row) row.remove(); }
+        logMsg('SYSTEM',(window.DD_T&&DD_T.reqAgent)||'Khách yêu cầu gặp tổng đài viên', true);
+        bubble('system',(window.DD_T&&DD_T.connecting)||'Đang kết nối tổng đài viên…');
+        setTimeout(function(){ agentMode=true; var greet=(window.DD_T&&DD_T.agentGreet)||'Dạ em chào anh/chị, em là tổng đài viên Dididi. Mình cần hỗ trợ về đơn hàng nào ạ?'; bubble('agent',greet); logMsg('AGENT',greet); }, 1500);
+      }
+      function agentReply(text){
+        typing(false);
+        setTimeout(function(){
+          var n=norm(text), ans;
+          if(n.indexOf('huy')>=0||n.indexOf('cancel')>=0){ ans=(window.DD_T&&DD_T.agentCancel)||'Em đã ghi nhận yêu cầu huỷ của mình. Do đơn đã trong vòng 48 giờ nên em sẽ kiểm tra điều kiện hoàn và phản hồi qua email sớm nhất ạ.'; }
+          else if(n.indexOf('hoan')>=0||n.indexOf('tien')>=0){ ans=(window.DD_T&&DD_T.agentRefund)||'Về hoàn tiền, em sẽ tạo phiếu xử lý và cập nhật trạng thái ngay trong chi tiết đơn của mình ạ.'; }
+          else if(n.indexOf('cam on')>=0||n.indexOf('thank')>=0){ ans=(window.DD_T&&DD_T.agentThanks)||'Dạ không có gì ạ, chúc anh/chị một ngày tốt lành! 🌿'; }
+          else { ans=(window.DD_T&&DD_T.agentDefault)||'Dạ em đã ghi nhận thông tin và sẽ hỗ trợ, phản hồi mình sớm nhất ạ. Mình còn cần giúp gì thêm không ạ?'; }
+          bubble('agent', ans); logMsg('AGENT', ans);
+        }, 1100);
+      }
+      function norm(s){ try{ return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d'); }catch(e){ return (s||'').toLowerCase(); } }
+      return { open:open, close:close, toggle:toggle, ask:ask, send:send };
+    })();
+    </script>
+</div>
+<svg th:fragment="walkmark" class="walkmark" viewBox="0 0 104 52" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <g transform="translate(0,0)"><circle cx="12" cy="7" r="4.3" fill="currentColor" stroke="none"/><path d="M12 11.5 L12.5 27 M12.5 27 L17 46 M12.5 27 L8 46 M12.2 15 L16.5 22.5 M12.2 15 L8 21.5" fill="none" stroke="currentColor"/></g>
+    <g transform="translate(27,0)"><circle cx="12" cy="7" r="4.3" fill="currentColor" stroke="none"/><path d="M12 11.5 L12.5 27 M12.5 27 L17 46 M12.5 27 L8 46 M12.2 15 L16.5 22.5 M12.2 15 L8 21.5" fill="none" stroke="currentColor"/></g>
+    <g transform="translate(54,0)"><circle cx="12" cy="7" r="4.3" fill="currentColor" stroke="none"/><path d="M12 11.5 L12.5 27 M12.5 27 L17 46 M12.5 27 L8 46 M12.2 15 L16.5 22.5 M12.2 15 L8 21.5" fill="none" stroke="currentColor"/></g>
+    <g transform="translate(81,0)"><circle cx="12" cy="7" r="4.3" fill="currentColor" stroke="none"/><path d="M12 11.5 L12.5 27 M12.5 27 L17 46 M12.5 27 L8 46 M12.2 15 L16.5 22.5 M12.2 15 L8 21.5" fill="none" stroke="currentColor"/></g>
+</svg>
 </body>
 </html>

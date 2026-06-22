@@ -6,6 +6,7 @@ import com.dididi.booking.identity.api.dto.LoginResponse;
 import com.dididi.booking.identity.domain.entity.User;
 import com.dididi.booking.identity.domain.enums.UserStatus;
 import com.dididi.booking.identity.repository.UserRepository;
+import com.dididi.booking.identity.security.LoginAuditService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,17 +19,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final LoginAuditService loginAuditService;
     private final long accessTokenMinutes;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        RefreshTokenService refreshTokenService,
+                       LoginAuditService loginAuditService,
                        @Value("${app.jwt.access-token-minutes:60}") long accessTokenMinutes) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+        this.loginAuditService = loginAuditService;
         this.accessTokenMinutes = accessTokenMinutes;
     }
 
@@ -48,6 +52,7 @@ public class AuthService {
 
         String token = jwtService.generateToken(user);
         String refreshToken = refreshTokenService.issue(user.getId());
+        loginAuditService.record(user.getId(), "API");   // ghi nhat ky dang nhap (REST/JWT - Angular/Flutter)
         return new LoginResponse(token, refreshToken, "Bearer", accessTokenMinutes,
                 user.getEmail(), user.getRole().name());
     }

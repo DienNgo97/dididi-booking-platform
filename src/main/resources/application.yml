@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
   application:
     name: dididi-booking-platform
   profiles:
@@ -112,6 +116,13 @@ app:
   # ---- Refund (Dot2 Super Admin). Hoan tien > nguong nay can SuperAdmin duyet (<= nguong: Admin duyet). ----
   refund:
     super-admin-threshold: 100000
+  # ---- Tro ly CSKH (Dot3). Hybrid: tri thuc noi bo (KB) truoc, LLM sau NEU co api-key. ----
+  # De api-key trong (mac dinh) -> CHI dung KB, chay offline, khong goi mang. Co key -> cau hoi la moi nho LLM.
+  support:
+    llm:
+      provider: ${SUPPORT_LLM_PROVIDER:openai}   # openai | anthropic
+      api-key: ${SUPPORT_LLM_API_KEY:}           # de trong -> tat nhanh LLM (chi dung KB)
+      model: ${SUPPORT_LLM_MODEL:gpt-4o-mini}    # openai: gpt-4o-mini | anthropic: claude-3-5-haiku-latest
 
 logging:
   level:
@@ -124,9 +135,13 @@ resilience4j:
       flightProvider:
         max-attempts: 3
         wait-duration: 1s
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
       hotelPms:
         max-attempts: 3
         wait-duration: 1s
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
   circuitbreaker:
     instances:
       flightProvider:
@@ -135,9 +150,13 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
         permitted-number-of-calls-in-half-open-state: 2
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException
       hotelPms:
         sliding-window-size: 10
         minimum-number-of-calls: 3
         failure-rate-threshold: 50
         wait-duration-in-open-state: 30s
         permitted-number-of-calls-in-half-open-state: 2
+        ignore-exceptions:
+          - org.springframework.web.client.HttpClientErrorException

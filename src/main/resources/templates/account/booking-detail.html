@@ -12,28 +12,141 @@
     <h1 th:text="${booking.publicCode}">DD-XXXXXX</h1>
     <div class="card">
         <p th:text="${booking.title}"></p>
+        <div th:if="${booking.passengers != null}"
+             style="margin:8px 0 4px;background:#f7f9fc;border:1px solid #e6e9f0;border-radius:10px;padding:10px 12px">
+            <b style="font-size:13.5px;color:#16382a" th:text="#{booking.paxAndServices}">Hành khách &amp; dịch vụ</b>
+            <div style="white-space:pre-line;font-size:13.5px;color:#1c2536;margin-top:4px" th:text="${booking.passengers}"></div>
+        </div>
         <div class="muted" th:text="#{account.type} + ' ' + ${booking.type}"></div>
         <div class="muted"><span th:text="#{account.status}">Trạng thái:</span> <b th:text="${booking.status}"></b></div>
         <div th:if="${pendingApproval}" style="margin-top:6px;color:#b26a00;font-weight:600"
              th:text="'⏳ ' + #{approval.pending}">Đang chờ phê duyệt</div>
         <div class="muted" th:if="${booking.providerConfirmation != null}"
              th:text="#{account.providerConfirmation} + ' ' + ${booking.providerConfirmation}"></div>
-        <div th:if="${booking.checkIn != null}" class="muted">
+        <div th:if="${booking.checkIn != null and !booking.dayUse}" class="muted">
             <span th:text="${booking.checkIn}"></span> → <span th:text="${booking.checkOut}"></span></div>
+        <div th:if="${booking.dayUse}" class="muted">
+            <span th:text="#{payment.dayUseLabel}">🕐 Trong ngày:</span> <span th:text="${booking.checkIn}"></span>
+            · <span th:text="${booking.checkInTime}"></span>–<span th:text="${booking.checkOutTime}"></span>
+            · <span th:text="${booking.quantity}"></span> <span th:text="#{common.roomsUnit}">phòng</span></div>
         <div th:if="${booking.travelDate != null}" class="muted">
             <span th:text="#{account.departure}">Khởi hành:</span> <span th:text="${booking.travelDate}"></span></div>
         <div class="price" style="margin-top:8px">
             <span th:text="${booking.amount != null ? #numbers.formatInteger(booking.amount,1,'COMMA') : ''}"></span>
             <span th:text="${booking.currency}"></span></div>
+        <div class="muted" th:if="${booking.tierDiscountAmount != null and booking.tierDiscountAmount.signum() > 0}"
+             style="margin-top:4px;color:#0e7a44;font-size:13px">
+            <span th:text="#{account.tierIncluded}">Đã gồm ưu đãi hạng</span>
+            <span th:switch="${booking.tier}">
+                <span th:case="'GOLD'" th:text="#{payment.tierGold}">Vàng</span>
+                <span th:case="'PLATINUM'">Platinum</span>
+                <span th:case="'DIAMOND'">Diamond</span>
+            </span>:
+            −<span th:text="${#numbers.formatInteger(booking.tierDiscountAmount,1,'COMMA')}"></span>
+            <span th:text="${booking.currency}"></span></div>
         <div class="muted" th:if="${payment != null}" style="margin-top:6px"
              th:text="#{account.paymentLabel} + ' ' + ${payment.status} + ' · ' + ${payment.transactionRef}"></div>
 
-        <form th:if="${booking.status.name() != 'CANCELLED'}"
-              th:action="@{'/account/bookings/' + ${booking.publicCode} + '/cancel'}" method="post" style="margin-top:14px">
-            <button class="btn ghost" type="submit" th:text="#{account.cancel}">Huỷ đơn</button>
-        </form>
+        <!-- Sua thong tin + thanh toan khi don dang cho thanh toan -->
+        <div th:if="${booking.status.name() == 'PENDING_PAYMENT'}" style="margin-top:14px">
+            <!-- Chi don khach san DIRECT (co roomTypeId) moi sua duoc -->
+            <details th:if="${booking.roomTypeId != null}">
+                <summary style="cursor:pointer;font-weight:600;color:#3dac78" th:text="#{account.editBooking}">✏️ Sửa thông tin đơn</summary>
 
-        <a th:if="${booking.companyId != null and booking.status.name() == 'CONFIRMED'}"
+                <!-- Qua dem: ngay nhan / ngay tra / so phong -->
+                <form th:if="${!booking.dayUse}"
+                      th:action="@{'/account/bookings/' + ${booking.publicCode} + '/edit'}" method="post" style="margin-top:10px">
+                    <input type="hidden" name="dayUse" value="false"/>
+                    <label class="muted" style="display:block" th:text="#{payment.checkInDate}">Ngày nhận phòng</label>
+                    <input type="date" name="checkIn" required th:value="${booking.checkIn.toString()}"
+                           style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                    <label class="muted" style="display:block;margin-top:8px" th:text="#{payment.checkOutDate}">Ngày trả phòng</label>
+                    <input type="date" name="checkOut" required th:value="${booking.checkOut.toString()}"
+                           style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                    <label class="muted" style="display:block;margin-top:8px" th:text="#{hotels.numRooms}">Số phòng</label>
+                    <input type="number" name="rooms" min="1" required th:value="${booking.quantity}"
+                           style="width:90px;padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                    <div><button class="btn" type="submit" style="margin-top:10px" th:text="#{payment.saveChanges}">Lưu thay đổi</button></div>
+                </form>
+
+                <!-- Trong ngay: ngay / gio nhan - gio tra / so phong -->
+                <form th:if="${booking.dayUse}"
+                      th:action="@{'/account/bookings/' + ${booking.publicCode} + '/edit'}" method="post" style="margin-top:10px">
+                    <input type="hidden" name="dayUse" value="true"/>
+                    <label class="muted" style="display:block" th:text="#{hotels.dateLabel}">Ngày</label>
+                    <input type="date" name="date" required th:value="${booking.checkIn.toString()}"
+                           style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                    <label class="muted" style="display:block;margin-top:8px" th:text="#{payment.timeInOut}">Giờ nhận – Giờ trả</label>
+                    <span style="display:inline-flex;gap:8px">
+                        <input type="time" name="timeIn" required th:value="${booking.checkInTime.toString()}"
+                               style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                        <input type="time" name="timeOut" required th:value="${booking.checkOutTime.toString()}"
+                               style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                    </span>
+                    <label class="muted" style="display:block;margin-top:8px" th:text="#{hotels.numRooms}">Số phòng</label>
+                    <input type="number" name="rooms" min="1" required th:value="${booking.quantity}"
+                           style="width:90px;padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                    <div><button class="btn" type="submit" style="margin-top:10px" th:text="#{payment.saveChanges}">Lưu thay đổi</button></div>
+                </form>
+
+                <p class="muted" style="font-size:12px;margin-top:6px" th:utext="#{account.editNote}">
+                    Lưu ý: đổi ngày/giờ/số phòng sẽ tính lại giá và <b>gỡ mã giảm giá đang áp</b> (bạn có thể nhập lại mã khi thanh toán).</p>
+            </details>
+
+            <p th:if="${booking.roomTypeId == null}" class="muted" style="font-size:13px" th:text="#{account.noEditNote}">
+                Đơn này (vé máy bay/khách sạn đối tác) không hỗ trợ chỉnh sửa. Vui lòng huỷ và đặt lại nếu cần thay đổi.</p>
+
+            <a class="btn" th:href="@{'/payment/' + ${booking.publicCode}}"
+               style="margin-top:12px;display:inline-block" th:text="#{booking.continuePayment} + ' →'">Tiếp tục thanh toán →</a>
+        </div>
+
+        <!-- Huy don can admin duyet -->
+        <div style="margin-top:14px" th:switch="${booking.cancelStatus.name()}">
+            <div th:case="'REQUESTED'"
+                 style="padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#9a3412">
+                <div th:utext="#{account.cancelRequested}">⏳ <b>Đã gửi yêu cầu huỷ</b>, đang chờ admin duyệt.</div>
+                <div class="muted" style="margin-top:4px"><span th:text="#{account.yourReason}">Lý do của bạn:</span> <span th:text="${booking.cancelReason}"></span></div>
+            </div>
+            <div th:case="'APPROVED'"
+                 style="padding:12px;background:#fbe6e3;border:1px solid #f3b4ab;border-radius:10px;color:#c0392b">
+                <div th:utext="#{account.cancelApproved}">✓ <b>Đơn đã được huỷ</b> và hoàn lại số tiền bạn đã thanh toán.</div>
+                <div class="muted" style="margin-top:4px" th:if="${booking.cancelAdminNote != null}"><span th:text="#{account.adminNote}">Ghi chú của admin:</span> <span th:text="${booking.cancelAdminNote}"></span></div>
+            </div>
+            <div th:case="*" th:if="${booking.status.name() == 'CONFIRMED'}">
+                <div th:if="${booking.cancelStatus.name() == 'REJECTED'}"
+                     style="padding:12px;background:#fbe6e3;border:1px solid #f3b4ab;border-radius:10px;color:#c0392b;margin-bottom:10px">
+                    <div th:utext="#{account.cancelRejected}">✕ <b>Yêu cầu huỷ trước đó đã bị từ chối.</b></div>
+                    <div class="muted" style="margin-top:4px" th:if="${booking.cancelAdminNote != null}"><span th:text="#{account.reasonLabel}">Lý do:</span> <span th:text="${booking.cancelAdminNote}"></span></div>
+                </div>
+
+                <!-- Còn > 48h: cho gửi yêu cầu huỷ -->
+                <div th:if="${cancelAllowed}">
+                    <form th:action="@{'/account/bookings/' + ${booking.publicCode} + '/cancel'}" method="post">
+                        <label class="muted" style="display:block;margin-bottom:4px" th:text="#{account.cancelReasonLabel}">Lý do huỷ đơn</label>
+                        <textarea name="reason" required rows="2" placeholder="Nhập lý do bạn muốn huỷ đơn..." th:attr="placeholder=#{account.cancelReasonPlaceholder}"
+                                  style="width:100%;padding:8px;border:1px solid #d3d9e4;border-radius:8px"></textarea>
+                        <button class="btn ghost" type="submit" style="margin-top:8px" th:text="#{account.requestCancel}">Yêu cầu huỷ đơn</button>
+                    </form>
+                    <p class="muted" style="font-size:12px;margin-top:6px" th:text="#{account.cancelFreeNote}">Bạn đang còn hơn 48 giờ trước giờ nhận phòng/khởi hành nên được huỷ miễn phí. Đơn chỉ huỷ sau khi admin duyệt; khi duyệt bạn được hoàn lại đúng số tiền đã thanh toán.</p>
+                </div>
+
+                <!-- Trong vòng 48h: không cho tự huỷ -> liên hệ hỗ trợ -->
+                <div th:unless="${cancelAllowed}"
+                     style="padding:14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#9a3412">
+                    <b th:text="#{account.cancelExpiredTitle}">Đã quá hạn huỷ trực tuyến (còn dưới 48 giờ).</b>
+                    <div style="margin-top:4px;font-size:13px" th:text="#{account.cancelExpiredNote}">
+                        Đơn chỉ huỷ trực tuyến được khi còn hơn 48 giờ trước giờ nhận phòng/khởi hành.
+                        Trong vòng 48 giờ, vui lòng liên hệ hỗ trợ khách hàng để được giúp đỡ.
+                    </div>
+                    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+                        <button type="button" class="btn" th:attr="onclick=|DididiSupport.open('${booking.publicCode}')|" th:text="#{account.contactSupport}">💬 Gặp hỗ trợ</button>
+                        <a class="btn ghost" th:href="@{/support(booking=${booking.publicCode})}" th:text="#{account.openSupportPage}">Mở trang hỗ trợ</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <a th:if="${booking.status.name() == 'CONFIRMED'}"
            class="btn ghost" target="_blank"
            th:href="@{'/account/bookings/' + ${booking.publicCode} + '/invoice'}"
            style="margin-top:10px;display:inline-block" th:text="#{invoice.download}">Tải hóa đơn VAT (PDF)</a>
@@ -41,7 +154,7 @@
 
     <!-- Tiếp tục chuyến đi (Trip Planner) -->
     <div class="card" th:if="${tripCity != null and booking.status.name() == 'CONFIRMED'}"
-         style="margin-top:16px;border:1px solid #2e7d32;background:#f1f8f2">
+         style="margin-top:16px;border:1px solid #0e7a44;background:#f1f8f2">
         <h3 style="margin-top:0"><span th:text="#{trip.tripTo}">Chuyến đi tới</span> <span th:text="${tripCity}"></span></h3>
         <p class="muted" th:if="${booking.type.name() == 'FLIGHT'}" th:text="#{trip.flightBookedNext}">Đã đặt vé!</p>
         <p class="muted" th:if="${booking.type.name() == 'HOTEL'}" th:text="#{trip.hotelBookedNext}">Đã đặt phòng!</p>
@@ -55,22 +168,33 @@
 
     <!-- Đánh giá -->
     <div class="card" style="margin-top:16px"
-         th:if="${myReview != null or (booking.status.name() == 'CONFIRMED' and booking.targetId != null)}">
+         th:if="${booking.type.name() == 'HOTEL' and (myReview != null or (booking.status.name() == 'CONFIRMED' and booking.targetId != null))}">
         <h3 style="margin-top:0" th:text="#{account.yourReview}">Đánh giá của bạn</h3>
 
         <div th:if="${myReview != null}">
             <span class="stars" th:text="${myReview.rating + '★'}"></span>
             <p th:if="${myReview.comment}" th:text="${myReview.comment}" style="margin:6px 0"></p>
+            <div th:if="${myReviewImages != null and !#lists.isEmpty(myReviewImages)}"
+                 style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0">
+                <img th:each="u : ${myReviewImages}" th:src="${u}" alt="ảnh đánh giá" th:alt="#{hotels.reviewImgAlt}"
+                     style="width:120px;height:90px;object-fit:cover;border-radius:8px"/>
+            </div>
             <div th:if="${myReview.vendorReply}" class="muted"
-                 style="margin-top:8px;padding-left:12px;border-left:3px solid #cdd3dd">
+                 style="margin-top:8px;padding-left:12px;border-left:3px solid #d3d9e4">
                 <b th:text="#{review.vendorReply}">Phản hồi từ khách sạn:</b> <span th:text="${myReview.vendorReply}"></span>
+                <div th:if="${myReplyImages != null and !#lists.isEmpty(myReplyImages)}"
+                     style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+                    <img th:each="u : ${myReplyImages}" th:src="${u}" alt="ảnh phản hồi" th:alt="#{hotels.replyImgAlt}"
+                         style="width:120px;height:90px;object-fit:cover;border-radius:8px"/>
+                </div>
             </div>
         </div>
 
         <form th:if="${myReview == null}"
-              th:action="@{'/account/bookings/' + ${booking.publicCode} + '/review'}" method="post">
+              th:action="@{'/account/bookings/' + ${booking.publicCode} + '/review'}" method="post"
+              enctype="multipart/form-data">
             <label class="muted" th:text="#{review.rating}">Số sao</label><br/>
-            <select name="rating" style="padding:8px;border:1px solid #cdd3dd;border-radius:8px">
+            <select name="rating" style="padding:8px;border:1px solid #d3d9e4;border-radius:8px">
                 <option value="5" th:text="'5★ — ' + #{review.rate5}">5★ — Tuyệt vời</option>
                 <option value="4" th:text="'4★ — ' + #{review.rate4}">4★ — Tốt</option>
                 <option value="3" th:text="'3★ — ' + #{review.rate3}">3★ — Ổn</option>
@@ -80,12 +204,93 @@
             <br/><br/>
             <label class="muted" th:text="#{review.comment}">Nhận xét</label><br/>
             <textarea name="comment" rows="3" maxlength="2000"
-                      style="width:100%;padding:8px;border:1px solid #cdd3dd;border-radius:8px"
+                      style="width:100%;padding:8px;border:1px solid #d3d9e4;border-radius:8px"
                       th:placeholder="#{review.commentPlaceholder}" placeholder="Chia sẻ trải nghiệm của bạn (không bắt buộc)"></textarea>
             <br/>
+            <label class="muted" style="display:block;margin-top:10px;margin-bottom:4px" th:text="#{account.photoOptional}">Ảnh (không bắt buộc)</label>
+            <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px" for="reviewImages">
+                <span aria-hidden="true">📷</span> <span th:text="#{account.choosePhotos}">Chọn ảnh</span>
+            </label>
+            <input id="reviewImages" type="file" name="images" accept="image/*" multiple hidden th:attr="data-delimg=#{account.delImg}"/>
+            <span class="muted" style="margin-left:8px;font-size:12px" th:text="#{account.maxPhotos}">Tối đa 5 ảnh</span>
+            <div id="reviewPics" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
             <button class="btn" type="submit" style="margin-top:10px" th:text="#{review.submit}">Gửi đánh giá</button>
         </form>
     </div>
 </div>
+<script>
+    /* Tu dong day ngay/gio tra khi customer chon ngay/gio nhan >= ngay/gio tra (form sua don) */
+    (function () {
+        function ymd(d) { var z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); }
+        function two(n) { return (n < 10 ? '0' : '') + n; }
+        function toMin(v) { if (!v) return null; var q = v.split(':'); return parseInt(q[0], 10) * 60 + parseInt(q[1], 10); }
+        // Qua dem: ngay tra tu tien toi +1 ngay
+        Array.prototype.forEach.call(document.querySelectorAll('input[type=date][name=checkIn]'), function (ci) {
+            var form = ci.closest('form'); if (!form) return;
+            var co = form.querySelector('input[name=checkOut]'); if (!co) return;
+            if (ci.value) co.min = ci.value;
+            ci.addEventListener('change', function () {
+                if (ci.value && (!co.value || co.value <= ci.value)) {
+                    co.value = ymd(new Date(new Date(ci.value).getTime() + 864e5));
+                }
+                if (ci.value) co.min = ci.value;
+            });
+        });
+        // Trong ngay: gio tra tu tien toi +1 tieng
+        Array.prototype.forEach.call(document.querySelectorAll('input[type=time][name=timeIn]'), function (ti) {
+            var form = ti.closest('form'); if (!form) return;
+            var to = form.querySelector('input[name=timeOut]'); if (!to) return;
+            ti.addEventListener('change', function () {
+                var inMin = toMin(ti.value); if (inMin == null) return;
+                var outMin = toMin(to.value);
+                if (outMin == null || outMin <= inMin) {
+                    var nm = inMin + 60; if (nm > 1439) nm = 1439;
+                    to.value = two(Math.floor(nm / 60)) + ':' + two(nm % 60);
+                }
+            });
+        });
+    })();
+</script>
+<script>
+    /* Xem truoc + xoa anh review: render thumbnail, dong bo lai input.files qua DataTransfer */
+    (function () {
+        var input = document.getElementById('reviewImages');
+        var box = document.getElementById('reviewPics');
+        if (!input || !box) return;
+        var MAX = 5;
+        var files = [];
+        function sync() {
+            var dt = new DataTransfer();
+            files.forEach(function (f) { dt.items.add(f); });
+            input.files = dt.files;
+        }
+        function render() {
+            box.innerHTML = '';
+            files.forEach(function (f, i) {
+                var url = URL.createObjectURL(f);
+                var cell = document.createElement('div');
+                cell.style.cssText = 'position:relative;width:76px;height:76px;border:1px solid var(--line,#e7e9ee);border-radius:8px;overflow:hidden';
+                var img = document.createElement('img');
+                img.src = url; img.alt = '';
+                img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+                img.onload = function () { URL.revokeObjectURL(url); };
+                var btn = document.createElement('button');
+                btn.type = 'button'; btn.title = input.getAttribute('data-delimg') || 'Xoá ảnh'; btn.textContent = '×';
+                btn.style.cssText = 'position:absolute;top:2px;right:2px;width:20px;height:20px;line-height:18px;border:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:13px;cursor:pointer;padding:0';
+                btn.addEventListener('click', function () { files.splice(i, 1); sync(); render(); });
+                cell.appendChild(img); cell.appendChild(btn); box.appendChild(cell);
+            });
+        }
+        input.addEventListener('change', function () {
+            Array.prototype.forEach.call(input.files, function (f) {
+                if (f.type.indexOf('image/') !== 0 || files.length >= MAX) return;
+                if (files.some(function (x) { return x.name === f.name && x.size === f.size; })) return;
+                files.push(f);
+            });
+            sync(); render();
+        });
+    })();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

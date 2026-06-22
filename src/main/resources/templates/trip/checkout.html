@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{trip.checkoutTitle}">Thanh toán chuyến đi - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:680px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <h1 th:text="#{trip.step3}">Bước 3/3 · Hoàn tất &amp; thanh toán</h1>
+    <p class="muted" th:utext="#{trip.checkoutIntro}">Các đơn dưới đây thuộc chuyến đi của bạn. Hãy thanh toán <b>từng đơn</b> để hoàn tất
+        (mỗi đơn giữ chỗ tối đa 20 phút).</p>
+
+    <div th:if="${#lists.isEmpty(bookings)}" class="card">
+        <p class="muted" style="margin:0" th:utext="#{trip.noTripBookings}">Chưa có đơn nào trong chuyến đi. Bạn có thể xem lại ở
+            <a href="/account/bookings">Đơn của tôi</a>.</p>
+    </div>
+
+    <div class="list-item" th:each="b : ${bookings}">
+        <div>
+            <h3 style="margin:0 0 2px">
+                <span th:if="${b.type.name() == 'FLIGHT'}" th:text="#{trip.flightTicket}">✈️ Vé máy bay</span>
+                <span th:if="${b.type.name() == 'HOTEL'}" th:text="#{trip.hotelLabel}">🏨 Khách sạn</span>
+                <span class="muted" style="font-weight:400" th:text="${b.title}"></span>
+            </h3>
+            <div class="muted" style="font-size:13px">
+                <span th:if="${b.type.name() == 'FLIGHT'}" th:text="#{account.departure} + ' ' + ${b.travelDate}"></span>
+                <span th:if="${b.type.name() == 'HOTEL'}">
+                    <span th:text="#{search.checkin}">Nhận</span> <span th:text="${b.checkIn}"></span>
+                    <span th:if="${b.checkOut != null}"> → <span th:text="#{search.checkout}">trả</span> <span th:text="${b.checkOut}"></span></span>
+                </span>
+                · <span th:text="#{trip.codeWord}">mã</span> <span th:text="${b.publicCode}"></span>
+            </div>
+            <div class="price" style="font-size:16px;margin-top:4px">
+                <span th:text="${b.amount != null ? #numbers.formatInteger(b.amount,1,'COMMA') : ''}"></span>
+                <span th:text="${b.currency}"></span>
+            </div>
+        </div>
+        <div style="text-align:right">
+            <a th:if="${b.status.name() == 'PENDING_PAYMENT'}" class="btn"
+               th:href="@{'/payment/' + ${b.publicCode}}" th:text="#{trip.pay}">Thanh toán</a>
+            <span th:if="${b.status.name() == 'CONFIRMED'}" class="badge"
+                  style="color:#0e7a44;font-weight:600" th:text="#{trip.paid}">✓ Đã thanh toán</span>
+            <span th:if="${b.status.name() != 'PENDING_PAYMENT' and b.status.name() != 'CONFIRMED'}"
+                  class="muted" th:text="${b.status}"></span>
+        </div>
+    </div>
+
+    <div class="card" th:if="${anyPending}" style="background:#e7f5ee;border:1px solid #cce8da;margin-top:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+            <b th:text="#{trip.remainingToPay}">Còn lại cần thanh toán</b>
+            <b class="price" style="font-size:18px">
+                <span th:text="${#numbers.formatInteger(total,1,'COMMA')}"></span> VND</b>
+        </div>
+        <p class="muted" style="font-size:12px;margin:8px 0 0" th:utext="#{trip.checkoutNote}">
+            Bấm “Thanh toán” ở từng đơn phía trên. Đơn nào chưa trả vẫn nằm trong
+            <a href="/account/bookings">Đơn của tôi</a> để trả sau.</p>
+    </div>
+
+    <p style="margin-top:16px">
+        <a class="btn ghost" href="/account/bookings" th:text="#{trip.backToBookings}">Về Đơn của tôi</a>
+        <a class="btn ghost" href="/trip-planner" th:text="#{trip.planAnother}">Lên chuyến đi khác</a>
+    </p>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

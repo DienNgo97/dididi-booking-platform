@@ -1,6 +1,7 @@
 package com.dididi.booking.approval.api.controller;
 
 import com.dididi.booking.approval.api.dto.ApprovalRequestDto;
+import com.dididi.booking.approval.domain.ApprovalStatus;
 import com.dididi.booking.approval.service.ApprovalService;
 import com.dididi.booking.audit.event.AuditEvent;
 import com.dididi.booking.common.dto.ApiResponse;
@@ -25,10 +26,12 @@ public class AdminApprovalApiController {
         this.events = events;
     }
 
-    @Operation(summary = "Danh sách yêu cầu phê duyệt đang chờ (lọc theo companyId tuỳ chọn)")
+    @Operation(summary = "Danh sách yêu cầu phê duyệt theo trạng thái (PENDING mặc định), lọc theo companyId tuỳ chọn")
     @GetMapping
-    public ApiResponse<List<ApprovalRequestDto>> pending(@RequestParam(required = false) Long companyId) {
-        return ApiResponse.ok(approvalService.listPending(companyId));
+    public ApiResponse<List<ApprovalRequestDto>> list(
+            @RequestParam(required = false, defaultValue = "PENDING") ApprovalStatus status,
+            @RequestParam(required = false) Long companyId) {
+        return ApiResponse.ok(approvalService.list(status, companyId));
     }
 
     @Operation(summary = "Duyệt: trừ ngân sách công ty + xác nhận đơn")

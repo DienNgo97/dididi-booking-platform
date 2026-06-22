@@ -9,19 +9,69 @@
 <div class="wrap">
     <div th:replace="~{fragments/site :: flash}"></div>
     <h1 th:text="#{nav.myBookings}">Đơn của tôi</h1>
+
+    <!-- Tab: Don ca nhan / Don nhom -->
+    <div style="display:flex;gap:8px;margin:8px 0 16px">
+        <a class="btn" href="/account/bookings" th:text="#{account.personalBookings}">Đơn cá nhân</a>
+        <a class="btn ghost" href="/account/groups" th:text="#{account.groupBookings}">👥 Đơn nhóm</a>
+    </div>
+
+    <!-- Bo loc theo loai + trang thai -->
+    <div style="margin:10px 0 16px">
+        <div class="muted" style="font-size:13px;margin-bottom:4px" th:text="#{account.filterType}">Loại đơn</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <a class="btn" th:classappend="${filterType == null} ? '' : 'ghost'"
+               th:href="@{/account/bookings(status=${filterStatus})}" th:text="#{account.all}">Tất cả</a>
+            <a class="btn" th:classappend="${filterType == 'HOTEL'} ? '' : 'ghost'"
+               th:href="@{/account/bookings(type='HOTEL', status=${filterStatus})}" th:text="#{account.typeHotel}">🏨 Khách sạn</a>
+            <a class="btn" th:classappend="${filterType == 'FLIGHT'} ? '' : 'ghost'"
+               th:href="@{/account/bookings(type='FLIGHT', status=${filterStatus})}" th:text="#{account.typeFlight}">✈️ Vé máy bay</a>
+        </div>
+        <div class="muted" style="font-size:13px;margin-bottom:4px" th:text="#{bulk.statusCol}">Trạng thái</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a class="btn" th:classappend="${filterStatus == null} ? '' : 'ghost'"
+               th:href="@{/account/bookings(type=${filterType})}" th:text="#{account.all}">Tất cả</a>
+            <a class="btn" th:classappend="${filterStatus == 'PENDING_PAYMENT'} ? '' : 'ghost'"
+               th:href="@{/account/bookings(type=${filterType}, status='PENDING_PAYMENT')}" th:text="#{booking.status.pending}">Chờ thanh toán</a>
+            <a class="btn" th:classappend="${filterStatus == 'CONFIRMED'} ? '' : 'ghost'"
+               th:href="@{/account/bookings(type=${filterType}, status='CONFIRMED')}" th:text="#{booking.status.confirmed}">Đã xác nhận</a>
+            <a class="btn" th:classappend="${filterStatus == 'CANCELLED'} ? '' : 'ghost'"
+               th:href="@{/account/bookings(type=${filterType}, status='CANCELLED')}" th:text="#{booking.status.cancelled}">Đã huỷ</a>
+            <a class="btn" th:classappend="${filterStatus == 'FAILED'} ? '' : 'ghost'"
+               th:href="@{/account/bookings(type=${filterType}, status='FAILED')}" th:text="#{account.stFailed}">Thất bại</a>
+        </div>
+    </div>
+    <div class="paginate" data-page-size="20">
     <div class="list-item" th:each="b : ${bookings}">
         <div>
             <h3 style="margin:0"><a th:href="@{'/account/bookings/' + ${b.publicCode}}" th:text="${b.publicCode}"></a>
-                <span class="muted" th:text="'(' + ${b.type} + ')'"></span></h3>
+                <span class="muted" th:switch="${b.type.name()}">
+                    <span th:case="'HOTEL'" th:text="#{account.typeHotelParen}">(Khách sạn)</span>
+                    <span th:case="'FLIGHT'" th:text="#{account.typeFlightParen}">(Vé máy bay)</span>
+                </span></h3>
             <div class="muted" th:text="${b.title}"></div>
-            <div class="muted"><span th:text="#{account.status}">Trạng thái:</span> <b th:text="${b.status}"></b></div>
+            <div style="margin-top:6px">
+                <span class="st" th:classappend="'st-' + ${#strings.toLowerCase(b.status.name())}" th:switch="${b.status.name()}">
+                    <span th:case="'PENDING_PAYMENT'">● <span th:text="#{booking.status.pending}">Chờ thanh toán</span></span>
+                    <span th:case="'CONFIRMED'">● <span th:text="#{booking.status.confirmed}">Đã xác nhận</span></span>
+                    <span th:case="'CANCELLED'">● <span th:text="#{booking.status.cancelled}">Đã huỷ</span></span>
+                    <span th:case="'FAILED'">● <span th:text="#{account.stFailed}">Thất bại</span></span>
+                    <span th:case="*" th:text="${b.status}"></span>
+                </span></div>
+            <a th:if="${b.status.name() == 'PENDING_PAYMENT'}" th:href="@{'/payment/' + ${b.publicCode}}"
+               class="btn" style="margin-top:8px;display:inline-block;padding:7px 14px" th:text="#{booking.continuePayment}">Tiếp tục thanh toán</a>
         </div>
         <div class="price">
             <span th:text="${b.amount != null ? #numbers.formatInteger(b.amount,1,'COMMA') : ''}"></span>
             <span th:text="${b.currency}"></span>
         </div>
     </div>
-    <p class="muted" th:if="${#lists.isEmpty(bookings)}"><span th:text="#{account.noBookings}">Chưa có đơn nào.</span> <a href="/hotels" th:text="#{account.bookHotel}">Đặt phòng</a> <span th:text="#{common.or}">hoặc</span> <a href="/flights" th:text="#{account.bookFlight}">đặt vé</a>.</p>
+    </div>
+    <p class="muted" th:if="${#lists.isEmpty(bookings)}">
+        <span th:if="${filterType != null or filterStatus != null}"><span th:text="#{account.noMatchFilter}">Không có đơn nào khớp bộ lọc.</span> <a th:href="@{/account/bookings}" th:text="#{account.clearFilter}">Xoá bộ lọc</a></span>
+        <span th:unless="${filterType != null or filterStatus != null}"><span th:text="#{account.noBookings}">Chưa có đơn nào.</span> <a href="/hotels" th:text="#{account.bookHotel}">Đặt phòng</a> <span th:text="#{common.or}">hoặc</span> <a href="/flights" th:text="#{account.bookFlight}">đặt vé</a>.</span>
+    </p>
 </div>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

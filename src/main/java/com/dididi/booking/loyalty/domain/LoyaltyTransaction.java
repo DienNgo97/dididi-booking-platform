@@ -28,6 +28,10 @@ public class LoyaltyTransaction extends BaseEntity {
     @Column(length = 200)
     private String description;
 
+    /** Ma voucher tao ra khi DOI diem (chi set cho txn REDEEM). */
+    @Column(name = "voucher_code", length = 40)
+    private String voucherCode;
+
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     public LoyaltyTxnType getType() { return type; }
@@ -38,4 +42,6 @@ public class LoyaltyTransaction extends BaseEntity {
     public void setBookingId(Long bookingId) { this.bookingId = bookingId; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public String getVoucherCode() { return voucherCode; }
+    public void setVoucherCode(String voucherCode) { this.voucherCode = voucherCode; }
 }

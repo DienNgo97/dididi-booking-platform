@@ -30,6 +30,7 @@ public class LoyaltyWebController {
         model.addAttribute("tier", loyaltyService.tier(uid));
         model.addAttribute("lifetimeEarned", loyaltyService.lifetimeEarned(uid));
         model.addAttribute("history", loyaltyService.history(uid));
+        model.addAttribute("redeemedVouchers", loyaltyService.redeemedVouchers(uid));
         model.addAttribute("redeemPointValue", loyaltyService.redeemPointValue());
         model.addAttribute("minRedeem", loyaltyService.minRedeem());
         return "account/points";

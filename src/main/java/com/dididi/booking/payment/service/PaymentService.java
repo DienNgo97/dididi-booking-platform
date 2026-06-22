@@ -7,6 +7,7 @@ import com.dididi.booking.payment.repository.PaymentRepository;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -68,6 +69,26 @@ public class PaymentService {
         p.setBookingId(booking.getId());
         p.setAmount(booking.getAmount());
         p.setCurrency(booking.getCurrency());
+        p.setMethod("VNPAY");
+        p.setStatus(PaymentStatus.PENDING);
+        p.setTransactionRef(txnRef);
+        p.setGatewayTxnNo(null);
+        p.setBankCode(null);
+        p.setResponseCode(null);
+        p.setPayDate(null);
+        return paymentRepository.save(p);
+    }
+
+    /**
+     * Tao ban ghi Payment PENDING cho VNPay voi SO TIEN tuy y (dung cho "tra ca nhom" gop 1 giao dich).
+     * leadBooking chi dung de luu bookingId dai dien + currency; amount la tong cua nhom.
+     */
+    public Payment initiateVnpayWithAmount(Booking leadBooking, BigDecimal amount, String txnRef) {
+        // Tai dung dong Payment san co cua don dan (tranh 2 payment / 1 booking -> loi NonUnique).
+        Payment p = paymentRepository.findByBookingId(leadBooking.getId()).orElseGet(Payment::new);
+        p.setBookingId(leadBooking.getId());
+        p.setAmount(amount);
+        p.setCurrency(leadBooking.getCurrency());
         p.setMethod("VNPAY");
         p.setStatus(PaymentStatus.PENDING);
         p.setTransactionRef(txnRef);

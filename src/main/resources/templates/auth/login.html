@@ -3,27 +3,212 @@
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title th:text="#{auth.loginTitle}">Đăng nhập - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}"/>
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="authbox">
     <h1 th:text="#{nav.login}">Đăng nhập</h1>
+
+    <!-- thông báo -->
     <div class="flash" th:if="${message}" th:text="${message}"></div>
+    <div class="flash err" th:if="${error}" th:text="${error}"></div>
     <div class="flash err" th:if="${param.error}" th:text="#{auth.badCredentials}">Email hoặc mật khẩu không đúng.</div>
+    <div class="flash err" th:if="${param.inactive}" th:text="#{login.inactive}">Tài khoản chưa kích hoạt hoặc đã bị khoá. Vui lòng kiểm tra email để kích hoạt tài khoản.</div>
+    <div class="flash" th:if="${param.reset}" th:text="#{login.resetOk}">Đặt lại mật khẩu thành công. Mời bạn đăng nhập bằng mật khẩu mới.</div>
+    <div class="flash" th:if="${param.verified}" th:text="#{login.verifiedOk}">Kích hoạt tài khoản thành công. Mời bạn đăng nhập.</div>
+    <div class="flash err" th:if="${param.verifyfail}" th:text="#{login.verifyFail}">Liên kết kích hoạt không hợp lệ hoặc đã hết hạn.</div>
     <div class="flash" th:if="${param.logout}" th:text="#{auth.loggedOut}">Đã đăng xuất.</div>
-    <form th:action="@{/login}" method="post">
-        <label th:text="#{auth.email}">Email</label>
-        <input type="email" name="username" required autofocus/>
-        <label th:text="#{auth.password}">Mật khẩu</label>
-        <input type="password" name="password" required/>
-        <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%" th:text="#{nav.login}">Đăng nhập</button></div>
-    </form>
+
+    <!-- ===== BƯỚC 2: NHẬP OTP ===== -->
+    <div th:if="${step == 'otp'}">
+        <p class="muted" th:utext="#{login.otpStep(${email})}">Nhập mã OTP gồm 6 số đã gửi tới <b>email</b>.</p>
+        <form th:action="@{/login/otp/verify}" method="post">
+            <input type="hidden" name="email" th:value="${email}"/>
+            <label th:text="#{login.otpLabel}">Mã OTP</label>
+            <input type="text" name="otp" inputmode="numeric" pattern="\d{6}" maxlength="6" required autofocus
+                   autocomplete="one-time-code" placeholder="------"/>
+            <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%" th:text="#{nav.login}">Đăng nhập</button></div>
+        </form>
+        <form th:action="@{/login/otp/request}" method="post" style="margin-top:10px">
+            <input type="hidden" name="email" th:value="${email}"/>
+            <button class="btn ghost" type="submit" style="width:100%" th:text="#{login.resendCode}">Gửi lại mã</button>
+        </form>
+        <p class="muted" style="margin-top:12px">
+            <a href="/login" th:text="#{login.changeEmail}">Đổi email</a> &nbsp;·&nbsp; <a href="/login?mode=password" th:text="#{login.loginPassword}">Đăng nhập bằng mật khẩu</a>
+        </p>
+    </div>
+
+    <!-- ===== ĐĂNG NHẬP BẰNG MẬT KHẨU ===== -->
+    <div th:if="${step != 'otp' and mode == 'password'}">
+        <form th:action="@{/login}" method="post">
+            <label th:text="#{auth.email}">Email</label>
+            <input type="email" name="username" required autofocus/>
+            <label th:text="#{auth.password}">Mật khẩu</label>
+            <input type="password" name="password" required/>
+            <div style="text-align:right;margin-top:6px"><a class="muted" href="/forgot-password" th:text="#{auth.forgot} + '?'">Quên mật khẩu?</a></div>
+            <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%" th:text="#{nav.login}">Đăng nhập</button></div>
+        </form>
+        <p class="muted" style="margin-top:12px"><a href="/login" th:text="#{login.loginOtpEmail}">← Đăng nhập bằng mã OTP qua email</a></p>
+    </div>
+
+    <!-- ===== BƯỚC 1: NHẬP EMAIL (mặc định, giống Agoda) ===== -->
+    <div th:if="${step != 'otp' and mode != 'password'}">
+        <form id="otpEmailForm" th:action="@{/login/otp/request}" method="post">
+            <label th:text="#{auth.email}">Email</label>
+            <input type="email" id="otpEmail" name="email" required autofocus/>
+            <div style="margin-top:18px"><button class="btn" type="submit" style="width:100%" th:text="#{login.continue}">Tiếp tục</button></div>
+        </form>
+        <p class="muted" style="margin-top:12px"><a href="/login?mode=password" th:text="#{login.loginPassword}">Đăng nhập bằng mật khẩu</a></p>
+    </div>
+
+    <!-- ===== Chung: Google + đăng ký + điều khoản ===== -->
     <div style="text-align:center;margin:14px 0;color:#9aa3af" th:text="#{auth.or}">hoặc</div>
     <a class="btn ghost" href="/oauth2/authorization/google"
        style="width:100%;display:block;text-align:center;box-sizing:border-box;text-decoration:none"
        th:text="#{auth.google}">Đăng nhập với Google</a>
     <p class="muted" style="margin-top:14px"><span th:text="#{auth.noAccount}">Chưa có tài khoản?</span> <a href="/register" th:text="#{nav.register}">Đăng ký</a></p>
     <p class="muted" style="margin-top:6px"><span th:text="#{auth.areYouHotelOwner}">Bạn là chủ khách sạn?</span> <a href="/vendor-register" th:text="#{auth.vendorRegister}">Đăng ký bán phòng</a></p>
+
+    <p class="muted" style="font-size:12px;margin-top:14px;line-height:1.6" th:utext="#{login.terms}">
+        Khi đăng nhập, tôi đồng ý với các
+        <a href="/terms" target="_blank" rel="noopener">Điều khoản sử dụng</a>
+        và
+        <a href="/privacy" target="_blank" rel="noopener">Chính sách bảo mật</a>
+        của Dididi.
+    </p>
 </div>
+
+<!-- Popup: sau khi đăng ký, nhắc kiểm tra email để kích hoạt -->
+<div id="activateModal" th:if="${pendingActivation}"
+     style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000">
+    <div style="background:#fff;max-width:440px;width:90%;padding:26px;border-radius:14px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+        <h3 style="margin-top:0" th:text="#{login.checkEmailTitle}">Kiểm tra email của bạn</h3>
+        <p style="color:#444" th:utext="#{login.activationSent(${pendingActivation})}">Chúng tôi đã gửi liên kết kích hoạt tới
+            <b>email</b>.<br/>
+            Mở email và bấm vào liên kết để <b>kích hoạt tài khoản</b> trước khi đăng nhập.</p>
+        <button class="btn" type="button"
+                onclick="document.getElementById('activateModal').style.display='none'" th:text="#{login.understood}">Đã hiểu</button>
+    </div>
+</div>
+<!-- Popup nhập OTP (Ajax, tự đăng nhập khi đủ 6 số đúng) -->
+<div class="otp-modal" id="otpModal">
+    <div class="otp-card">
+        <h3 th:text="#{login.otpModalTitle}">Nhập mã OTP</h3>
+        <p class="muted"><span th:text="#{login.otpModalSubPre}">Mã gồm 6 số đã gửi tới</span> <b id="otpEmailLabel">email</b></p>
+        <div class="otp-inputs" id="otpInputs">
+            <input type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Số 1" th:attr="aria-label=#{login.digit(1)}"/>
+            <input type="text" inputmode="numeric" maxlength="1" aria-label="Số 2" th:attr="aria-label=#{login.digit(2)}"/>
+            <input type="text" inputmode="numeric" maxlength="1" aria-label="Số 3" th:attr="aria-label=#{login.digit(3)}"/>
+            <input type="text" inputmode="numeric" maxlength="1" aria-label="Số 4" th:attr="aria-label=#{login.digit(4)}"/>
+            <input type="text" inputmode="numeric" maxlength="1" aria-label="Số 5" th:attr="aria-label=#{login.digit(5)}"/>
+            <input type="text" inputmode="numeric" maxlength="1" aria-label="Số 6" th:attr="aria-label=#{login.digit(6)}"/>
+        </div>
+        <div class="otp-err" id="otpErr"></div>
+        <div class="otp-actions">
+            <a id="otpResend" th:text="#{login.resendCode}">Gửi lại mã</a> &nbsp;·&nbsp; <a id="otpClose" th:text="#{login.changeEmail}">Đổi email</a>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+    window.DD_LOGIN = {
+        otpWrong: /*[[#{login.otpWrong}]]*/ 'Mã OTP không đúng.',
+        error: /*[[#{login.error}]]*/ 'Có lỗi xảy ra, vui lòng thử lại.',
+        resending: /*[[#{login.resending}]]*/ 'Đang gửi lại...',
+        resent: /*[[#{login.resent}]]*/ 'Đã gửi lại mã.'
+    };
+</script>
+<script>
+(function () {
+    var modal = document.getElementById('otpModal');
+    if (!modal) return;
+    var form = document.getElementById('otpEmailForm');
+    var emailInput = document.getElementById('otpEmail');
+    var label = document.getElementById('otpEmailLabel');
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('#otpInputs input'));
+    var err = document.getElementById('otpErr');
+    var csrf = document.querySelector('meta[name=_csrf]');
+    var csrfH = document.querySelector('meta[name=_csrf_header]');
+    var currentEmail = '', busy = false;
+
+    function headers() {
+        var h = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        if (csrf && csrf.content && csrfH && csrfH.content) h[csrfH.content] = csrf.content;
+        return h;
+    }
+    function code() { return boxes.map(function (b) { return b.value; }).join(''); }
+    function clearBoxes() { boxes.forEach(function (b) { b.value = ''; b.classList.remove('filled'); }); }
+    function openModal(email) {
+        currentEmail = email; label.textContent = email; err.textContent = '';
+        clearBoxes(); modal.classList.add('show');
+        setTimeout(function () { boxes[0].focus(); }, 50);
+    }
+    function closeModal() { modal.classList.remove('show'); }
+    function setBusy(b) { busy = b; boxes.forEach(function (x) { x.disabled = b; }); }
+
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var email = (emailInput.value || '').trim();
+            if (!email) return;
+            fetch('/login/otp/request-ajax', { method: 'POST', headers: headers(), credentials: 'same-origin',
+                body: 'email=' + encodeURIComponent(email) })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    if (d && d.inactive) { window.location = '/login?inactive'; return; }
+                    openModal(email);
+                })
+                .catch(function () { form.submit(); });
+        });
+    }
+
+    function verify() {
+        if (busy) return;
+        setBusy(true); err.innerHTML = '<span class="otp-spin"></span>';
+        fetch('/login/otp/verify-ajax', { method: 'POST', headers: headers(), credentials: 'same-origin',
+            body: 'email=' + encodeURIComponent(currentEmail) + '&otp=' + encodeURIComponent(code()) })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d && d.ok) { err.textContent = ''; window.location = (d.redirect || '/'); return; }
+                err.textContent = (d && d.error) || (window.DD_LOGIN&&DD_LOGIN.otpWrong) || 'Mã OTP không đúng.';
+                setBusy(false); clearBoxes(); boxes[0].focus();
+            })
+            .catch(function () { err.textContent = (window.DD_LOGIN&&DD_LOGIN.error) || 'Có lỗi xảy ra, vui lòng thử lại.'; setBusy(false); });
+    }
+
+    boxes.forEach(function (box, i) {
+        box.addEventListener('input', function () {
+            box.value = box.value.replace(/\D/g, '').slice(0, 1);
+            box.classList.toggle('filled', !!box.value);
+            if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
+            if (code().length === 6) verify();
+        });
+        box.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace' && !box.value && i > 0) boxes[i - 1].focus();
+        });
+        box.addEventListener('paste', function (e) {
+            e.preventDefault();
+            var t = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\D/g, '').slice(0, 6);
+            for (var j = 0; j < 6; j++) { boxes[j].value = t[j] || ''; boxes[j].classList.toggle('filled', !!boxes[j].value); }
+            (boxes[Math.min(t.length, 5)] || boxes[5]).focus();
+            if (t.length === 6) verify();
+        });
+    });
+
+    var resend = document.getElementById('otpResend');
+    if (resend) resend.addEventListener('click', function () {
+        if (!currentEmail) return; err.textContent = (window.DD_LOGIN&&DD_LOGIN.resending) || 'Đang gửi lại...';
+        fetch('/login/otp/request-ajax', { method: 'POST', headers: headers(), credentials: 'same-origin',
+            body: 'email=' + encodeURIComponent(currentEmail) })
+            .then(function (r) { return r.json(); })
+            .then(function () { err.textContent = (window.DD_LOGIN&&DD_LOGIN.resent) || 'Đã gửi lại mã.'; clearBoxes(); boxes[0].focus(); });
+    });
+    var closeBtn = document.getElementById('otpClose');
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+})();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

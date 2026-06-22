@@ -8,29 +8,50 @@
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="wrap">
     <div th:replace="~{fragments/site :: flash}"></div>
-    <form action="/flights" method="get" style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
-        <input type="text" name="from" th:value="${from}" th:placeholder="#{flights.from}" placeholder="Từ (HAN)" style="padding:9px;border:1px solid #cdd3dd;border-radius:9px"/>
-        <input type="text" name="to" th:value="${to}" th:placeholder="#{flights.to}" placeholder="Đến (SGN)" style="padding:9px;border:1px solid #cdd3dd;border-radius:9px"/>
-        <input type="date" name="date" th:value="${date}" style="padding:9px;border:1px solid #cdd3dd;border-radius:9px"/>
-        <button class="btn" type="submit" th:text="#{flights.search}">Tìm</button>
-    </form>
-    <h1 th:text="#{flights.title}">Chuyến bay</h1>
-    <div class="list-item" th:each="f : ${flights}">
-        <div>
-            <h3 style="margin:0"><span th:text="${f.airlineCode}"></span> <span th:text="${f.flightNumber}"></span></h3>
-            <div class="muted"><span th:text="${f.fromAirport}"></span> → <span th:text="${f.toAirport}"></span>
-                · <span th:text="${f.departureTime}"></span>
-                · <span th:text="${f.availableSeats}"></span> <span th:text="#{flights.seatsLeft}">ghế</span></div>
+    <div class="search-full"><div th:replace="~{fragments/search :: widget('flight')}"></div></div>
+    <div class="search-mini" id="searchMini">
+        <div class="smini-bar">
+        <a class="smini-brand" href="/">Dididi</a>
+        <div class="smini-pill">
+            <span class="smini-seg"><b>🛫 <span th:text="(${from != null and !#strings.isEmpty(from)} ? ${from} : #{flights.anywhere}) + ' → ' + (${to != null and !#strings.isEmpty(to)} ? ${to} : #{flights.anywhere})">HAN → SGN</span></b></span>
+            <span class="smini-div"></span>
+            <span class="smini-seg grow" th:text="${date != null} ? ${date} : #{flights.anyDay}">2026-07-01</span>
+            <span class="smini-div opt"></span>
+            <span class="smini-seg opt">Vietnam Airlines</span>
+            <button type="button" class="smini-go" aria-label="Tìm" th:attr="aria-label=#{flights.search}">🔍</button>
         </div>
-        <div style="text-align:right">
+        </div>
+    </div>
+    <h1 th:text="#{flights.title}">Chuyến bay</h1>
+    <div class="paginate" data-page-size="20">
+    <div class="fcard" th:each="f : ${flights}">
+        <a class="fcard-stretch" th:aria-label="${f.airlineCode + ' ' + f.flightNumber}"
+           th:href="@{/booking/flight/{id}(id=${f.id},cabin=${cabin})}"></a>
+        <div class="fcard-airline">
+            <div class="fcard-logo">✈</div>
+            <div><b th:text="${f.airlineCode}">VN</b> <span class="muted" th:text="${f.flightNumber}"></span>
+                <div class="muted" style="font-size:11px">Vietnam Airlines</div></div>
+        </div>
+        <div class="fcard-route">
+            <div class="fcard-pt"><b th:text="${f.fromAirport}">HAN</b></div>
+            <div class="fcard-line"></div>
+            <div class="fcard-pt"><b th:text="${f.toAirport}">SGN</b></div>
+        </div>
+        <div class="fcard-mid">
+            <div class="muted" style="font-size:12.5px" th:text="${f.departureTime}"></div>
+            <div class="muted" style="font-size:12px"><span th:text="${f.availableSeats}"></span> <span th:text="#{flights.seatsLeft}">ghế</span></div>
+        </div>
+        <div class="fcard-aside">
             <div class="price">
                 <span th:text="${f.price != null ? #numbers.formatInteger(f.price,1,'COMMA') : ''}"></span>
                 <span th:text="${f.currency}"></span>
             </div>
-            <a class="btn" th:href="@{'/booking/flight/' + ${f.id}}" style="margin-top:6px" th:text="#{flights.book}">Đặt</a>
+            <a class="btn" th:href="@{/booking/flight/{id}(id=${f.id},cabin=${cabin})}" th:text="#{flights.book}">Chọn</a>
         </div>
+    </div>
     </div>
     <p class="muted" th:if="${#lists.isEmpty(flights)}" th:text="#{flights.empty}">Không có chuyến bay.</p>
 </div>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

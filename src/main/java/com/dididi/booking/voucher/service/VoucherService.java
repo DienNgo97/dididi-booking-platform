@@ -70,7 +70,8 @@ public class VoucherService {
         }
 
         BigDecimal discount = computeDiscount(v, base);
-        BigDecimal payable = base.subtract(discount);
+        BigDecimal tierDiscount = b.getTierDiscountAmount() != null ? b.getTierDiscountAmount() : BigDecimal.ZERO;
+        BigDecimal payable = base.subtract(discount).subtract(tierDiscount);
         if (payable.signum() < 0) payable = BigDecimal.ZERO;
 
         b.setOriginalAmount(base);
@@ -80,15 +81,21 @@ public class VoucherService {
         return bookingRepository.save(b);
     }
 
-    /** Go voucher: tra lai amount = originalAmount, xoa discount/voucher. */
+    /** Go voucher: amount tra ve gia goc tru uu dai hang; xoa discount/voucher (giu uu dai hang). */
     @Transactional
     public Booking remove(Booking b) {
+        BigDecimal tierDiscount = b.getTierDiscountAmount() != null ? b.getTierDiscountAmount() : BigDecimal.ZERO;
         if (b.getOriginalAmount() != null) {
-            b.setAmount(b.getOriginalAmount());
+            BigDecimal afterTier = b.getOriginalAmount().subtract(tierDiscount);
+            if (afterTier.signum() < 0) afterTier = BigDecimal.ZERO;
+            b.setAmount(afterTier);
         }
-        b.setOriginalAmount(null);
         b.setDiscountAmount(null);
         b.setVoucherCode(null);
+        // Khong con uu dai hang -> bo gia goc (don ve trang thai khong giam gia).
+        if (tierDiscount.signum() == 0) {
+            b.setOriginalAmount(null);
+        }
         return bookingRepository.save(b);
     }
 

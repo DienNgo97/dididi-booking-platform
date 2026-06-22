@@ -15,6 +15,7 @@ import com.dididi.booking.payment.repository.PaymentRepository;
 import com.dididi.booking.payment.repository.RefundRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -101,7 +102,7 @@ public class RefundService {
                 "Hoàn " + r.getAmount() + " " + r.getCurrency() + " cho đơn " + b.getPublicCode()
                         + (reason != null && !reason.isBlank() ? " — lý do: " + reason : "")));
 
-        emailService.sendRefunded(b, r.getAmount());   // email hoan tien (phong thu)
+        emailService.sendRefunded(b, r.getAmount(), LocaleContextHolder.getLocale());   // email hoan tien (phong thu)
         return r;
     }
 

@@ -10,31 +10,62 @@
 <div class="wrap">
     <div th:replace="~{fragments/site :: flash}"></div>
     <p class="muted"><a href="/hotels">← <span th:text="#{nav.hotels}">Khách sạn</span></a></p>
-    <h1 th:text="${hotel.name}">Hotel</h1>
-    <form sec:authorize="isAuthenticated()" th:action="@{/account/wishlist/toggle}" method="post" style="margin:-6px 0 10px">
-        <input type="hidden" name="hotelId" th:value="${hotel.id}"/>
-        <input type="hidden" name="back" th:value="@{'/hotels/' + ${hotel.id}}"/>
-        <button class="btn ghost" type="submit"
-                th:style="${wishlisted} ? 'color:#c0392b;border-color:#c0392b' : ''"
-                th:text="(${wishlisted} ? '♥ ' : '♡ ') + (${wishlisted} ? #{wishlist.saved} : #{wishlist.save})">♡ Lưu</button>
-    </form>
-    <div class="card">
-        <div class="muted"><span th:text="${hotel.city}"></span> · <span th:text="${hotel.address}"></span>
-            <span class="stars" th:if="${hotel.starRating != null}" th:text="${hotel.starRating + '★'}"></span></div>
-        <div class="muted" th:if="${reviewCount > 0}">
-            <span class="stars" th:text="#{hotels.guestRating} + ' ' + ${avgRating} + '★'"></span>
-            (<span th:text="${reviewCount}"></span> <span th:text="#{hotels.reviewsCount}">đánh giá</span>)</div>
-        <p th:text="${hotel.description}"></p>
-    </div>
-
-    <div class="card" th:if="${!#lists.isEmpty(images)}" style="margin-top:12px">
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <img th:each="img : ${images}" th:src="${img.url()}" alt="ảnh khách sạn"
-                 style="width:210px;height:150px;object-fit:cover;border-radius:10px"/>
+    <div class="gallery">
+        <div class="gallery-main">
+            <img th:if="${!#lists.isEmpty(images)}" th:src="${images[0].url()}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
+            <div class="ph" th:if="${#lists.isEmpty(images)}">🏨</div>
+        </div>
+        <div class="gallery-thumbs" th:if="${images != null and images.size() > 1}">
+            <img th:each="img,it : ${images}" th:if="${it.index > 0}" th:src="${img.url()}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
         </div>
     </div>
 
+    <div class="dt-head">
+        <div class="dt-title">
+            <h1 th:text="${hotel.name}">Hotel</h1>
+            <div class="dt-sub">
+                <span class="stars" th:if="${hotel.starRating != null}" th:text="${hotel.starRating + '★'}"></span>
+                · 📍 <span th:text="${hotel.city}"></span> · <span th:text="${hotel.address}"></span>
+            </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+            <div class="rate" th:if="${reviewCount > 0}">
+                <div class="lab"><b th:text="#{hotels.ratingLabel}">Đánh giá</b><small>(<span th:text="${reviewCount}"></span> <span th:text="#{hotels.reviewsCount}">đánh giá</span>)</small></div>
+                <span class="score" th:text="${#numbers.formatDecimal(avgRating,1,1)}">4.5</span>
+            </div>
+            <form sec:authorize="isAuthenticated()" th:action="@{/account/wishlist/toggle}" method="post" style="margin:0">
+                <input type="hidden" name="hotelId" th:value="${hotel.id}"/>
+                <input type="hidden" name="back" th:value="@{'/hotels/' + ${hotel.id}}"/>
+                <button class="btn ghost" type="submit"
+                        th:style="${wishlisted} ? 'color:#c0392b;border-color:#c0392b' : ''"
+                        th:text="(${wishlisted} ? '♥ ' : '♡ ') + (${wishlisted} ? #{wishlist.saved} : #{wishlist.save})">♡ Lưu</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:8px">
+        <p style="margin:0" th:text="${hotel.description}"></p>
+    </div>
+
     <h2 style="margin-top:24px" th:text="#{hotels.chooseRoom}">Chọn phòng & đặt</h2>
+    <div style="margin:10px 0;display:flex;gap:8px;flex-wrap:wrap">
+        <a th:href="@{/hotels/{id}(id=${hotel.id},stay='overnight',checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${roomsWanted},trip=${trip})}"
+           th:class="${stay == 'day'} ? 'btn ghost' : 'btn'" th:text="#{hotels.overnightBtn}">Qua đêm</a>
+        <a th:href="@{/hotels/{id}(id=${hotel.id},stay='day',checkIn=${checkIn},adults=${adults},children=${children},rooms=${roomsWanted},trip=${trip})}"
+           th:class="${stay == 'day'} ? 'btn' : 'btn ghost'" th:text="#{hotels.dayuseBtn}">Chỗ ở trong ngày (theo giờ)</a>
+    </div>
+    <p class="muted" th:if="${stay == 'day'}" th:utext="#{hotels.dayuseNote}">
+        🕐 Chỗ ở trong ngày: lưu trú <b>≤ 4 giờ tính nửa giá</b> phòng, <b>trên 4 giờ tính full giá</b>.
+        Mỗi lượt đặt cách nhau <b>2 giờ</b> để khách sạn dọn phòng.
+    </p>
+    <p class="muted" th:unless="${stay == 'day'}" th:utext="#{hotels.overnightNote}">
+        🛏 Qua đêm: nhận phòng từ <b>14:00</b>, trả phòng trước <b>12:00</b>.
+    </p>
+    <p class="muted" th:if="${guests != null}">
+        <span th:utext="#{hotels.searchingFor(${guests})}">Đang tìm cho <b>2</b> khách</span><span th:if="${checkIn != null and checkOut != null}">
+        · <span th:text="${checkIn}"></span> → <span th:text="${checkOut}"></span></span>.
+        <span th:text="#{hotels.roomsAutoSuggest}">Số phòng được gợi ý tự động theo sức chứa của từng hạng phòng.</span>
+    </p>
     <p class="muted" th:if="${#lists.isEmpty(rooms)}" th:text="#{hotels.noRooms}">
         Chưa lấy được loại phòng (kiểm tra hotel-pms 8082 đang chạy).
     </p>
@@ -48,6 +79,11 @@
                     <span class="price">
                         <span th:text="${r.basePrice() != null ? #numbers.formatInteger(r.basePrice(),1,'COMMA') : ''}"></span>
                         <span th:text="${r.currency()}"></span></span> <span th:text="#{hotels.perNight}">/ đêm</span></div>
+                <div th:if="${guests != null and suggestRooms != null and suggestRooms.get(r.id()) != null}"
+                     style="color:#2f8b60;font-size:14px;margin-top:4px"
+                     th:utext="#{hotels.suggestRooms(${suggestRooms.get(r.id())},${guests},${r.capacity()})}">
+                    → Gợi ý đặt <b>1</b> phòng cho 2 khách (sức chứa 2 khách/phòng)
+                </div>
             </div>
         </div>
         <form th:action="@{/booking/hotel}" method="post" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:end"
@@ -55,19 +91,34 @@
             <input type="hidden" name="hotelId" th:value="${hotel.id}"/>
             <input type="hidden" name="roomTypeId" th:value="${r.id()}"/>
             <input type="hidden" name="roomName" th:value="${r.name()}"/>
+            <input type="hidden" name="dayUse" th:value="${stay == 'day'}"/>
+            <input type="hidden" name="trip" th:if="${trip != null}" th:value="${trip}"/>
             <div><label class="muted" th:text="#{hotels.guestName}">Tên khách</label><br/>
-                <input type="text" name="guestName" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
-            <div><label class="muted" th:text="#{home.checkin}">Nhận phòng</label><br/>
-                <input type="date" name="checkIn" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
-            <div><label class="muted" th:text="#{home.checkout}">Trả phòng</label><br/>
-                <input type="date" name="checkOut" required style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
+                <input type="text" name="guestName" required style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div th:unless="${stay == 'day'}"><label class="muted" th:text="#{home.checkin}">Nhận phòng</label><br/>
+                <input type="date" name="checkIn" required th:value="${checkIn}" style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div th:unless="${stay == 'day'}"><label class="muted" th:text="#{home.checkout}">Trả phòng</label><br/>
+                <input type="date" name="checkOut" required th:value="${checkOut}" style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div th:if="${stay == 'day'}"><label class="muted" th:text="#{hotels.dateLabel}">Ngày</label><br/>
+                <input type="date" name="date" required th:value="${date != null ? date : checkIn}" class="du-date" style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div th:if="${stay == 'day'}"><label class="muted" th:text="#{hotels.timeIn}">Giờ nhận</label><br/>
+                <input type="time" name="timeIn" required th:value="${timeIn != null ? timeIn : '09:00'}" class="du-in" style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div th:if="${stay == 'day'}"><label class="muted" th:text="#{hotels.timeOut}">Giờ trả</label><br/>
+                <input type="time" name="timeOut" required th:value="${timeOut != null ? timeOut : '13:00'}" class="du-out" style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
             <div><label class="muted" th:text="#{hotels.numRooms}">Số phòng</label><br/>
-                <input type="number" name="rooms" value="1" min="1" style="width:70px;padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></div>
+                <input type="number" name="rooms" min="1"
+                       th:value="${keepRooms != null ? keepRooms : (suggestRooms != null and suggestRooms.get(r.id()) != null ? suggestRooms.get(r.id()) : 1)}" value="1"
+                       style="width:70px;padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div th:if="${stay == 'day'}" class="du-preview" th:attr="data-base=${r.basePrice()},data-cur=${r.currency()}"
+                 style="flex-basis:100%;color:#2f8b60;font-size:14px;margin-top:4px;font-weight:600"></div>
             <button class="btn" type="submit" th:text="#{hotels.bookRoom}">Đặt phòng</button>
         </form>
         <p class="muted" sec:authorize="isAuthenticated()" style="margin-top:8px">
             <a th:href="@{/booking/bulk(hotelId=${hotel.id},roomTypeId=${r.id()},roomName=${r.name()})}"
                th:text="#{bulk.link}">Đặt theo nhóm (nhiều phòng)</a>
+            &nbsp;·&nbsp;
+            <a th:href="@{/groups/new(hotelId=${hotel.id},roomTypeId=${r.id()},roomName=${r.name()},checkIn=${checkIn},checkOut=${checkOut})}"
+               style="font-weight:600" th:text="#{hotels.createGroup}">👥 Tạo nhóm — mời bạn bè, chia tiền</a>
         </p>
         <p class="muted" sec:authorize="!isAuthenticated()" style="margin-top:10px">
             <a href="/login" th:text="#{nav.login}">Đăng nhập</a> <span th:text="#{hotels.toBook}">để đặt phòng.</span>
@@ -87,11 +138,136 @@
             <span class="muted" style="float:right" th:text="${rv.createdAt.toString().substring(0,10)}"></span>
         </div>
         <p th:if="${rv.comment}" th:text="${rv.comment}" style="margin:6px 0"></p>
+        <div th:if="${reviewImages != null and !#lists.isEmpty(reviewImages.get(rv.id))}"
+             style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0">
+            <img th:each="u : ${reviewImages.get(rv.id)}" th:src="${u}" alt="ảnh đánh giá" th:alt="#{hotels.reviewImgAlt}"
+                 style="width:140px;height:100px;object-fit:cover;border-radius:8px"/>
+        </div>
         <div th:if="${rv.vendorReply}" class="muted"
-             style="margin-top:8px;padding-left:12px;border-left:3px solid #cdd3dd">
+             style="margin-top:8px;padding-left:12px;border-left:3px solid #d3d9e4">
             <b th:text="#{review.vendorReply}">Phản hồi từ khách sạn:</b> <span th:text="${rv.vendorReply}"></span>
+            <div th:if="${replyImages != null and !#lists.isEmpty(replyImages.get(rv.id))}"
+                 style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+                <img th:each="u : ${replyImages.get(rv.id)}" th:src="${u}" alt="ảnh phản hồi" th:alt="#{hotels.replyImgAlt}"
+                     style="width:140px;height:100px;object-fit:cover;border-radius:8px"/>
+            </div>
         </div>
     </div>
 </div>
+<script th:inline="javascript">
+    window.DD_HD = {
+        timeOutAfterIn: /*[[#{hd.timeOutAfterIn}]]*/ '⚠ Giờ trả phải sau giờ nhận',
+        stayPrefix: /*[[#{hd.stayPrefix}]]*/ 'Lưu trú',
+        hoursUnit: /*[[#{hd.hoursUnit}]]*/ 'giờ',
+        halfPrice: /*[[#{hd.halfPrice}]]*/ 'nửa giá phòng',
+        fullPrice: /*[[#{hd.fullPrice}]]*/ 'cả ngày (full giá)'
+    };
+</script>
+<script>
+    (function () {
+        function ymd(d) { var z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); }
+        var today = ymd(new Date()), tmr = ymd(new Date(Date.now() + 864e5));
+        Array.prototype.forEach.call(document.querySelectorAll('input[name=checkIn]'), function (ci) {
+            if (!ci.value) ci.value = today;
+            ci.min = today;
+            var form = ci.closest('form');
+            var co = form ? form.querySelector('input[name=checkOut]') : null;
+            if (co) {
+                if (!co.value || co.value <= ci.value) {
+                    var n = new Date(new Date(ci.value).getTime() + 864e5); co.value = ymd(n);
+                }
+                co.min = ci.value;
+                ci.addEventListener('change', function () {
+                    if (co.value <= ci.value) { var n2 = new Date(new Date(ci.value).getTime() + 864e5); co.value = ymd(n2); }
+                    co.min = ci.value;
+                });
+            }
+        });
+    })();
+</script>
+<script>
+    (function () {
+        function ymd(d) { var z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); }
+        function fmt(n) { return Math.round(n).toLocaleString('vi-VN'); }
+        function toMin(v) { if (!v) return null; var p = v.split(':'); return parseInt(p[0], 10) * 60 + parseInt(p[1], 10); }
+        function updatePreview(form) {
+            var di = form.querySelector('.du-in'), don = form.querySelector('.du-out'), prev = form.querySelector('.du-preview');
+            if (!di || !don || !prev) return;
+            var base = parseFloat(prev.getAttribute('data-base') || '0');
+            var cur = prev.getAttribute('data-cur') || 'VND';
+            var rEl = form.querySelector('input[name=rooms]'); var rooms = rEl ? (parseInt(rEl.value, 10) || 1) : 1;
+            var a = toMin(di.value), b = toMin(don.value);
+            var H = window.DD_HD || {};
+            if (a == null || b == null || b <= a) { prev.textContent = H.timeOutAfterIn || '⚠ Giờ trả phải sau giờ nhận'; return; }
+            var mins = b - a, hours = Math.round((mins / 60) * 10) / 10;
+            var half = mins <= 240;
+            var total = base * (half ? 0.5 : 1) * rooms;
+            prev.textContent = (H.stayPrefix || 'Lưu trú') + ' ' + hours + ' ' + (H.hoursUnit || 'giờ') + ' → ' + (half ? (H.halfPrice || 'nửa giá phòng') : (H.fullPrice || 'cả ngày (full giá)')) + ' · ≈ ' + fmt(total) + ' ' + cur;
+        }
+        Array.prototype.forEach.call(document.querySelectorAll('.du-date'), function (d) {
+            if (!d.value) d.value = ymd(new Date());
+            d.min = ymd(new Date());
+            var form = d.closest('form'); if (!form) return;
+            ['.du-in', '.du-out', 'input[name=rooms]'].forEach(function (sel) {
+                var el = form.querySelector(sel); if (el) el.addEventListener('change', function () { updatePreview(form); });
+            });
+            updatePreview(form);
+        });
+    })();
+</script>
+<script>
+    /* Trong ngay: doi gio nhan -> gio tra tu tien toi +1 tieng neu <= gio nhan (chan trong ngay 23:59) */
+    (function () {
+        function two(n) { return (n < 10 ? '0' : '') + n; }
+        function toMin(v) { if (!v) return null; var q = v.split(':'); return parseInt(q[0], 10) * 60 + parseInt(q[1], 10); }
+        Array.prototype.forEach.call(document.querySelectorAll('input[type=time][name=timeIn]'), function (ti) {
+            var form = ti.closest('form'); if (!form) return;
+            var to = form.querySelector('input[name=timeOut]'); if (!to) return;
+            ti.addEventListener('change', function () {
+                var inMin = toMin(ti.value); if (inMin == null) return;
+                var outMin = toMin(to.value);
+                if (outMin == null || outMin <= inMin) {
+                    var nm = inMin + 60; if (nm > 1439) nm = 1439;
+                    to.value = two(Math.floor(nm / 60)) + ':' + two(nm % 60);
+                    to.dispatchEvent(new Event('change'));   // cap nhat lai preview gia
+                }
+            });
+        });
+    })();
+</script>
+<!-- Lightbox: xem ảnh khách sạn cỡ lớn -->
+<div class="lightbox" id="lightbox" aria-hidden="true">
+    <button class="lb-close" id="lbClose" type="button" aria-label="Đóng" th:attr="aria-label=#{toast.close}">✕</button>
+    <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="Ảnh trước" th:attr="aria-label=#{hotels.prevPhoto}">‹</button>
+    <img class="lb-photo" id="lbPhoto" src="" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
+    <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Ảnh sau" th:attr="aria-label=#{hotels.nextPhoto}">›</button>
+    <div class="lb-count" id="lbCount"></div>
+</div>
+<script>
+(function () {
+    var imgs = Array.prototype.slice.call(document.querySelectorAll('.gallery img'));
+    if (!imgs.length) return;
+    var box = document.getElementById('lightbox');
+    var photo = document.getElementById('lbPhoto');
+    var count = document.getElementById('lbCount');
+    var srcs = imgs.map(function (i) { return i.getAttribute('src'); });
+    var cur = 0;
+    function show(i) { cur = (i + srcs.length) % srcs.length; photo.src = srcs[cur]; count.textContent = (cur + 1) + ' / ' + srcs.length; }
+    function open(i) { show(i); box.classList.add('show'); box.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden'; }
+    function close() { box.classList.remove('show'); box.setAttribute('aria-hidden', 'true'); document.body.style.overflow = ''; }
+    imgs.forEach(function (im, i) { im.style.cursor = 'zoom-in'; im.addEventListener('click', function () { open(i); }); });
+    document.getElementById('lbClose').addEventListener('click', close);
+    document.getElementById('lbPrev').addEventListener('click', function (e) { e.stopPropagation(); show(cur - 1); });
+    document.getElementById('lbNext').addEventListener('click', function (e) { e.stopPropagation(); show(cur + 1); });
+    box.addEventListener('click', function (e) { if (e.target === box) close(); });
+    document.addEventListener('keydown', function (e) {
+        if (!box.classList.contains('show')) return;
+        if (e.key === 'Escape') close();
+        else if (e.key === 'ArrowLeft') show(cur - 1);
+        else if (e.key === 'ArrowRight') show(cur + 1);
+    });
+})();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

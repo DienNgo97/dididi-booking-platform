@@ -7,17 +7,22 @@
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
-<div class="hero">
-    <div style="max-width:1008px;margin:0 auto">
+<div class="hero" style="padding-bottom:96px">
+    <div style="max-width:980px;margin:0 auto">
         <h1 th:text="#{home.heroTitle}">Đặt phòng & vé máy bay cùng Dididi</h1>
         <p th:text="#{home.heroSubtitle}">Chọn điểm đến, để chúng tôi lo phần còn lại.</p>
     </div>
-    <form class="searchbox" action="/hotels" method="get">
-        <div><label th:text="#{home.city}">Thành phố</label><input type="text" name="city" th:placeholder="#{common.cityExample}" placeholder="VD: Da Nang"/></div>
-        <div><label th:text="#{home.checkin}">Nhận phòng</label><input type="date"/></div>
-        <div><label th:text="#{home.checkout}">Trả phòng</label><input type="date"/></div>
-        <button class="btn" type="submit" th:text="#{home.searchHotels}">Tìm khách sạn</button>
-    </form>
+</div>
+<div style="margin-top:-72px;padding:0 16px;position:relative;z-index:5">
+    <div th:replace="~{fragments/search :: widget('hotel')}"></div>
+</div>
+<div class="wrap" style="margin-top:30px">
+    <div class="stats">
+        <div class="stat"><div class="num" data-countup="500" data-suffix="+">500+</div><div class="lbl" th:text="#{home.statHotels}">Khách sạn</div></div>
+        <div class="stat"><div class="num" data-countup="12000" data-suffix="+">12.000+</div><div class="lbl" th:text="#{home.statBookings}">Lượt đặt</div></div>
+        <div class="stat"><div class="num" data-countup="4.8">4.8</div><div class="lbl" th:text="#{home.statRating}">Điểm đánh giá TB</div></div>
+        <div class="stat"><div class="num" data-countup="30" data-suffix="+">30+</div><div class="lbl" th:text="#{home.statCities}">Thành phố</div></div>
+    </div>
 </div>
 <div class="wrap">
     <div th:replace="~{fragments/site :: flash}"></div>
@@ -32,5 +37,45 @@
         <p class="muted" th:if="${#lists.isEmpty(featured)}" th:text="#{home.empty}">Chưa có khách sạn.</p>
     </div>
 </div>
+<div class="wrap">
+    <h2 th:text="#{home.whyTitle}">Vì sao chọn Dididi?</h2>
+    <div class="feats">
+        <div class="feat">
+            <div class="ic">⚡</div>
+            <h4 th:text="#{home.feat1Title}">Xác nhận tức thì</h4>
+            <p th:text="#{home.feat1Desc}">Đặt phòng &amp; vé được xác nhận ngay, không phải chờ đợi.</p>
+        </div>
+        <div class="feat">
+            <div class="ic">🔒</div>
+            <h4 th:text="#{home.feat2Title}">Thanh toán an toàn</h4>
+            <p th:text="#{home.feat2Desc}">Qua cổng VNPay, mã hoá bảo mật, không lưu số thẻ đầy đủ.</p>
+        </div>
+        <div class="feat">
+            <div class="ic">💬</div>
+            <h4 th:text="#{home.feat3Title}">Hỗ trợ tận tâm</h4>
+            <p th:text="#{home.feat3Desc}">Trợ lý ảo trả lời ngay, có thể gặp tổng đài viên khi cần.</p>
+        </div>
+    </div>
+</div>
+<div class="wrap" th:if="${!#lists.isEmpty(topRated)}">
+    <h2 style="display:flex;align-items:center;gap:8px;margin-bottom:2px" th:text="#{home.topRated}">⭐ Top 10 khách sạn được đánh giá cao nhất</h2>
+    <p class="muted" style="margin-top:0" th:text="#{home.topRatedSub}">Xếp theo điểm trung bình cộng từ đánh giá của khách.</p>
+    <div class="th-grid">
+        <a class="th-card" th:each="h,it : ${topRated}" th:href="@{'/hotels/' + ${h.id}}">
+            <div class="th-img">
+                <img th:if="${topCovers.get(h.id) != null}" th:src="${topCovers.get(h.id)}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
+                <div class="th-ph" th:if="${topCovers.get(h.id) == null}">🏨</div>
+                <span class="th-rank" th:text="'#' + ${it.index + 1}">#1</span>
+                <span class="th-score">★ <span th:text="${#numbers.formatDecimal(topRatings.get(h.id),1,1)}">4.8</span></span>
+            </div>
+            <div class="th-body">
+                <div class="th-name" th:text="${h.name}">Hotel</div>
+                <div class="th-city">📍 <span th:text="${h.city}">City</span></div>
+                <div class="th-price" th:if="${h.minPrice != null}"><span th:text="${#numbers.formatInteger(h.minPrice,1,'COMMA')}">0</span>đ <small th:text="#{home.perNight}">/ đêm</small></div>
+            </div>
+        </a>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

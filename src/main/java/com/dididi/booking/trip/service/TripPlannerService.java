@@ -7,6 +7,8 @@ import com.dididi.booking.hotel.repository.HotelRepository;
 import com.dididi.booking.trip.dto.TripSuggestion;
 import org.springframework.stereotype.Service;
 
+import java.text.Normalizer;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,7 @@ public class TripPlannerService {
         CITY_TO_AIRPORT.put("da nang", "DAD");
         CITY_TO_AIRPORT.put("hue", "HUI");
         CITY_TO_AIRPORT.put("nha trang", "CXR");
+        CITY_TO_AIRPORT.put("phu quoc", "PQC");
     }
 
     private final FlightRepository flightRepository;
@@ -39,7 +42,7 @@ public class TripPlannerService {
     }
 
     public TripSuggestion suggest(String city, String fromAirport) {
-        String norm = city == null ? "" : city.trim().toLowerCase();
+        String norm = normalize(city);
         String destAirport = resolveAirport(norm);
 
         List<Hotel> hotels = (city == null || city.isBlank())
@@ -57,6 +60,22 @@ public class TripPlannerService {
         return new TripSuggestion(city, destAirport, flights, hotels);
     }
 
+    /** Ma san bay cua thanh pho diem den (cong khai cho luong trip-planner). */
+    public String airportFor(String city) {
+        return resolveAirport(normalize(city));
+    }
+
+    /** Chuyen bay CON TRONG (con ghe) tu 'from' -> 'to' dung NGAY 'date'. */
+    public List<Flight> availableFlights(String from, String to, LocalDate date) {
+        if (from == null || from.isBlank() || to == null || to.isBlank() || date == null) return List.of();
+        return flightRepository.findAllByOrderByDepartureTime().stream()
+                .filter(f -> to.equalsIgnoreCase(f.getToAirport()))
+                .filter(f -> from.equalsIgnoreCase(f.getFromAirport()))
+                .filter(f -> f.getDepartureTime() != null && date.equals(f.getDepartureTime().toLocalDate()))
+                .filter(f -> f.getAvailableSeats() == null || f.getAvailableSeats() > 0)
+                .toList();
+    }
+
     private String resolveAirport(String normalizedCity) {
         if (normalizedCity.isBlank()) return null;
         for (Map.Entry<String, String> e : CITY_TO_AIRPORT.entrySet()) {
@@ -65,5 +84,12 @@ public class TripPlannerService {
             }
         }
         return null;
+    }
+
+    /** Chuan hoa: bo dau tieng Viet + lowercase de so khop ten thanh pho (vd "Đà Nẵng" -> "da nang"). */
+    private static String normalize(String s) {
+        if (s == null) return "";
+        String n = Normalizer.normalize(s.trim(), Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        return n.replace('đ', 'd').replace('Đ', 'D').toLowerCase();
     }
 }

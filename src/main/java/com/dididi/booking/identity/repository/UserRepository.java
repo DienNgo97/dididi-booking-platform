@@ -2,6 +2,7 @@ package com.dididi.booking.identity.repository;
 
 import com.dididi.booking.identity.domain.entity.User;
 import com.dididi.booking.identity.domain.enums.Role;
+import com.dididi.booking.identity.domain.enums.UserStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,6 +16,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // ---- Admin (Phase 4b) ----
     Page<User> findByRole(Role role, Pageable pageable);
+    Page<User> findByStatus(UserStatus status, Pageable pageable);
+    Page<User> findByRoleAndStatus(Role role, UserStatus status, Pageable pageable);
 
     // ---- Corporate B2B (Dot 3) ----
     List<User> findByCompanyIdOrderByEmail(Long companyId);

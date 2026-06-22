@@ -20,9 +20,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 public class ReviewService {
+
+    private static final DateTimeFormatter TRIP_END_FMT = DateTimeFormatter.ofPattern("HH:mm 'ngày' dd/MM/yyyy");
 
     private final ReviewRepository reviewRepository;
     private final BookingRepository bookingRepository;
@@ -48,9 +53,13 @@ public class ReviewService {
         if (!b.getUserId().equals(userId)) {
             throw new BusinessException("FORBIDDEN", "Không có quyền đánh giá đơn này", HttpStatus.FORBIDDEN);
         }
+        if (b.getType() == BookingType.FLIGHT) {
+            throw new BusinessException("REVIEW_DISABLED", "Hiện chưa hỗ trợ đánh giá chuyến bay", HttpStatus.BAD_REQUEST);
+        }
         if (b.getStatus() != BookingStatus.CONFIRMED) {
             throw new BusinessException("NOT_REVIEWABLE", "Chỉ đánh giá được đơn đã xác nhận", HttpStatus.CONFLICT);
         }
+        requireTripEnded(b);
         if (b.getTargetId() == null) {
             throw new BusinessException("NOT_REVIEWABLE", "Đơn này không hỗ trợ đánh giá", HttpStatus.CONFLICT);
         }
@@ -69,6 +78,39 @@ public class ReviewService {
         r.setReviewerName(u != null && u.getFullName() != null ? u.getFullName() : "Khách");
         r.setStatus(autoPublish ? ReviewStatus.PUBLISHED : ReviewStatus.PENDING);
         return reviewRepository.save(r);
+    }
+
+    /**
+     * Chi cho danh gia sau khi chuyen di ket thuc (tang tinh chan thuc, tranh danh gia ao).
+     * KS qua dem: sau 12h trua ngay tra phong. KS theo gio: sau gio tra. Ve bay: sau gio bay.
+     */
+    private void requireTripEnded(Booking b) {
+        LocalDateTime end = tripEnd(b);
+        if (end != null && LocalDateTime.now().isBefore(end)) {
+            throw new BusinessException("TRIP_NOT_ENDED",
+                    "Chỉ có thể đánh giá sau khi kết thúc chuyến đi (sau " + end.format(TRIP_END_FMT) + ")",
+                    HttpStatus.CONFLICT);
+        }
+    }
+
+    /** Thoi diem ket thuc chuyen di; null = khong xac dinh duoc -> khong chan. */
+    private LocalDateTime tripEnd(Booking b) {
+        if (b.getType() == BookingType.HOTEL) {
+            if (b.isDayUse() && b.getCheckIn() != null && b.getCheckOutTime() != null) {
+                return b.getCheckIn().atTime(b.getCheckOutTime());     // KS theo gio: gio tra phong
+            }
+            if (b.getCheckOut() != null) {
+                return b.getCheckOut().atTime(LocalTime.NOON);         // KS qua dem: 12h trua ngay tra
+            }
+            if (b.getCheckIn() != null) {
+                return b.getCheckIn().plusDays(1).atTime(LocalTime.NOON);
+            }
+            return null;
+        }
+        if (b.getTravelDate() != null) {
+            return b.getTravelDate();                                  // Ve bay: sau gio bay
+        }
+        return null;
     }
 
     // ---------- Cong khai (chi PUBLISHED) ----------

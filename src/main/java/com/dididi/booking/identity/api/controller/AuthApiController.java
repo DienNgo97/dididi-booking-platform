@@ -8,16 +8,14 @@ import com.dididi.booking.identity.api.dto.RefreshRequest;
 import com.dididi.booking.identity.api.dto.RegisterRequest;
 import com.dididi.booking.identity.api.dto.UserDto;
 import com.dididi.booking.identity.domain.entity.User;
-import com.dididi.booking.identity.domain.enums.Role;
-import com.dididi.booking.identity.domain.enums.UserStatus;
 import com.dididi.booking.identity.repository.UserRepository;
+import com.dididi.booking.identity.service.AccountService;
 import com.dididi.booking.identity.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Auth", description = "Đăng ký / đăng nhập / thông tin tài khoản")
@@ -26,14 +24,14 @@ import org.springframework.web.bind.annotation.*;
 public class AuthApiController {
 
     private final AuthService authService;
+    private final AccountService accountService;
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public AuthApiController(AuthService authService, UserRepository userRepository,
-                            PasswordEncoder passwordEncoder) {
+    public AuthApiController(AuthService authService, AccountService accountService,
+                            UserRepository userRepository) {
         this.authService = authService;
+        this.accountService = accountService;
         this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Operation(summary = "Đăng nhập, trả JWT access token")
@@ -55,20 +53,11 @@ public class AuthApiController {
         return ApiResponse.ok(null, "Đã đăng xuất");
     }
 
-    @Operation(summary = "Đăng ký tài khoản CUSTOMER")
+    @Operation(summary = "Đăng ký tài khoản CUSTOMER (tạo ở trạng thái chờ kích hoạt, gửi email kích hoạt)")
     @PostMapping("/register")
     public ApiResponse<UserDto> register(@Valid @RequestBody RegisterRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw new BusinessException("EMAIL_EXISTS", "Email đã được đăng ký", HttpStatus.CONFLICT);
-        }
-        User u = new User();
-        u.setEmail(request.email());
-        u.setPasswordHash(passwordEncoder.encode(request.password()));
-        u.setFullName(request.fullName());
-        u.setRole(Role.CUSTOMER);
-        u.setStatus(UserStatus.ACTIVE);
-        userRepository.save(u);
-        return ApiResponse.ok(toDto(u), "Đăng ký thành công");
+        User u = accountService.registerCustomer(request.email(), request.password(), request.fullName());
+        return ApiResponse.ok(toDto(u), "Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.");
     }
 
     @Operation(summary = "Thông tin tài khoản đang đăng nhập (cần Bearer token)")

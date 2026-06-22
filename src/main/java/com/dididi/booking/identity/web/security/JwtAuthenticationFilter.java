@@ -1,6 +1,7 @@
 package com.dididi.booking.identity.web.security;
 
 import com.dididi.booking.identity.service.JwtService;
+import com.dididi.booking.identity.service.RefreshTokenService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 
 @Component
@@ -24,9 +26,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String PREFIX = "Bearer ";
 
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, RefreshTokenService refreshTokenService) {
         this.jwtService = jwtService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -42,12 +46,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     && SecurityContextHolder.getContext().getAuthentication() == null) {
                 Claims claims = jwtService.parse(token);
                 String userId = claims.getSubject();
-                String role = claims.get("role", String.class);
-                var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
-
-                var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                Date iat = claims.getIssuedAt();
+                long iatSec = (iat != null) ? iat.getTime() / 1000 : 0L;
+                // Token phat hanh TRUOC khi doi mat khau -> coi nhu da dang xuat (khong set authentication)
+                if (refreshTokenService.isAccessTokenStillValid(userId, iatSec)) {
+                    String role = claims.get("role", String.class);
+                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+                    var authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
         }
         filterChain.doFilter(request, response);

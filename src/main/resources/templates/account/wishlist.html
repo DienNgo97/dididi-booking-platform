@@ -11,11 +11,12 @@
     <h1 th:text="#{wishlist.title}">Khách sạn yêu thích</h1>
     <p class="muted" th:if="${#lists.isEmpty(hotels)}" th:text="#{wishlist.empty}">Bạn chưa lưu khách sạn nào.</p>
 
+    <div class="paginate" data-page-size="20">
     <div class="list-item" th:each="h : ${hotels}">
         <div>
             <h3 style="margin:0"><a th:href="@{'/hotels/' + ${h.id}}" th:text="${h.name}"></a></h3>
-            <div class="muted"><span th:text="${h.city}"></span>
-                · <span class="price" th:text="${#numbers.formatInteger(h.minPrice,1,'COMMA')} + ' ' + ${h.currency}"></span></div>
+            <div class="muted"><span th:text="${h.city}"></span><span th:if="${h.minPrice != null}">
+                · <span class="price" th:text="${#numbers.formatInteger(h.minPrice,1,'COMMA')} + ' ' + ${h.currency}"></span></span></div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex:none">
             <a class="btn" th:href="@{'/hotels/' + ${h.id}}" th:text="#{hotels.view}">Xem</a>
@@ -27,6 +28,8 @@
             </form>
         </div>
     </div>
+    </div>
 </div>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>
