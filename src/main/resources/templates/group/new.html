@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{group.newTitle}">Tạo nhóm đặt phòng - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:560px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <p class="muted"><a th:href="@{'/hotels/' + ${hotelId}}" th:text="#{group.backToHotel}">← Quay lại khách sạn</a></p>
+    <h1 th:text="#{group.newHeading}">Tạo nhóm đặt phòng</h1>
+    <p class="muted">
+        <span th:text="#{group.createForHotel(${hotelName})}">Tạo một nhóm cho KS.</span>
+        <span th:if="${roomName}" th:text="#{group.roomNote(${roomName})}"></span>
+        <span th:text="#{group.newIntro2}">Sau khi tạo, bạn sẽ có link mời để gửi cho bạn bè — mỗi người tự thêm phòng và trả phần của mình.</span>
+    </p>
+
+    <form th:action="@{/groups/create}" method="post" class="card">
+        <input type="hidden" name="hotelId" th:value="${hotelId}"/>
+        <input type="hidden" name="roomTypeId" th:value="${roomTypeId}"/>
+        <input type="hidden" name="roomName" th:value="${roomName}"/>
+
+        <label class="muted" th:text="#{group.groupName}">Tên nhóm</label><br/>
+        <input type="text" name="title" th:value="#{group.tripGroupPrefix} + ${hotelName}" maxlength="80"
+               style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px;margin-bottom:10px"/>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:150px">
+                <label class="muted" th:text="#{search.checkin}">Nhận phòng</label><br/>
+                <input type="date" name="checkIn" id="g-in" required th:value="${checkIn}"
+                       style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px"/>
+            </div>
+            <div style="flex:1;min-width:150px">
+                <label class="muted" th:text="#{search.checkout}">Trả phòng</label><br/>
+                <input type="date" name="checkOut" id="g-out" required th:value="${checkOut}"
+                       style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px"/>
+            </div>
+        </div>
+
+        <button class="btn" type="submit" style="margin-top:14px" th:text="#{group.createAndLink}">Tạo nhóm &amp; lấy link mời →</button>
+    </form>
+</div>
+<script>
+    (function () {
+        function ymd(d){var z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
+        var today=ymd(new Date());
+        var ci=document.getElementById('g-in'),co=document.getElementById('g-out');
+        if(!ci||!co)return;
+        ci.min=today;co.min=today;
+        if(!ci.value)ci.value=today;
+        if(!co.value||co.value<=ci.value)co.value=ymd(new Date(new Date(ci.value).getTime()+864e5));
+        ci.addEventListener('change',function(){
+            if(ci.value){co.min=ci.value;if(!co.value||co.value<=ci.value)co.value=ymd(new Date(new Date(ci.value).getTime()+864e5));}
+        });
+    })();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

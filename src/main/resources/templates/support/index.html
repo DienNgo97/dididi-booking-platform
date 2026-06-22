@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{support.title}">Trung tâm hỗ trợ - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+
+<div class="wrap" style="max-width:920px">
+
+    <div class="support-hero">
+        <h1 th:text="#{support.heroTitle}">Trung tâm hỗ trợ Dididi 🌿</h1>
+        <p th:text="#{support.heroIntro}">Trợ lý ảo trả lời ngay các câu hỏi thường gặp. Cần người thật? Bấm “Gặp tổng đài viên” bất cứ lúc nào.</p>
+    </div>
+
+    <h2 style="margin:0 0 12px" th:text="#{support.faqHeading}">Câu hỏi thường gặp</h2>
+    <div class="support-faq">
+        <button type="button" onclick="DididiSupport.ask('Làm sao huỷ đơn khách sạn hoặc vé máy bay?')"
+                th:utext="#{support.faqCancel} + '<span>' + #{support.faqCancelSub} + '</span>'">
+            Huỷ đơn thế nào?<span>Chính sách huỷ &amp; mốc 48 giờ</span></button>
+        <button type="button" onclick="DididiSupport.ask('Chính sách hoàn tiền thế nào?')"
+                th:utext="#{support.faqRefund} + '<span>' + #{support.faqRefundSub} + '</span>'">
+            Hoàn tiền<span>Khi nào được hoàn, bao lâu có tiền</span></button>
+        <button type="button" onclick="DididiSupport.ask('Tôi đổi ngày hoặc sửa đơn được không?')"
+                th:utext="#{support.faqReschedule} + '<span>' + #{support.faqRescheduleSub} + '</span>'">
+            Đổi lịch / sửa đơn<span>Thay đổi ngày, giờ, số phòng</span></button>
+        <button type="button" onclick="DididiSupport.ask('Dididi hỗ trợ thanh toán bằng cách nào?')"
+                th:utext="#{support.faqPayment} + '<span>' + #{support.faqPaymentSub} + '</span>'">
+            Thanh toán<span>VNPay, thẻ, QR</span></button>
+        <button type="button" onclick="DididiSupport.ask('Điểm thưởng và hạng thành viên hoạt động ra sao?')"
+                th:utext="#{support.faqPoints} + '<span>' + #{support.faqPointsSub} + '</span>'">
+            Điểm thưởng<span>Tích điểm, đổi voucher, hạng</span></button>
+        <button type="button" onclick="DididiSupport.ask('Hành lý và suất ăn khi đặt vé máy bay?')"
+                th:utext="#{support.faqBaggage} + '<span>' + #{support.faqBaggageSub} + '</span>'">
+            Hành lý &amp; suất ăn<span>Phụ phí dịch vụ chuyến bay</span></button>
+    </div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px">
+        <button type="button" class="btn" onclick="DididiSupport.open()" th:text="#{support.chatBtn}">💬 Chat với trợ lý ảo</button>
+        <a class="btn ghost" href="/account/bookings" th:text="#{support.viewBookings}">Xem đơn của tôi</a>
+    </div>
+
+    <h2 style="margin:0 0 12px" th:text="#{support.contactHeading}">Liên hệ trực tiếp</h2>
+    <div class="card" style="max-width:520px">
+        <p style="margin:0 0 8px"><b th:text="#{support.hotline}">Tổng đài:</b> <span th:text="#{support.hotlineVal}">1900 1234 (8:00–22:00 hằng ngày)</span></p>
+        <p style="margin:0 0 8px"><b th:text="#{support.emailLabel}">Email:</b> hotro@dididi.vn</p>
+        <p style="margin:0"><b th:text="#{support.zaloLabel}">Zalo OA:</b> Dididi Travel</p>
+        <p class="muted" style="font-size:12px;margin:10px 0 0" th:text="#{support.demoNote}">Đồ án demo — thông tin liên hệ chỉ mang tính minh hoạ.</p>
+    </div>
+</div>
+
+<div th:replace="~{fragments/site :: footer}"></div>
+
+<th:block th:if="${bookingCode != null}">
+<script th:inline="javascript">
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.DididiSupport) { DididiSupport.open(/*[[${bookingCode}]]*/ ''); }
+  });
+</script>
+</th:block>
+</body>
+</html>

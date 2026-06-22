@@ -3,10 +3,24 @@
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title th:text="#{booking.flightTitle}">Đặt vé - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <style>
+        .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:#5b6b7d; margin:8px 0 12px; }
+        .legend .sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:middle; margin-right:4px; }
+        .sw.biz{background:#fde9c8;border:1px solid #f0b95d}.sw.eco{background:#e7f5ee;border:1px solid #cce8da}
+        .sw.sel{background:#0e7a44;border:1px solid #0e7a44}.sw.taken{background:#d9dee4;border:1px solid #aab3bd}
+        .seatgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;max-width:340px}
+        .seat{font-size:10px;text-align:center;padding:7px 0;border-radius:5px;border:1px solid #cce8da;
+              background:#e7f5ee;color:#1d6e4a;user-select:none}
+        .seat.biz{background:#fde9c8;border-color:#f0b95d;color:#8a5a10}
+        .seat.free{cursor:pointer}
+        .seat.sel{background:#0e7a44;border-color:#0e7a44;color:#fff}
+        .seat.held,.seat.booked{background:#d9dee4;border-color:#aab3bd;color:#9aa3ad;cursor:not-allowed;text-decoration:line-through}
+        .seat.aisle{margin-right:14px}
+    </style>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
-<div class="wrap" style="max-width:560px">
+<div class="wrap" style="max-width:580px">
     <div th:replace="~{fragments/site :: flash}"></div>
     <p class="muted"><a href="/flights">← <span th:text="#{nav.flights}">Chuyến bay</span></a></p>
     <h1 th:text="#{booking.bookFlight}">Đặt vé</h1>
@@ -17,20 +31,175 @@
         <div class="price" style="margin-top:6px">
             <span th:text="${flight.price != null ? #numbers.formatInteger(flight.price,1,'COMMA') : ''}"></span>
             <span th:text="${flight.currency}"></span> <span th:text="#{booking.perSeat}">/ ghế</span></div>
-        <form th:action="@{/booking/flight}" method="post" style="margin-top:16px">
+
+        <form th:action="@{/booking/flight}" method="post" style="margin-top:16px" id="bookForm"
+              th:attr="data-price=${flight.price != null ? #numbers.formatInteger(flight.price,1,'NONE') : '0'},data-fullname=${fullName}">
             <input type="hidden" name="flightId" th:value="${flight.id}"/>
-            <label class="muted" th:text="#{booking.passengerName}">Tên hành khách</label><br/>
-            <input type="text" name="passengerName" th:value="${fullName}" required
-                   style="width:100%;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:10px"/>
+            <input type="hidden" name="tripLeg" th:if="${tripLeg != null}" th:value="${tripLeg}"/>
+            <input type="hidden" name="tripDest" th:if="${tripDest != null}" th:value="${tripDest}"/>
+            <input type="hidden" name="tripFrom" th:if="${tripFrom != null}" th:value="${tripFrom}"/>
+            <input type="hidden" name="tripDepart" th:if="${tripDepart != null}" th:value="${tripDepart}"/>
+            <input type="hidden" name="tripReturn" th:if="${tripReturn != null}" th:value="${tripReturn}"/>
+
             <label class="muted" th:text="#{booking.contactEmail}">Email liên hệ</label><br/>
             <input type="email" name="contactEmail"
-                   style="width:100%;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:10px"/>
-            <label class="muted" th:text="#{booking.seats}">Số ghế</label><br/>
-            <input type="number" name="seats" value="1" min="1"
-                   style="width:90px;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:14px"/><br/>
-            <button class="btn" type="submit" th:text="#{booking.continuePayment}">Tiếp tục thanh toán</button>
+                   style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px;margin-bottom:14px"/>
+
+            <!-- Chuyến đã đồng bộ flight-provider: chọn chỗ ngồi trên sơ đồ -->
+            <div th:if="${seatMap != null}">
+                <label class="muted" th:text="#{booking.chooseSeat}">Chọn chỗ ngồi (giữ chỗ 20 phút sau khi đặt) — mỗi ghế tương ứng 1 hành khách</label>
+                <div class="muted" th:if="${preselectSeat != null}"
+                     style="font-size:12.5px;background:#e7f5ee;border:1px solid #cce8da;border-radius:8px;padding:8px 10px;margin:6px 0 8px"
+                     th:utext="${preselectClass == 'BUSINESS'} ? #{booking.preselectNoteBiz} : #{booking.preselectNoteEco}">
+                    ✓ Đã tự chọn sẵn 1 ghế hạng <b>Phổ thông</b>
+                    theo lựa chọn tìm kiếm của bạn — có thể đổi ghế khác trên sơ đồ.
+                </div>
+                <div class="legend">
+                    <span><i class="sw biz"></i> <span th:text="#{search.business}">Thương gia</span></span>
+                    <span><i class="sw eco"></i> <span th:text="#{search.economy}">Phổ thông</span></span>
+                    <span><i class="sw sel"></i> <span th:text="#{booking.legendSelecting}">Đang chọn</span></span>
+                    <span><i class="sw taken"></i> <span th:text="#{booking.legendTaken}">Đã có người</span></span>
+                </div>
+                <div class="seatgrid" id="seatgrid" th:attr="data-preselect=${preselectSeat}">
+                    <div th:each="s : ${seatMap.seats}"
+                         th:attr="data-code=${s.code},data-price=${s.price}"
+                         th:classappend="|${s.seatClass=='BUSINESS'?'biz':'eco'} ${s.status=='FREE'?'free':(s.status=='HELD'?'held':'booked')} ${s.col=='C'?'aisle':''}|"
+                         th:title="|${s.code} · ${#numbers.formatInteger(s.price,1,'COMMA')} ${seatMap.currency}|"
+                         th:text="${s.code}" class="seat">12A</div>
+                </div>
+                <input type="hidden" name="seatCodes" id="seatCodes"/>
+            </div>
+
+            <!-- Chuyến cục bộ (không có sơ đồ): nhập số vé/hành khách -->
+            <div th:if="${seatMap == null}" style="margin-bottom:6px">
+                <label class="muted" th:text="#{booking.seatsCount}">Số vé (số hành khách)</label><br/>
+                <input type="number" name="seats" id="seatCount" value="1" min="1" max="9"
+                       style="width:90px;padding:9px;border:1px solid #d3d9e4;border-radius:8px"/>
+            </div>
+
+            <!-- Thông tin từng hành khách + dịch vụ (sinh động theo số ghế/số vé) -->
+            <h3 style="margin:18px 0 8px;font-size:16px" th:text="#{booking.paxAndServices}">Hành khách &amp; dịch vụ</h3>
+            <div id="paxCards" th:attr="data-seatword=#{booking.seatWord}"></div>
+
+            <!-- Tóm tắt giá -->
+            <div class="fare-sum">
+                <div class="row"><span th:text="#{booking.fareBase}">Tiền vé</span><b><span id="sumBase">0</span> <span th:text="${flight.currency}">VND</span></b></div>
+                <div class="row"><span th:text="#{booking.fareAddons}">Dịch vụ thêm (suất ăn + hành lý)</span><b><span id="sumAddon">0</span> <span th:text="${flight.currency}">VND</span></b></div>
+                <div class="row total"><span th:text="#{booking.fareTotal}">Tổng cộng</span><span class="price"><span id="sumTotal">0</span> <span th:text="${flight.currency}">VND</span></span></div>
+            </div>
+
+            <button class="btn" type="submit" id="payBtn"
+                    th:text="${tripLeg != null} ? #{booking.bookAndContinue} : #{booking.continuePayment}">Tiếp tục thanh toán</button>
         </form>
     </div>
 </div>
+
+<!-- Mẫu thẻ hành khách: option suất ăn / hành lý render từ server (1 nguồn) -->
+<template id="paxTpl">
+    <div class="pax-card">
+        <div class="pax-head"><span th:text="#{booking.paxWord}">Hành khách</span> <span class="pax-no">1</span><span class="pax-seat muted"></span></div>
+        <label th:text="#{booking.paxName}">Họ và tên (như trên CMND/CCCD/Hộ chiếu)</label>
+        <input class="pax-name" name="paxName" placeholder="VD: NGUYEN VAN A" th:attr="placeholder=#{booking.paxNamePlaceholder}" required/>
+        <div class="pax-row">
+            <div>
+                <label th:text="#{booking.mealLabel}">🍽 Suất ăn</label>
+                <select class="pax-meal" name="paxMeal">
+                    <option th:each="m : ${meals}" th:value="${m.code}" th:attr="data-price=${m.price}"
+                            th:text="${m.label} + (${m.price > 0} ? ' (+' + ${#numbers.formatInteger(m.price,1,'COMMA')} + 'đ)' : ' · ' + #{booking.free})">Suất ăn</option>
+                </select>
+            </div>
+            <div>
+                <label th:text="#{booking.bagLabel}">🧳 Hành lý ký gửi</label>
+                <select class="pax-bag" name="paxBag">
+                    <option th:each="bg : ${bags}" th:value="${bg.code}" th:attr="data-price=${bg.price}"
+                            th:text="${bg.label + (bg.price > 0 ? ' (+' + #numbers.formatInteger(bg.price,1,'COMMA') + 'đ)' : '')}">Hành lý</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+(function () {
+    var form = document.getElementById('bookForm');
+    var paxWrap = document.getElementById('paxCards');
+    var tpl = document.getElementById('paxTpl');
+    if (!form || !paxWrap || !tpl) return;
+    var grid = document.getElementById('seatgrid');         // có khi là chuyến có sơ đồ ghế
+    var seatHidden = document.getElementById('seatCodes');
+    var countInput = document.getElementById('seatCount');  // có khi là chuyến cục bộ
+    var btn = document.getElementById('payBtn');
+    var sumBase = document.getElementById('sumBase'), sumAddon = document.getElementById('sumAddon'), sumTotal = document.getElementById('sumTotal');
+    var flightPrice = parseInt(form.getAttribute('data-price') || '0', 10) || 0;
+    var fullName = form.getAttribute('data-fullname') || '';
+
+    function fmt(n) { return (n || 0).toLocaleString('vi-VN'); }
+    function selectedSeats() { return grid ? Array.prototype.slice.call(grid.querySelectorAll('.seat.sel')) : []; }
+    function cards() { return Array.prototype.slice.call(paxWrap.querySelectorAll('.pax-card')); }
+
+    function collect() {
+        return cards().map(function (c) {
+            return { name: c.querySelector('.pax-name').value, meal: c.querySelector('.pax-meal').value, bag: c.querySelector('.pax-bag').value };
+        });
+    }
+
+    function rebuild() {
+        var seatEls = selectedSeats();
+        var count = grid ? seatEls.length : Math.max(0, parseInt((countInput && countInput.value) || '0', 10) || 0);
+        var prev = collect();
+        paxWrap.innerHTML = '';
+        for (var i = 0; i < count; i++) {
+            var node = tpl.content.cloneNode(true);
+            var card = node.querySelector('.pax-card');
+            card.querySelector('.pax-no').textContent = (i + 1);
+            card.querySelector('.pax-seat').textContent = grid ? (' · ' + (paxWrap.getAttribute('data-seatword') || 'ghế') + ' ' + seatEls[i].getAttribute('data-code')) : '';
+            var nameEl = card.querySelector('.pax-name');
+            if (prev[i] && prev[i].name) nameEl.value = prev[i].name;
+            else if (i === 0 && fullName) nameEl.value = fullName;
+            if (prev[i] && prev[i].meal) card.querySelector('.pax-meal').value = prev[i].meal;
+            if (prev[i] && prev[i].bag) card.querySelector('.pax-bag').value = prev[i].bag;
+            card.querySelector('.pax-meal').addEventListener('change', total);
+            card.querySelector('.pax-bag').addEventListener('change', total);
+            paxWrap.appendChild(node);
+        }
+        total();
+    }
+
+    function total() {
+        var seatEls = selectedSeats();
+        var count = grid ? seatEls.length : cards().length;
+        var base = 0;
+        if (grid) {
+            seatEls.forEach(function (e) { base += parseInt(e.getAttribute('data-price'), 10) || 0; });
+            if (seatHidden) seatHidden.value = seatEls.map(function (e) { return e.getAttribute('data-code'); }).join(',');
+        } else {
+            base = flightPrice * count;
+        }
+        var addon = 0;
+        paxWrap.querySelectorAll('.pax-meal, .pax-bag').forEach(function (s) {
+            var o = s.options[s.selectedIndex];
+            addon += o ? (parseInt(o.getAttribute('data-price'), 10) || 0) : 0;
+        });
+        if (sumBase) sumBase.textContent = fmt(base);
+        if (sumAddon) sumAddon.textContent = fmt(addon);
+        if (sumTotal) sumTotal.textContent = fmt(base + addon);
+        btn.disabled = (count === 0);
+    }
+
+    if (grid) {
+        var pre = grid.getAttribute('data-preselect');
+        if (pre) { var pel = grid.querySelector('.seat[data-code="' + pre + '"]'); if (pel && pel.classList.contains('free')) pel.classList.add('sel'); }
+        grid.addEventListener('click', function (ev) {
+            var el = ev.target.closest('.seat');
+            if (!el || !el.classList.contains('free')) return;   // chỉ chọn ghế trống
+            el.classList.toggle('sel');
+            rebuild();
+        });
+    }
+    if (countInput) { countInput.addEventListener('input', rebuild); countInput.addEventListener('change', rebuild); }
+    rebuild();
+})();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

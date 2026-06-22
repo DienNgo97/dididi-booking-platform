@@ -6,45 +6,99 @@
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
-<div class="wrap" style="max-width:760px">
+<div class="wrap" style="max-width:860px">
     <div th:replace="~{fragments/site :: flash}"></div>
     <p class="muted"><a th:href="@{'/hotels/' + ${hotelId}}">← <span th:text="#{bulk.back}">Quay lại khách sạn</span></a></p>
     <h1 th:text="#{bulk.title}">Đặt theo nhóm</h1>
     <p class="muted" th:text="#{bulk.intro}">Nhập danh sách khách.</p>
 
-    <div class="card">
-        <p><b th:text="${roomName}">Phòng</b> — <span th:text="${hotelName}">Khách sạn</span></p>
-        <form th:action="@{/booking/bulk}" method="post">
+    <!-- Thông tin hạng phòng + giá -->
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap">
+        <div>
+            <div style="font-weight:800;color:var(--navy);font-size:17px" th:text="${roomTypeName != null ? roomTypeName : roomName}">Phòng</div>
+            <div class="muted" style="font-size:13px">
+                🏨 <span th:text="${hotelName}">Khách sạn</span>
+                <span th:if="${roomCapacity != null}"> · 👤 <span th:text="#{bulk.maxPerRoom(${roomCapacity})}">tối đa 2 khách/phòng</span></span>
+            </div>
+        </div>
+        <div style="text-align:right" th:if="${roomPrice != null}">
+            <div class="price" style="font-size:20px">
+                <span th:text="${#numbers.formatInteger(roomPrice,1,'COMMA')}">0</span>
+                <span th:text="${roomCurrency != null ? roomCurrency : 'VND'}">VND</span>
+            </div>
+            <div class="muted" style="font-size:12px" th:text="#{bulk.perRoomNight}">/ phòng / đêm</div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+        <form th:action="@{/booking/bulk}" method="post" id="bulkForm">
             <input type="hidden" name="hotelId" th:value="${hotelId}"/>
             <input type="hidden" name="roomTypeId" th:value="${roomTypeId}"/>
             <input type="hidden" name="roomName" th:value="${roomName}"/>
-            <table class="tbl">
+            <input type="hidden" name="stay" id="stayField" value="overnight"/>
+
+            <div class="muted" style="font-size:13px;margin-bottom:6px" th:text="#{bulk.bookingType}">Hình thức đặt</div>
+            <div class="stay-pills" style="margin-bottom:14px">
+                <button type="button" class="stay-pill is-active" data-stay="overnight" th:text="#{bulk.overnightPill}">🌙 Theo ngày (qua đêm)</button>
+                <button type="button" class="stay-pill" data-stay="day" th:text="#{bulk.dayPill}">⏱ Theo giờ (trong ngày)</button>
+            </div>
+
+            <div style="overflow-x:auto">
+            <table class="tbl bulk-tbl">
                 <thead>
                 <tr>
                     <th>#</th>
                     <th th:text="#{bulk.guest}">Tên khách</th>
-                    <th th:text="#{home.checkin}">Nhận phòng</th>
-                    <th th:text="#{home.checkout}">Trả phòng</th>
+                    <th class="ov-col" th:text="#{home.checkin}">Nhận phòng</th>
+                    <th class="ov-col" th:text="#{home.checkout}">Trả phòng</th>
+                    <th class="du-col" th:text="#{hotels.dateLabel}">Ngày</th>
+                    <th class="du-col" th:text="#{hotels.timeIn}">Giờ nhận</th>
+                    <th class="du-col" th:text="#{hotels.timeOut}">Giờ trả</th>
                     <th th:text="#{hotels.numRooms}">Số phòng</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="i : ${#numbers.sequence(1, rows)}">
                     <td th:text="${i}">1</td>
-                    <td><input type="text" name="guestName" style="padding:8px;border:1px solid #cdd3dd;border-radius:8px;width:100%"/></td>
-                    <td><input type="date" name="checkIn" style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></td>
-                    <td><input type="date" name="checkOut" style="padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></td>
-                    <td><input type="number" name="rooms" value="1" min="1" style="width:70px;padding:8px;border:1px solid #cdd3dd;border-radius:8px"/></td>
+                    <td><input type="text" name="guestName" class="bi" placeholder="Họ tên khách" th:attr="placeholder=#{bulk.guestPlaceholder}"/></td>
+                    <td class="ov-col"><input type="date" name="checkIn" class="bi"/></td>
+                    <td class="ov-col"><input type="date" name="checkOut" class="bi"/></td>
+                    <td class="du-col"><input type="date" name="dayDate" class="bi"/></td>
+                    <td class="du-col"><input type="time" name="timeIn" class="bi" value="09:00"/></td>
+                    <td class="du-col"><input type="time" name="timeOut" class="bi" value="12:00"/></td>
+                    <td><input type="number" name="rooms" value="1" min="1" class="bi" style="width:74px"/></td>
                 </tr>
                 </tbody>
             </table>
-            <label class="chk" style="display:block;margin:12px 0">
+            </div>
+            <p class="muted" style="font-size:12px;margin-top:8px" th:text="#{bulk.rowNote}">Bỏ trống dòng nào thì dòng đó không được tạo. Đặt theo giờ ≤ 4 tiếng sẽ tính nửa giá phòng.</p>
+
+            <label class="chk" style="display:flex;align-items:center;gap:8px;margin:14px 0" th:if="${canPayByCompany}">
                 <input type="checkbox" name="payByCompany" value="true"/>
                 <span th:text="#{bulk.payByCompany}">Thanh toán bằng ngân sách công ty</span>
             </label>
+
             <button class="btn" type="submit" th:text="#{bulk.submit}">Tạo các đơn</button>
         </form>
     </div>
 </div>
+<script>
+(function () {
+    var form = document.getElementById('bulkForm');
+    if (!form) return;
+    var stayF = document.getElementById('stayField');
+    document.querySelectorAll('[data-stay]').forEach(function (p) {
+        p.addEventListener('click', function () {
+            document.querySelectorAll('[data-stay]').forEach(function (x) { x.classList.toggle('is-active', x === p); });
+            var mode = p.getAttribute('data-stay');
+            stayF.value = mode;
+            form.classList.toggle('is-day', mode === 'day');
+        });
+    });
+    var t = new Date(); var z = new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    Array.prototype.forEach.call(form.querySelectorAll('input[type=date]'), function (d) { d.min = z; });
+})();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

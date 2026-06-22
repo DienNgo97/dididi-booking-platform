@@ -4,44 +4,99 @@
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title th:text="#{hotels.pageTitle}">Khách sạn - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}"/>
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="wrap">
-    <form action="/hotels" method="get" style="margin-bottom:16px">
-        <input type="text" name="city" th:value="${city}" th:placeholder="#{hotels.filterCity}" placeholder="Lọc theo thành phố"
-               style="padding:9px;border:1px solid #cdd3dd;border-radius:9px"/>
-        <button class="btn" type="submit" th:text="#{flights.search}">Tìm</button>
-    </form>
-    <h1><span th:text="#{hotels.title}">Khách sạn</span><span class="muted" th:if="${city}"> · <span th:text="${city}"></span></span></h1>
-    <div class="list-item" th:each="h : ${hotels}">
-        <div style="display:flex;align-items:center;gap:14px">
-            <img th:if="${covers.get(h.id) != null}" th:src="${covers.get(h.id)}" alt="ảnh"
-                 style="width:120px;height:90px;object-fit:cover;border-radius:8px;flex:none"/>
-            <div>
-                <h3 style="margin:0"><a th:href="@{'/hotels/' + ${h.id}}" th:text="${h.name}"></a></h3>
-                <div class="muted"><span th:text="${h.city}"></span> · <span th:text="${h.address}"></span>
-                    <span class="stars" th:if="${h.starRating != null}" th:text="${h.starRating + '★'}"></span></div>
-                <div class="muted">
-                    <span class="stars" th:if="${ratings.get(h.id) > 0}"
-                          th:text="#{hotels.guestRating} + ' ' + ${ratings.get(h.id)} + '★'"></span>
-                    <span th:if="${ratings.get(h.id) == 0}" th:text="#{hotels.noRating}">Chưa có đánh giá</span>
-                </div>
-            </div>
+    <div class="search-full"><div th:replace="~{fragments/search :: widget('hotel')}"></div></div>
+    <div class="search-mini" id="searchMini">
+        <div class="smini-bar">
+        <a class="smini-brand" href="/">Dididi</a>
+        <div class="smini-pill">
+            <span class="smini-seg"><b>🏨 <span th:text="${city != null and !#strings.isEmpty(city)} ? ${city} : #{hotels.anyDest}">Hà Nội</span></b></span>
+            <span class="smini-div"></span>
+            <span class="smini-seg grow" th:text="${checkIn != null and !#strings.isEmpty(checkIn) ? (checkIn + (checkOut != null and !#strings.isEmpty(checkOut) ? ' → ' + checkOut : '')) : null} ?: #{hotels.pickDate}">Chọn ngày</span>
+            <span class="smini-div opt"></span>
+            <span class="smini-seg opt" th:text="${(adults != null ? adults : 2)} + ' ' + #{search.adultsUnit} + ' · ' + ${(rooms != null ? rooms : 1)} + ' ' + #{search.roomsUnit}">2 người lớn · 1 phòng</span>
+            <button type="button" class="smini-go" aria-label="Tìm" th:attr="aria-label=#{flights.search}">🔍</button>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex:none">
-            <a class="btn" th:href="@{'/hotels/' + ${h.id}}" th:text="#{hotels.view}">Xem</a>
-            <form sec:authorize="isAuthenticated()" th:action="@{/account/wishlist/toggle}" method="post">
+        </div>
+    </div>
+    <h1><span th:text="#{hotels.title}">Khách sạn</span><span class="muted" th:if="${city}"> · <span th:text="${city}"></span></span></h1>
+    <div class="paginate" data-page-size="20">
+    <div class="hcard" th:each="h : ${hotels}">
+        <a class="hcard-stretch" th:aria-label="${h.name}"
+           th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}"></a>
+        <div class="hcard-img">
+            <img th:if="${covers.get(h.id) != null}" th:src="${covers.get(h.id)}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
+            <div class="ph" th:if="${covers.get(h.id) == null}">🏨</div>
+            <form class="hcard-heart" sec:authorize="isAuthenticated()" th:action="@{/account/wishlist/toggle}" method="post">
                 <input type="hidden" name="hotelId" th:value="${h.id}"/>
                 <input type="hidden" name="back"
                        th:value="${city != null and !#strings.isEmpty(city)} ? @{/hotels(city=${city})} : '/hotels'"/>
-                <button class="btn ghost" type="submit" th:title="#{nav.wishlist}"
-                        th:style="${wishlistedIds != null and wishlistedIds.contains(h.id)} ? 'color:#c0392b;border-color:#c0392b' : ''"
+                <button type="submit" class="wish-btn" th:title="#{nav.wishlist}"
+                        th:classappend="${wishlistedIds != null and wishlistedIds.contains(h.id)} ? 'is-on' : ''"
                         th:text="${wishlistedIds != null and wishlistedIds.contains(h.id)} ? '♥' : '♡'">♡</button>
             </form>
         </div>
+        <div class="hcard-body">
+            <h3><a th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}" th:text="${h.name}">Hotel</a></h3>
+            <div class="hcard-loc">📍 <span th:text="${h.city}"></span> · <span th:text="${h.address}"></span></div>
+            <div class="chips">
+                <span class="chip" th:if="${h.starRating != null}" th:text="${h.starRating} + ' ' + #{hotels.starsUnit}">4 sao</span>
+                <span class="chip" th:text="#{hotels.instantConfirm}">Xác nhận tức thì</span>
+                <span class="chip" th:text="#{hotels.payOnline}">Thanh toán online</span>
+            </div>
+        </div>
+        <div class="hcard-aside">
+            <div class="rate" th:if="${ratings.get(h.id) > 0}">
+                <div class="lab"><b th:text="#{hotels.ratingLabel}">Đánh giá</b><small th:text="#{hotels.outOf5}">trên 5</small></div>
+                <span class="score" th:text="${#numbers.formatDecimal(ratings.get(h.id),1,1)}">4.5</span>
+            </div>
+            <div class="muted" th:if="${ratings.get(h.id) == 0}" style="font-size:12px" th:text="#{hotels.noRating}">Chưa có đánh giá</div>
+            <div class="hcard-price">
+                <span class="amt" th:if="${h.minPrice != null}" th:text="${#numbers.formatInteger(h.minPrice,1,'COMMA')} + 'đ'">1.000.000đ</span>
+                <small th:if="${h.minPrice != null}" th:text="#{hotels.perNight}">/ đêm</small>
+                <a class="btn" style="margin-top:8px;width:100%"
+                   th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}"
+                   th:text="#{hotels.view}">Xem chỗ trống</a>
+            </div>
+        </div>
+    </div>
     </div>
     <p class="muted" th:if="${#lists.isEmpty(hotels)}" th:text="#{hotels.empty}">Không có khách sạn phù hợp.</p>
 </div>
+<script>
+(function () {
+    var csrf = document.querySelector('meta[name=_csrf]'), csrfH = document.querySelector('meta[name=_csrf_header]');
+    function headers() {
+        var h = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        if (csrf && csrf.content && csrfH && csrfH.content) h[csrfH.content] = csrf.content;
+        return h;
+    }
+    document.querySelectorAll('form.hcard-heart').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var idEl = form.querySelector('input[name=hotelId]');
+            var btn = form.querySelector('button');
+            if (!idEl || !btn || btn.disabled) return;
+            btn.disabled = true;
+            fetch('/account/wishlist/toggle-ajax', { method: 'POST', headers: headers(), credentials: 'same-origin',
+                body: 'hotelId=' + encodeURIComponent(idEl.value) })
+                .then(function (r) { if (r.status === 401 || r.status === 403) { window.location = '/login'; return null; } return r.json(); })
+                .then(function (d) {
+                    if (!d) return;
+                    btn.textContent = d.wishlisted ? '♥' : '♡';
+                    btn.classList.toggle('is-on', !!d.wishlisted);
+                    btn.disabled = false;
+                })
+                .catch(function () { btn.disabled = false; form.submit(); });
+        });
+    });
+})();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

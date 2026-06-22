@@ -8,6 +8,8 @@ import com.dididi.booking.review.api.dto.CreateReviewRequest;
 import com.dididi.booking.review.api.dto.ReviewDto;
 import com.dididi.booking.review.api.dto.ReviewPageResponse;
 import com.dididi.booking.review.domain.entity.Review;
+import com.dididi.booking.review.domain.enums.ReviewImageKind;
+import com.dididi.booking.review.service.ReviewImageService;
 import com.dididi.booking.review.service.ReviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,9 +25,11 @@ import org.springframework.web.bind.annotation.*;
 public class ReviewApiController {
 
     private final ReviewService reviewService;
+    private final ReviewImageService reviewImageService;
 
-    public ReviewApiController(ReviewService reviewService) {
+    public ReviewApiController(ReviewService reviewService, ReviewImageService reviewImageService) {
         this.reviewService = reviewService;
+        this.reviewImageService = reviewImageService;
     }
 
     @Operation(summary = "Đánh giá một đơn đã xác nhận (cần đăng nhập)")
@@ -37,7 +41,9 @@ public class ReviewApiController {
         }
         Long userId = Long.valueOf(authentication.getName());
         Review r = reviewService.create(userId, req.bookingCode(), req.rating(), req.comment());
-        return ApiResponse.ok(ReviewDto.from(r), "Cảm ơn bạn đã đánh giá");
+        return ApiResponse.ok(ReviewDto.from(r,
+                reviewImageService.listUrls(r.getId(), ReviewImageKind.REVIEW),
+                reviewImageService.listUrls(r.getId(), ReviewImageKind.REPLY)), "Cảm ơn bạn đã đánh giá");
     }
 
     @Operation(summary = "Đánh giá của một khách sạn (công khai)")
@@ -60,7 +66,10 @@ public class ReviewApiController {
 
     private ReviewPageResponse build(BookingType type, Long targetId, int page, int size) {
         double avg = reviewService.averageRating(type, targetId);
-        Page<ReviewDto> dtoPage = reviewService.list(type, targetId, page, size).map(ReviewDto::from);
+        Page<ReviewDto> dtoPage = reviewService.list(type, targetId, page, size)
+                .map(r -> ReviewDto.from(r,
+                        reviewImageService.listUrls(r.getId(), ReviewImageKind.REVIEW),
+                        reviewImageService.listUrls(r.getId(), ReviewImageKind.REPLY)));
         return new ReviewPageResponse(avg, PagedResponse.of(dtoPage));
     }
 }

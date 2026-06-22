@@ -40,16 +40,24 @@ public class AdminUserApiController {
         this.events = events;
     }
 
-    @Operation(summary = "Danh sách user (phân trang, lọc theo role tuỳ chọn)")
+    @Operation(summary = "Danh sách user (phân trang, lọc theo role + status tuỳ chọn)")
     @GetMapping
     public ApiResponse<PagedResponse<AdminUserDto>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) Role role) {
+            @RequestParam(required = false) Role role,
+            @RequestParam(required = false) UserStatus status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<User> result = (role == null)
-                ? userRepository.findAll(pageable)
-                : userRepository.findByRole(role, pageable);
+        Page<User> result;
+        if (role != null && status != null) {
+            result = userRepository.findByRoleAndStatus(role, status, pageable);
+        } else if (role != null) {
+            result = userRepository.findByRole(role, pageable);
+        } else if (status != null) {
+            result = userRepository.findByStatus(status, pageable);
+        } else {
+            result = userRepository.findAll(pageable);
+        }
         return ApiResponse.ok(PagedResponse.of(result.map(AdminUserDto::from)));
     }
 

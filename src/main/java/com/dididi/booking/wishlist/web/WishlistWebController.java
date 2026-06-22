@@ -8,7 +8,10 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.Map;
 
 @Controller
 public class WishlistWebController {
@@ -34,6 +37,14 @@ public class WishlistWebController {
         boolean added = wishlistService.toggle(currentUser.id(auth), hotelId);
         ra.addFlashAttribute("message", added ? "Đã thêm vào yêu thích." : "Đã bỏ khỏi yêu thích.");
         return "redirect:" + safeBack(back);
+    }
+
+    /** Thả tim qua AJAX (không reload). Trả về trạng thái yêu thích mới. */
+    @PostMapping("/account/wishlist/toggle-ajax")
+    @ResponseBody
+    public Map<String, Object> toggleAjax(@RequestParam Long hotelId, Authentication auth) {
+        boolean added = wishlistService.toggle(currentUser.id(auth), hotelId);
+        return Map.of("ok", true, "wishlisted", added);
     }
 
     /** Chi cho phep redirect ve duong dan noi bo (tranh open-redirect). */

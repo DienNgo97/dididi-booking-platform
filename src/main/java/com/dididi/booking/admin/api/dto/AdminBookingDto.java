@@ -3,6 +3,7 @@ package com.dididi.booking.admin.api.dto;
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.domain.enums.BookingType;
+import com.dididi.booking.booking.domain.enums.CancelStatus;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -24,13 +25,17 @@ public record AdminBookingDto(
         LocalDate checkOut,
         LocalDateTime travelDate,
         String providerConfirmation,
-        Instant createdAt) {
+        Instant createdAt,
+        CancelStatus cancelStatus,
+        String cancelReason,
+        String cancelAdminNote) {
 
     public static AdminBookingDto from(Booking b) {
         return new AdminBookingDto(
                 b.getId(), b.getPublicCode(), b.getUserId(), b.getType(), b.getTitle(),
                 b.getStatus(), b.getAmount(), b.getCurrency(), b.getQuantity(),
                 b.getCheckIn(), b.getCheckOut(), b.getTravelDate(),
-                b.getProviderConfirmation(), b.getCreatedAt());
+                b.getProviderConfirmation(), b.getCreatedAt(),
+                b.getCancelStatus(), b.getCancelReason(), b.getCancelAdminNote());
     }
 }

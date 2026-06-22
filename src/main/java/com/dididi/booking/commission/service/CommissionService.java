@@ -97,6 +97,17 @@ public class CommissionService {
         return getDefaultRate();
     }
 
+    /**
+     * Hoa hong cua 1 don (lam tron) cho bao cao theo ky; tra ve null neu don khong thuoc vendor nao
+     * (don CHANNEL/PMS hoac ve may bay). Dung ty le hieu luc cua vendor (rieng hoac mac dinh).
+     */
+    public BigDecimal commissionForReport(Booking b) {
+        Long vendorId = resolveVendor(b);
+        if (vendorId == null) return null;
+        BigDecimal amt = b.getAmount() == null ? BigDecimal.ZERO : b.getAmount();
+        return amt.multiply(effectiveRate(vendorId)).setScale(0, RoundingMode.HALF_UP);
+    }
+
     /** Bao cao hoa hong: tinh tren cac don HOTEL da CONFIRMED co vendor (DIRECT), gom theo vendor. */
     public CommissionReportDto report() {
         Map<Long, long[]> count = new LinkedHashMap<>();

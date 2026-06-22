@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  Widget tìm kiếm kiểu Agoda. Dùng:
+    <div th:replace="~{fragments/search :: widget('hotel')}"></div>
+  active = 'hotel' | 'flight'. Giá trị prefill (city/checkIn/checkOut/adults/children/rooms/from/to/date)
+  được đọc trực tiếp từ model nếu controller có set (giữ lại ô tìm kiếm sau khi bấm Tìm).
+  Đơn vị do JS sinh (người lớn/trẻ em/phòng/hành khách) lấy từ data-* trên section để đổi theo ngôn ngữ.
+-->
+<section th:fragment="widget(active)" class="ag-search"
+         th:attr="data-adults=#{search.adultsUnit},data-children=#{search.childrenUnit},data-rooms=#{search.roomsUnit},data-pax=#{search.paxUnit},data-date=#{search.date},data-checkin=#{search.checkin}">
+
+    <!-- Tab bar -->
+    <div class="ag-tabs">
+        <button type="button" class="ag-tab" data-tab="hotel"
+                th:classappend="${active != 'flight'} ? 'is-active' : ''">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18V8m0 4h18m0 6V11a3 3 0 0 0-3-3H7"/><circle cx="7.5" cy="11.5" r="1.3"/></svg>
+            <span th:text="#{search.hotelTab}">Khách sạn</span>
+        </button>
+        <button type="button" class="ag-tab" data-tab="flight"
+                th:classappend="${active == 'flight'} ? 'is-active' : ''">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+            <span th:text="#{search.flightTab}">Vé máy bay</span>
+        </button>
+    </div>
+
+    <!-- ===== KHÁCH SẠN ===== -->
+    <form id="ag-hotel" class="ag-form" th:classappend="${active == 'flight'} ? 'ag-hide' : ''"
+          action="/hotels" method="get">
+        <div class="ag-panel">
+            <div class="ag-pills">
+                <button type="button" class="ag-pill" data-stay="overnight"
+                        th:classappend="${stay != 'day'} ? 'is-active' : ''" th:text="#{search.overnight}">Chỗ Ở Qua Đêm</button>
+                <button type="button" class="ag-pill" data-stay="day"
+                        th:classappend="${stay == 'day'} ? 'is-active' : ''" th:text="#{search.dayuse}">Chỗ Ở Trong Ngày</button>
+            </div>
+            <input type="hidden" name="stay" id="ag-stay" th:value="${stay != null ? stay : 'overnight'}" value="overnight"/>
+
+            <div class="ag-field ag-field--wide">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+                <input type="text" name="city" list="ag-cities" th:value="${city}"
+                       th:attr="placeholder=#{search.cityPlaceholder}" placeholder="Tìm theo tên khách sạn, thành phố hoặc địa chỉ"/>
+            </div>
+
+            <div class="ag-row3">
+                <label class="ag-field">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+                    <span class="ag-fin"><small id="ag-checkin-label" th:text="#{search.checkin}">Nhận phòng</small>
+                        <input type="date" id="ag-checkin" name="checkIn" class="ag-date" th:value="${checkIn}"/></span>
+                </label>
+                <label class="ag-field" id="ag-checkout-field">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+                    <span class="ag-fin"><small th:text="#{search.checkout}">Trả phòng</small>
+                        <input type="date" id="ag-checkout" name="checkOut" class="ag-date" th:value="${checkOut}"/></span>
+                </label>
+                <div class="ag-field ag-occ">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.2"/><path d="M16 15c3 0 5 2 5 5"/></svg>
+                    <button type="button" class="ag-occ-btn">
+                        <span id="ag-hotel-occ-text">2 người lớn · 1 phòng</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="ag-pop" hidden>
+                        <div class="ag-step"><span th:text="#{search.adults}">Người lớn</span>
+                            <div><button type="button" data-d="-1" data-t="adults">−</button>
+                                <b id="adults" data-min="1" th:text="${adults != null ? adults : 2}">2</b>
+                                <button type="button" data-d="1" data-t="adults">+</button></div></div>
+                        <div class="ag-step"><span th:text="#{search.children}">Trẻ em</span>
+                            <div><button type="button" data-d="-1" data-t="children">−</button>
+                                <b id="children" data-min="0" th:text="${children != null ? children : 0}">0</b>
+                                <button type="button" data-d="1" data-t="children">+</button></div></div>
+                        <div class="ag-step"><span th:text="#{search.rooms}">Phòng</span>
+                            <div><button type="button" data-d="-1" data-t="rooms">−</button>
+                                <b id="rooms" data-min="1" th:text="${rooms != null ? rooms : 1}">1</b>
+                                <button type="button" data-d="1" data-t="rooms">+</button></div></div>
+                        <input type="hidden" name="adults" id="adults-h" th:value="${adults != null ? adults : 2}" value="2"/>
+                        <input type="hidden" name="children" id="children-h" th:value="${children != null ? children : 0}" value="0"/>
+                        <input type="hidden" name="rooms" id="rooms-h" th:value="${rooms != null ? rooms : 1}" value="1"/>
+                        <div style="text-align:right;margin-top:6px"><button type="button" class="ag-done" th:text="#{search.done}">Xong</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="ag-submit"><button class="ag-go" type="submit" th:text="#{search.submitHotel}">TÌM</button></div>
+    </form>
+
+    <!-- ===== VÉ MÁY BAY ===== -->
+    <form id="ag-flight" class="ag-form" th:classappend="${active != 'flight'} ? 'ag-hide' : ''"
+          action="/flights" method="get">
+        <div class="ag-panel">
+            <div class="ag-pills">
+                <button type="button" class="ag-pill is-active" data-trip="oneway" th:text="#{search.oneway}">Một chiều</button>
+                <button type="button" class="ag-pill" data-trip="round" th:text="#{search.roundtrip}">Khứ hồi</button>
+            </div>
+
+            <div class="ag-row-swap">
+                <div class="ag-field">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>
+                    <input type="text" id="ag-from" name="from" list="ag-airports" th:value="${from}"
+                           th:attr="placeholder=#{search.fromPlaceholder}" placeholder="Bay từ (VD: HAN)"/>
+                </div>
+                <button type="button" class="ag-swap" id="ag-swap" th:attr="title=#{search.swap}" title="Đổi chiều">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>
+                </button>
+                <div class="ag-field">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                    <input type="text" id="ag-to" name="to" list="ag-airports" th:value="${to}"
+                           th:attr="placeholder=#{search.toPlaceholder}" placeholder="Bay đến (VD: SGN)"/>
+                </div>
+            </div>
+
+            <div class="ag-row3">
+                <label class="ag-field">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+                    <span class="ag-fin"><small th:text="#{search.departDate}">Ngày đi</small>
+                        <input type="date" id="ag-flight-date" name="date" class="ag-date" th:value="${date}"/></span>
+                </label>
+                <label class="ag-field ag-hide" id="ag-return-field">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+                    <span class="ag-fin"><small th:text="#{search.returnDate}">Ngày về</small>
+                        <input type="date" id="ag-return-date" class="ag-date"/></span>
+                </label>
+                <div class="ag-field ag-occ">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.2"/><path d="M16 15c3 0 5 2 5 5"/></svg>
+                    <button type="button" class="ag-occ-btn">
+                        <span id="ag-flight-occ-text">1 Hành khách, Phổ thông</span>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
+                    <div class="ag-pop" hidden>
+                        <div class="ag-step"><span th:text="#{search.passengers}">Hành khách</span>
+                            <div><button type="button" data-d="-1" data-t="pax">−</button>
+                                <b id="pax" data-min="1">1</b>
+                                <button type="button" data-d="1" data-t="pax">+</button></div></div>
+                        <label style="font-size:13px;color:#6b7280"><span th:text="#{search.cabin}">Hạng ghế</span>
+                            <select id="cabin" name="cabin">
+                                <option value="ECONOMY" th:text="#{search.economy}">Phổ thông</option>
+                                <option value="BUSINESS" th:text="#{search.business}">Thương gia</option>
+                            </select>
+                        </label>
+                        <input type="hidden" name="passengers" id="pax-h" value="1"/>
+                        <div style="text-align:right;margin-top:6px"><button type="button" class="ag-done" th:text="#{search.done}">Xong</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="ag-submit"><button class="ag-go" type="submit" th:text="#{search.submitFlight}">TÌM CHUYẾN BAY</button></div>
+    </form>
+
+    <datalist id="ag-cities">
+        <option value="TP.HCM"></option><option value="Hà Nội"></option><option value="Đà Nẵng"></option>
+        <option value="Nha Trang"></option><option value="Huế"></option><option value="Phú Quốc"></option>
+        <option value="Đà Lạt"></option><option value="Hội An"></option><option value="Vũng Tàu"></option>
+        <option value="Hạ Long"></option><option value="Cần Thơ"></option><option value="Sa Pa"></option>
+    </datalist>
+    <datalist id="ag-airports">
+        <option value="HAN">Hà Nội — Nội Bài</option>
+        <option value="SGN">TP.HCM — Tân Sơn Nhất</option>
+        <option value="DAD">Đà Nẵng</option>
+        <option value="CXR">Nha Trang — Cam Ranh</option>
+        <option value="HUI">Huế — Phú Bài</option>
+        <option value="PQC">Phú Quốc</option>
+    </datalist>
+
+    <style>
+        .ag-search{--ag:#3dac78;--ag-dark:#2f8b60;max-width:980px;margin:0 auto 34px;}
+        .ag-search *{box-sizing:border-box;}
+        .ag-tabs{display:flex;gap:2px;background:#fff;border-radius:14px 14px 0 0;padding:6px 8px 0;
+            box-shadow:0 12px 30px rgba(0,0,0,.10);flex-wrap:wrap;}
+        .ag-tab{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;color:#3b4253;
+            font-size:14px;font-weight:600;padding:12px 14px;border-bottom:3px solid transparent;cursor:pointer;}
+        .ag-tab svg{width:18px;height:18px;}
+        .ag-tab.is-active{color:var(--ag);border-bottom-color:var(--ag);}
+        .ag-form{margin:0;}
+        .ag-panel{background:#eef1f6;border-radius:0 0 14px 14px;padding:18px 18px 34px;
+            box-shadow:0 12px 30px rgba(0,0,0,.10);}
+        .ag-hide{display:none!important;}
+        .ag-pills{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+        .ag-pill{border:1px solid #d3d9e4;background:#fff;color:#3b4253;border-radius:999px;padding:7px 16px;
+            font-size:13px;font-weight:600;cursor:pointer;}
+        .ag-pill.is-active{border-color:var(--ag);color:var(--ag);background:#e7f5ee;}
+        .ag-field{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #d7dde8;
+            border-radius:10px;padding:0 14px;height:60px;}
+        .ag-field>svg{width:20px;height:20px;color:#8a93a6;flex:none;}
+        .ag-field input{border:0;outline:0;font-size:15px;width:100%;background:transparent;color:#1c2536;}
+        .ag-fin{display:flex;flex-direction:column;justify-content:center;width:100%;}
+        .ag-fin small{font-size:11px;color:#8a93a6;line-height:1;}
+        .ag-fin input.ag-date{font-size:15px;padding:0;height:20px;}
+        .ag-field--wide{margin-bottom:12px;}
+        .ag-row3{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:12px;}
+        .ag-row-swap{display:grid;grid-template-columns:1fr 44px 1fr;gap:8px;align-items:center;margin-bottom:12px;}
+        .ag-swap{width:44px;height:44px;border-radius:50%;border:1px solid #d7dde8;background:#fff;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;color:#5b6478;}
+        .ag-swap svg{width:20px;height:20px;}
+        .ag-occ{position:relative;}
+        .ag-occ-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;border:0;background:transparent;
+            width:100%;height:100%;font-size:15px;cursor:pointer;color:#1c2536;padding:0;}
+        .ag-occ-btn svg{width:16px;height:16px;color:#8a93a6;}
+        .ag-pop{position:absolute;top:64px;left:0;right:0;background:#fff;border:1px solid #e1e6ef;border-radius:12px;
+            box-shadow:0 14px 36px rgba(0,0,0,.16);padding:14px;z-index:50;}
+        .ag-step{display:flex;align-items:center;justify-content:space-between;padding:6px 0;font-size:14px;}
+        .ag-step>div{display:flex;align-items:center;gap:14px;}
+        .ag-step button{width:32px;height:32px;border-radius:50%;border:1px solid var(--ag);background:#fff;
+            color:var(--ag);font-size:18px;line-height:1;cursor:pointer;}
+        .ag-step b{min-width:18px;text-align:center;}
+        .ag-pop select{width:100%;margin-top:4px;padding:7px;border:1px solid #d7dde8;border-radius:8px;}
+        .ag-done{border:0;background:var(--ag);color:#fff;border-radius:8px;padding:7px 16px;font-weight:600;cursor:pointer;}
+        .ag-submit{display:flex;justify-content:center;margin-top:-22px;position:relative;z-index:2;}
+        .ag-go{background:var(--ag);color:#fff;border:0;border-radius:999px;padding:15px 64px;font-size:16px;
+            font-weight:800;letter-spacing:.5px;cursor:pointer;box-shadow:0 10px 22px rgba(61,172,120,.40);}
+        .ag-go:hover{background:var(--ag-dark);}
+        @media(max-width:760px){
+            .ag-row3,.ag-row-swap{grid-template-columns:1fr;}
+            .ag-swap{justify-self:center;}
+            .ag-tabs{flex-wrap:nowrap;overflow-x:auto;}
+            .ag-tab{white-space:nowrap;}
+        }
+    </style>
+
+    <script>
+        (function () {
+            var root = document.currentScript.closest('.ag-search');
+            if (!root) return;
+            var $ = function (s) { return root.querySelector(s); };
+            var $$ = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
+            var T = root.dataset;
+
+            function ymd(d) { var z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); }
+            var today = new Date(), tmr = new Date(Date.now() + 864e5);
+            var ci = $('#ag-checkin'), co = $('#ag-checkout'), fd = $('#ag-flight-date');
+            if (ci && !ci.value) { ci.value = ymd(today); ci.min = ymd(today); }
+            if (co && !co.value) { co.value = ymd(tmr); co.min = ymd(tmr); }
+            if (fd) { fd.min = ymd(today); if (!fd.value) fd.value = ymd(today); }
+            if (ci && co) { ci.addEventListener('change', function () { if (co.value <= ci.value) { var n = new Date(new Date(ci.value).getTime() + 864e5); co.value = ymd(n); } co.min = ci.value; }); }
+
+            // Tabs: bấm tab điều hướng sang trang tương ứng để KHUNG SEARCH và DỮ LIỆU luôn khớp (giống nav).
+            $$('.ag-tab[data-tab]').forEach(function (t) {
+                t.addEventListener('click', function () {
+                    if (t.classList.contains('is-active')) return;   // đang ở đúng trang này rồi
+                    window.location.href = (t.getAttribute('data-tab') === 'flight') ? '/flights' : '/hotels';
+                });
+            });
+
+            // Toggle Qua đêm / Trong ngày (đặt hidden stay + ẩn ô trả phòng + đổi nhãn checkIn)
+            var stayInput = $('#ag-stay');
+            function applyStay(mode) {
+                if (stayInput) stayInput.value = mode;
+                var coField = $('#ag-checkout-field');
+                if (coField) coField.classList.toggle('ag-hide', mode === 'day');
+                var ciLabel = $('#ag-checkin-label');
+                if (ciLabel) ciLabel.textContent = (mode === 'day') ? (T.date || 'Ngày') : (T.checkin || 'Nhận phòng');
+            }
+            $$('[data-stay]').forEach(function (p) {
+                p.addEventListener('click', function () {
+                    $$('[data-stay]').forEach(function (x) { x.classList.toggle('is-active', x === p); });
+                    applyStay(p.getAttribute('data-stay'));
+                });
+            });
+            applyStay(stayInput ? stayInput.value : 'overnight');
+            // Toggle Một chiều / Khứ hồi
+            $$('[data-trip]').forEach(function (p) {
+                p.addEventListener('click', function () {
+                    $$('[data-trip]').forEach(function (x) { x.classList.toggle('is-active', x === p); });
+                    var rf = $('#ag-return-field');
+                    if (rf) rf.classList.toggle('ag-hide', p.getAttribute('data-trip') !== 'round');
+                });
+            });
+
+            // Swap sân bay
+            var sw = $('#ag-swap');
+            if (sw) sw.addEventListener('click', function () { var a = $('#ag-from'), b = $('#ag-to'); var t = a.value; a.value = b.value; b.value = t; });
+
+            // Popover số khách
+            $$('.ag-occ-btn').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var pop = btn.parentElement.querySelector('.ag-pop');
+                    var isOpen = !pop.hasAttribute('hidden');
+                    $$('.ag-pop').forEach(function (p) { p.setAttribute('hidden', ''); });
+                    if (!isOpen) pop.removeAttribute('hidden');
+                });
+            });
+            $$('.ag-pop').forEach(function (p) { p.addEventListener('click', function (e) { e.stopPropagation(); }); });
+            $$('.ag-done').forEach(function (b) { b.addEventListener('click', function () { $$('.ag-pop').forEach(function (p) { p.setAttribute('hidden', ''); }); }); });
+            document.addEventListener('click', function () { $$('.ag-pop').forEach(function (p) { p.setAttribute('hidden', ''); }); });
+
+            // Steppers
+            function num(id) { var e = $('#' + id); return e ? parseInt(e.textContent, 10) : 0; }
+            function summaries() {
+                var a = num('adults'), c = num('children'), r = num('rooms');
+                var ht = $('#ag-hotel-occ-text');
+                if (ht) ht.textContent = a + ' ' + (T.adults || 'người lớn') + (c > 0 ? ' · ' + c + ' ' + (T.children || 'trẻ em') : '') + ' · ' + r + ' ' + (T.rooms || 'phòng');
+                var pax = num('pax'); var cab = $('#cabin');
+                var cabT = cab ? cab.options[cab.selectedIndex].text : '';
+                var ft = $('#ag-flight-occ-text');
+                if (ft) ft.textContent = pax + ' ' + (T.pax || 'Hành khách') + ', ' + cabT;
+            }
+            $$('.ag-step button').forEach(function (b) {
+                b.addEventListener('click', function () {
+                    var t = b.getAttribute('data-t'), d = parseInt(b.getAttribute('data-d'), 10);
+                    var el = $('#' + t), h = $('#' + t + '-h');
+                    var min = parseInt(el.getAttribute('data-min') || '0', 10);
+                    var n = Math.max(min, parseInt(el.textContent, 10) + d);
+                    el.textContent = n; if (h) h.value = n;
+                    summaries();
+                });
+            });
+            var cab = $('#cabin'); if (cab) cab.addEventListener('change', summaries);
+            summaries();
+        })();
+    </script>
+</section>
+</body>
+</html>

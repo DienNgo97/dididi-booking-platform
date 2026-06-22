@@ -19,6 +19,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -105,7 +106,7 @@ public class AdminVendorApiController {
             hotelRepository.save(h);
         });
         emailService.sendVendorApproved(u.getId(),
-                hotelRepository.findByVendorId(userId).map(Hotel::getName).orElse(null));
+                hotelRepository.findByVendorId(userId).map(Hotel::getName).orElse(null), LocaleContextHolder.getLocale());
         events.publishEvent(new AuditEvent(Long.valueOf(auth.getName()), "APPROVE_VENDOR", "USER", userId, "Duyệt vendor"));
         return ApiResponse.ok(toDto(u), "Đã duyệt vendor");
     }
@@ -115,13 +116,18 @@ public class AdminVendorApiController {
     @Transactional
     public ApiResponse<VendorAccountDto> reject(@PathVariable Long userId, Authentication auth) {
         User u = vendorOrThrow(userId);
+        // Khoá 1 vendor ĐANG HOẠT ĐỘNG (ACTIVE) = ban -> chỉ SUPER_ADMIN.
+        // Từ chối vendor đang chờ duyệt (INACTIVE) thì ADMIN thường vẫn làm được (đúng quy trình duyệt hồ sơ).
+        if (u.getStatus() == UserStatus.ACTIVE) {
+            RoleUtils.requireSuperAdmin(auth);
+        }
         u.setStatus(UserStatus.LOCKED);
         userRepository.save(u);
         hotelRepository.findByVendorId(userId).ifPresent(h -> {
             h.setActive(false);
             hotelRepository.save(h);
         });
-        emailService.sendVendorRejected(u.getId());
+        emailService.sendVendorRejected(u.getId(), LocaleContextHolder.getLocale());
         events.publishEvent(new AuditEvent(Long.valueOf(auth.getName()), "REJECT_VENDOR", "USER", userId, "Từ chối vendor"));
         return ApiResponse.ok(toDto(u), "Đã từ chối vendor");
     }

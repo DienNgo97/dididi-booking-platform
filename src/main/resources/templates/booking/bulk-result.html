@@ -6,17 +6,23 @@
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
-<div class="wrap" style="max-width:720px">
+<div class="wrap" style="max-width:760px">
     <div th:replace="~{fragments/site :: flash}"></div>
     <h1 th:text="#{bulk.result}">Kết quả đặt theo nhóm</h1>
 
+    <div class="card" style="display:flex;align-items:baseline;gap:8px" th:if="${!#lists.isEmpty(results)}">
+        <b style="font-size:24px;color:var(--navy)" th:text="${#lists.size(results)}">0</b>
+        <span class="muted" th:text="#{bulk.created}">đơn đã được tạo. Bấm mã đơn để xem chi tiết, hoặc thanh toán đơn đang chờ.</span>
+    </div>
+
+    <div style="overflow-x:auto;margin-top:12px">
     <table class="tbl">
         <thead>
         <tr>
             <th>#</th>
             <th th:text="#{bulk.guest}">Tên khách</th>
-            <th>Mã đơn</th>
-            <th>Trạng thái</th>
+            <th th:text="#{payment.bookingCode}">Mã đơn</th>
+            <th th:text="#{bulk.statusCol}">Trạng thái</th>
         </tr>
         </thead>
         <tbody>
@@ -25,27 +31,30 @@
             <td th:text="${r.guestName()}">Khách</td>
             <td>
                 <a th:if="${r.code() != null}" th:href="@{'/account/bookings/' + ${r.code()}}" th:text="${r.code()}">DD-XXXX</a>
-                <span th:if="${r.code() == null}">—</span>
+                <span class="muted" th:if="${r.code() == null}">—</span>
             </td>
             <td>
                 <span th:switch="${r.status()}">
-                    <span th:case="'CONFIRMED'" style="color:#2e7d32;font-weight:600" th:text="#{bulk.st.confirmed}">Đã xác nhận</span>
-                    <span th:case="'PENDING_APPROVAL'" style="color:#b26a00;font-weight:600" th:text="#{bulk.st.pendingApproval}">Chờ phê duyệt</span>
-                    <span th:case="'PENDING_PAYMENT'" style="color:#555" th:text="#{bulk.st.pendingPayment}">Chờ thanh toán</span>
-                    <span th:case="*" style="color:#c0392b;font-weight:600" th:text="#{bulk.st.failed}">Lỗi</span>
+                    <span th:case="'CONFIRMED'" class="bpill ok" th:text="#{bulk.st.confirmed}">Đã xác nhận</span>
+                    <span th:case="'PENDING_APPROVAL'" class="bpill warn" th:text="#{bulk.st.pendingApproval}">Chờ phê duyệt</span>
+                    <span th:case="'PENDING_PAYMENT'" class="bpill info" th:text="#{bulk.st.pendingPayment}">Chờ thanh toán</span>
+                    <span th:case="*" class="bpill err" th:text="#{bulk.st.failed}">Lỗi</span>
                 </span>
                 <a th:if="${r.status() == 'PENDING_PAYMENT' and r.code() != null}"
-                   th:href="@{'/payment/' + ${r.code()}}" style="margin-left:8px" th:text="#{bulk.payNow}">Thanh toán</a>
-                <div class="muted" th:if="${r.message()}" th:text="${r.message()}"></div>
+                   th:href="@{'/payment/' + ${r.code()}}" class="btn ghost"
+                   style="margin-left:8px;padding:5px 12px" th:text="#{bulk.payNow}">Thanh toán</a>
+                <div class="muted" th:if="${r.message()}" style="font-size:12px;margin-top:4px" th:text="${r.message()}"></div>
             </td>
         </tr>
-        <tr th:if="${#lists.isEmpty(results)}"><td colspan="4" class="muted">Không có dòng nào được tạo.</td></tr>
+        <tr th:if="${#lists.isEmpty(results)}"><td colspan="4" class="muted" th:text="#{bulk.noRows}">Không có dòng nào được tạo.</td></tr>
         </tbody>
     </table>
+    </div>
 
     <p class="muted" style="margin-top:16px">
         <a href="/account/bookings">← <span th:text="#{nav.myBookings}">Đơn của tôi</span></a>
     </p>
 </div>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

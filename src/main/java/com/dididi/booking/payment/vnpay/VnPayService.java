@@ -41,9 +41,15 @@ public class VnPayService {
      * @param clientIp IP nguoi dat
      */
     public String createPaymentUrl(Booking booking, String txnRef, String clientIp) {
+        return createPaymentUrl(booking.getAmount(), txnRef,
+                "Thanh toan don hang " + booking.getPublicCode(), clientIp);
+    }
+
+    /** Tao URL VNPay voi so tien + noi dung tuy y (dung cho thanh toan gop ca nhom). */
+    public String createPaymentUrl(BigDecimal amount, String txnRef, String orderInfo, String clientIp) {
         LocalDateTime now = LocalDateTime.now(ZONE);
         // VNPay: amount x 100, khong thap phan
-        String vnpAmount = booking.getAmount()
+        String vnpAmount = amount
                 .multiply(BigDecimal.valueOf(100)).toBigInteger().toString();
 
         Map<String, String> p = new TreeMap<>();
@@ -53,7 +59,7 @@ public class VnPayService {
         p.put("vnp_Amount", vnpAmount);
         p.put("vnp_CurrCode", "VND");
         p.put("vnp_TxnRef", txnRef);
-        p.put("vnp_OrderInfo", "Thanh toan don hang " + booking.getPublicCode());
+        p.put("vnp_OrderInfo", orderInfo);
         p.put("vnp_OrderType", orderType);
         p.put("vnp_Locale", (locale == null || locale.isBlank()) ? "vn" : locale);
         p.put("vnp_ReturnUrl", gateway.returnUrl());

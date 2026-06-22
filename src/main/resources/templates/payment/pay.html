@@ -6,34 +6,100 @@
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
-<div class="wrap" style="max-width:520px">
+<div class="wrap" style="max-width:880px">
     <h1 th:text="#{payment.heading}">Thanh toán</h1>
     <div th:replace="~{fragments/site :: flash}"></div>
+    <div class="pay-grid">
     <div class="card">
         <div class="muted" th:text="#{payment.bookingCode}">Mã đơn</div>
         <h2 style="margin:2px 0" th:text="${booking.publicCode}">DD-XXXXXX</h2>
         <p th:text="${booking.title}"></p>
-        <div th:if="${booking.checkIn != null}" class="muted">
+        <div th:if="${booking.checkIn != null and !booking.dayUse}" class="muted">
             <span th:text="${booking.checkIn}"></span> → <span th:text="${booking.checkOut}"></span>
+            · <span th:text="${booking.quantity}"></span> <span th:text="#{common.roomsUnit}">phòng</span></div>
+        <div th:if="${booking.dayUse}" class="muted">
+            <span th:text="#{payment.dayUseLabel}">🕐 Trong ngày:</span> <span th:text="${booking.checkIn}"></span>
+            · <span th:text="${booking.checkInTime}"></span>–<span th:text="${booking.checkOutTime}"></span>
             · <span th:text="${booking.quantity}"></span> <span th:text="#{common.roomsUnit}">phòng</span></div>
         <div th:if="${booking.travelDate != null}" class="muted">
             <span th:text="#{account.departure}">Khởi hành:</span> <span th:text="${booking.travelDate}"></span> · <span th:text="${booking.quantity}"></span> <span th:text="#{common.seatsUnit}">ghế</span></div>
-        <div th:if="${booking.discountAmount != null and booking.originalAmount != null}" class="muted" style="margin-top:10px">
+
+        <!-- Sua thong tin dat phong ngay tai day (chi don khach san DIRECT, co roomTypeId) -->
+        <details th:if="${booking.roomTypeId != null}" style="margin-top:10px">
+            <summary style="cursor:pointer;font-weight:600;color:#3dac78" th:text="#{payment.editBooking}">✏️ Sửa thông tin đặt phòng</summary>
+
+            <form th:if="${!booking.dayUse}"
+                  th:action="@{'/payment/' + ${booking.publicCode} + '/edit'}" method="post" style="margin-top:10px">
+                <input type="hidden" name="dayUse" value="false"/>
+                <label class="muted" style="display:block" th:text="#{payment.checkInDate}">Ngày nhận phòng</label>
+                <input type="date" name="checkIn" required th:value="${booking.checkIn.toString()}"
+                       style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                <label class="muted" style="display:block;margin-top:8px" th:text="#{payment.checkOutDate}">Ngày trả phòng</label>
+                <input type="date" name="checkOut" required th:value="${booking.checkOut.toString()}"
+                       style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                <label class="muted" style="display:block;margin-top:8px" th:text="#{hotels.numRooms}">Số phòng</label>
+                <input type="number" name="rooms" min="1" required th:value="${booking.quantity}"
+                       style="width:90px;padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                <div><button class="btn" type="submit" style="margin-top:10px" th:text="#{payment.saveChanges}">Lưu thay đổi</button></div>
+            </form>
+
+            <form th:if="${booking.dayUse}"
+                  th:action="@{'/payment/' + ${booking.publicCode} + '/edit'}" method="post" style="margin-top:10px">
+                <input type="hidden" name="dayUse" value="true"/>
+                <label class="muted" style="display:block" th:text="#{hotels.dateLabel}">Ngày</label>
+                <input type="date" name="date" required th:value="${booking.checkIn.toString()}"
+                       style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                <label class="muted" style="display:block;margin-top:8px" th:text="#{payment.timeInOut}">Giờ nhận – Giờ trả</label>
+                <span style="display:inline-flex;gap:8px">
+                    <input type="time" name="timeIn" required th:value="${booking.checkInTime.toString()}"
+                           style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                    <input type="time" name="timeOut" required th:value="${booking.checkOutTime.toString()}"
+                           style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                </span>
+                <label class="muted" style="display:block;margin-top:8px" th:text="#{hotels.numRooms}">Số phòng</label>
+                <input type="number" name="rooms" min="1" required th:value="${booking.quantity}"
+                       style="width:90px;padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
+                <div><button class="btn" type="submit" style="margin-top:10px" th:text="#{payment.saveChanges}">Lưu thay đổi</button></div>
+            </form>
+
+            <p class="muted" style="font-size:12px;margin-top:6px" th:text="#{payment.editNote}">Đổi ngày/giờ/số phòng sẽ tính lại giá và gỡ mã giảm giá đang áp.</p>
+        </details>
+    </div>
+
+    <div class="pay-side">
+        <div class="card">
+        <div th:if="${booking.originalAmount != null}" class="muted" style="margin-top:10px">
             <div><span th:text="#{voucher.original}">Giá gốc:</span>
                 <s th:text="${#numbers.formatInteger(booking.originalAmount,1,'COMMA')} + ' ' + ${booking.currency}"></s></div>
-            <div style="color:#2e7d32"><span th:text="#{voucher.applied}">Mã giảm giá</span>
+            <div th:if="${booking.discountAmount != null}" style="color:#0e7a44"><span th:text="#{voucher.applied}">Mã giảm giá</span>
                 (<b th:text="${booking.voucherCode}"></b>): −<span th:text="${#numbers.formatInteger(booking.discountAmount,1,'COMMA')}"></span>
+                <span th:text="${booking.currency}"></span></div>
+            <div th:if="${booking.tierDiscountAmount != null and booking.tierDiscountAmount.signum() > 0}" style="color:#0e7a44">
+                <span th:text="#{payment.tierBenefit}">Ưu đãi hạng</span>
+                <span th:switch="${booking.tier}">
+                    <span th:case="'GOLD'" th:text="#{payment.tierGold}">Vàng</span>
+                    <span th:case="'PLATINUM'">Platinum</span>
+                    <span th:case="'DIAMOND'">Diamond</span>
+                </span>:
+                −<span th:text="${#numbers.formatInteger(booking.tierDiscountAmount,1,'COMMA')}"></span>
                 <span th:text="${booking.currency}"></span></div>
         </div>
         <div class="price" style="font-size:22px;margin-top:10px">
             <span th:text="${booking.amount != null ? #numbers.formatInteger(booking.amount,1,'COMMA') : ''}"></span>
             <span th:text="${booking.currency}"></span></div>
 
+        <div id="hold-timer" th:attr="data-remaining=${remainingSeconds}"
+             style="margin-top:12px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#9a3412;font-size:14px">
+            ⏳ <span th:text="${booking.type.name() == 'FLIGHT'} ? #{payment.holdFlightLabel} : #{payment.holdHotelLabel}">Giữ phòng trong</span>
+            <b id="hold-clock">--:--</b>.
+            <span th:text="${booking.type.name() == 'FLIGHT'} ? #{payment.holdFlightExpire} : #{payment.holdHotelExpire}">Quá thời gian, phòng sẽ được mở lại cho khách khác.</span>
+        </div>
+
         <div style="margin-top:10px">
             <form th:if="${booking.voucherCode == null}" th:action="@{'/payment/' + ${booking.publicCode} + '/voucher'}" method="post"
                   style="display:flex;gap:8px">
                 <input type="text" name="voucherCode" th:placeholder="#{voucher.placeholder}" required
-                       style="flex:1;padding:8px;border:1px solid #cdd3dd;border-radius:8px"/>
+                       style="flex:1;padding:8px;border:1px solid #d3d9e4;border-radius:8px"/>
                 <button class="btn ghost" type="submit" th:text="#{voucher.apply}">Áp dụng</button>
             </form>
             <form th:if="${booking.voucherCode != null}" th:action="@{'/payment/' + ${booking.publicCode} + '/voucher/remove'}" method="post">
@@ -47,7 +113,7 @@
         <p class="muted" style="margin-top:6px;font-size:12px"><span th:text="#{payment.testCard}">Thẻ test NCB:</span> 9704198526191432198 · NGUYEN VAN A · 07/15 · OTP 123456</p>
     </div>
 
-    <div class="card" th:if="${company != null}" style="margin-top:12px;border:1px solid #2e7d32;background:#f1f8f2">
+    <div class="card" th:if="${company != null}" style="margin-top:12px;border:1px solid #0e7a44;background:#f1f8f2">
         <div class="muted"><span th:text="#{payment.companyAccount}">Tài khoản công ty:</span> <b th:text="${company.name()}"></b></div>
         <div class="muted"><span th:text="#{payment.budgetRemaining}">Hạn mức còn lại:</span>
             <b th:text="${#numbers.formatInteger(company.remaining(),1,'COMMA')} + ' VND'"></b></div>
@@ -56,6 +122,75 @@
         </form>
         <p class="muted" style="margin-top:6px;font-size:12px" th:text="#{payment.companyNote}">Đơn sẽ được xác nhận ngay và trừ vào hạn mức công ty (không qua VNPay).</p>
     </div>
+    </div>
 </div>
+</div>
+
+<div id="expire-modal" style="display:none;position:fixed;inset:0;background:rgba(20,20,40,.55);z-index:1300;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#fff;border-radius:16px;max-width:380px;width:100%;padding:24px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.28)">
+        <div style="width:54px;height:54px;border-radius:50%;background:#fbe6e3;color:#c0392b;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 12px">⏰</div>
+        <h3 style="margin:0 0 8px;color:#1c2536" th:text="#{payment.expiredTitle}">Thời gian thanh toán đã hết hạn</h3>
+        <p class="muted" style="margin:0 0 18px" th:text="#{payment.expiredMsg}">Vui lòng chọn lại phòng.</p>
+        <a href="/" class="btn" style="width:100%;display:block" th:text="#{payment.backHome}">Về trang chủ</a>
+    </div>
+</div>
+
+<script>
+(function () {
+    var box = document.getElementById('hold-timer');
+    var clock = document.getElementById('hold-clock');
+    var modal = document.getElementById('expire-modal');
+    if (!box) return;
+    var remaining = parseInt(box.getAttribute('data-remaining'), 10);
+    if (isNaN(remaining)) remaining = 0;
+    var done = false;
+    function two(n) { return (n < 10 ? '0' : '') + n; }
+    function expire() {
+        if (done) return; done = true;
+        if (modal) modal.style.display = 'flex';
+        setTimeout(function () { window.location.href = '/'; }, 4000); // tu dong ve trang chu
+    }
+    function tick() {
+        if (remaining <= 0) { if (clock) clock.textContent = '00:00'; expire(); return; }
+        var m = Math.floor(remaining / 60), s = remaining % 60;
+        if (clock) clock.textContent = two(m) + ':' + two(s);
+        remaining--;
+        setTimeout(tick, 1000);
+    }
+    tick();
+})();
+</script>
+<script>
+    /* Tu dong day ngay/gio tra khi customer chon ngay/gio nhan >= ngay/gio tra (form sua don tai trang thanh toan) */
+    (function () {
+        function ymd(d) { var z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); }
+        function two(n) { return (n < 10 ? '0' : '') + n; }
+        function toMin(v) { if (!v) return null; var q = v.split(':'); return parseInt(q[0], 10) * 60 + parseInt(q[1], 10); }
+        Array.prototype.forEach.call(document.querySelectorAll('input[type=date][name=checkIn]'), function (ci) {
+            var form = ci.closest('form'); if (!form) return;
+            var co = form.querySelector('input[name=checkOut]'); if (!co) return;
+            if (ci.value) co.min = ci.value;
+            ci.addEventListener('change', function () {
+                if (ci.value && (!co.value || co.value <= ci.value)) {
+                    co.value = ymd(new Date(new Date(ci.value).getTime() + 864e5));
+                }
+                if (ci.value) co.min = ci.value;
+            });
+        });
+        Array.prototype.forEach.call(document.querySelectorAll('input[type=time][name=timeIn]'), function (ti) {
+            var form = ti.closest('form'); if (!form) return;
+            var to = form.querySelector('input[name=timeOut]'); if (!to) return;
+            ti.addEventListener('change', function () {
+                var inMin = toMin(ti.value); if (inMin == null) return;
+                var outMin = toMin(to.value);
+                if (outMin == null || outMin <= inMin) {
+                    var nm = inMin + 60; if (nm > 1439) nm = 1439;
+                    to.value = two(Math.floor(nm / 60)) + ':' + two(nm % 60);
+                }
+            });
+        });
+    })();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

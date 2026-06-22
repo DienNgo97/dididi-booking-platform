@@ -6,6 +6,7 @@ import com.dididi.booking.booking.repository.BookingRepository;
 import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.corporate.domain.entity.Company;
 import com.dididi.booking.corporate.repository.CompanyRepository;
+import com.dididi.booking.group.domain.entity.GroupBooking;
 import com.dididi.booking.identity.domain.entity.User;
 import com.dididi.booking.identity.repository.UserRepository;
 import com.lowagie.text.Chunk;
@@ -32,7 +33,10 @@ import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /** Sinh hoa don VAT (PDF) cho don dat tra bang ngan sach cong ty (B2B). Font Unicode nhung de in tieng Viet. */
 @Service
@@ -60,20 +64,161 @@ public class InvoiceService {
         this.userRepository = userRepository;
     }
 
-    /** Sinh PDF hoa don VAT theo ma don. Don phai la don cong ty (companyId != null) va da CONFIRMED. */
+    /** Sinh PDF hoa don theo ma don. Yeu cau don da CONFIRMED. Don cong ty -> ben mua la cong ty; don khach le -> ben mua la khach hang. */
     public byte[] generateForBooking(String publicCode) {
         Booking b = bookingRepository.findByPublicCode(publicCode)
                 .orElseThrow(() -> new BusinessException("NOT_FOUND", "Không tìm thấy đơn", HttpStatus.NOT_FOUND));
-        if (b.getCompanyId() == null) {
-            throw new BusinessException("NOT_CORPORATE", "Đơn này không phải đặt theo công ty", HttpStatus.BAD_REQUEST);
-        }
         if (b.getStatus() != BookingStatus.CONFIRMED) {
             throw new BusinessException("NOT_CONFIRMED", "Chỉ xuất hóa đơn cho đơn đã xác nhận", HttpStatus.CONFLICT);
         }
-        Company co = companyRepository.findById(b.getCompanyId())
-                .orElseThrow(() -> new BusinessException("NOT_FOUND", "Không tìm thấy công ty", HttpStatus.NOT_FOUND));
+        Company co = b.getCompanyId() != null
+                ? companyRepository.findById(b.getCompanyId()).orElse(null)
+                : null;
         User booker = userRepository.findById(b.getUserId()).orElse(null);
         return build(b, co, booker);
+    }
+
+    /**
+     * Sinh PDF "Phieu chia tien nhom" (KHONG phai hoa don VAT) tu danh sach phong da xac nhan cua nhom.
+     * Hien thi: tung phong (nguoi dat, hang phong, thanh tien, nguoi chi tien) + bang chia tien (phai chiu / da chi / chenh lech).
+     */
+    public byte[] generateGroupSettlement(GroupBooking g, List<Booking> rooms,
+                                          String hotelName, String hotelAddress, User organizer) {
+        try {
+            BaseFont bf = baseFont("fonts/DejaVuSans.ttf");
+            BaseFont bfBold = baseFont("fonts/DejaVuSans-Bold.ttf");
+            Font fTitle = new Font(bfBold, 16, Font.NORMAL, Color.BLACK);
+            Font fSub = new Font(bf, 10, Font.ITALIC, new Color(80, 80, 80));
+            Font fH = new Font(bfBold, 10.5f, Font.NORMAL, Color.BLACK);
+            Font f = new Font(bf, 10f, Font.NORMAL, Color.BLACK);
+            Font fBold = new Font(bfBold, 10f, Font.NORMAL, Color.BLACK);
+            Font fSmall = new Font(bf, 9, Font.ITALIC, new Color(90, 90, 90));
+
+            Document doc = new Document(PageSize.A4, 48, 48, 48, 48);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PdfWriter.getInstance(doc, baos);
+            doc.open();
+
+            Paragraph title = new Paragraph("PHIẾU CHIA TIỀN NHÓM", fTitle);
+            title.setAlignment(Element.ALIGN_CENTER);
+            doc.add(title);
+            Paragraph sub = new Paragraph("(Bản tổng hợp nội bộ để chia tiền — không phải hóa đơn GTGT)", fSub);
+            sub.setAlignment(Element.ALIGN_CENTER);
+            doc.add(sub);
+
+            LocalDate endDate = g.getEndedAt() != null ? g.getEndedAt().toLocalDate() : LocalDate.now();
+            Paragraph meta = new Paragraph("Nhóm: " + nz(g.getTitle())
+                    + "    Ngày kết thúc: " + endDate.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), fSmall);
+            meta.setAlignment(Element.ALIGN_CENTER);
+            meta.setSpacingAfter(10);
+            doc.add(meta);
+
+            doc.add(line("Khách sạn: ", nz(hotelName)
+                    + (hotelAddress != null && !hotelAddress.isBlank() ? " — " + hotelAddress : ""), fBold, f));
+            doc.add(line("Thời gian: ", String.valueOf(g.getCheckIn()) + " → " + String.valueOf(g.getCheckOut()), fBold, f));
+            if (organizer != null) {
+                String who = nz(organizer.getFullName())
+                        + (organizer.getEmail() != null ? " (" + organizer.getEmail() + ")" : "");
+                doc.add(line("Người tổ chức (nhóm trưởng): ", who, fBold, f));
+            }
+            doc.add(spacer(10));
+
+            // Bang cac phong
+            PdfPTable table = new PdfPTable(new float[]{0.8f, 3f, 3.2f, 1f, 2.4f, 3f});
+            table.setWidthPercentage(100);
+            header(table, "STT", fH);
+            header(table, "Người đặt", fH);
+            header(table, "Phòng", fH);
+            header(table, "SL", fH);
+            header(table, "Thành tiền", fH);
+            header(table, "Người chi tiền", fH);
+
+            Map<Long, String> names = new LinkedHashMap<>();
+            Map<Long, BigDecimal> bear = new LinkedHashMap<>();
+            Map<Long, BigDecimal> paid = new LinkedHashMap<>();
+
+            BigDecimal total = BigDecimal.ZERO;
+            for (Booking r : rooms) {
+                if (r.getAmount() != null) total = total.add(r.getAmount());
+            }
+            int numRooms = rooms.size();
+            BigDecimal share = numRooms > 0
+                    ? total.divide(BigDecimal.valueOf(numRooms), 0, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+
+            int i = 1;
+            for (Booking r : rooms) {
+                BigDecimal amt = r.getAmount() == null ? BigDecimal.ZERO : r.getAmount();
+                User booker = r.getUserId() != null ? userRepository.findById(r.getUserId()).orElse(null) : null;
+                String bookerName = booker != null ? nz(booker.getFullName()) : ("#" + r.getUserId());
+                User payer = r.getPaidByUserId() != null ? userRepository.findById(r.getPaidByUserId()).orElse(null) : null;
+                String payerName = payer != null ? nz(payer.getFullName()) : "—";
+
+                cell(table, String.valueOf(i++), f, Element.ALIGN_CENTER);
+                cell(table, bookerName, f, Element.ALIGN_LEFT);
+                cell(table, nz(r.getTitle()), f, Element.ALIGN_LEFT);
+                cell(table, String.valueOf(r.getQuantity() <= 0 ? 1 : r.getQuantity()), f, Element.ALIGN_CENTER);
+                cell(table, vnd.format(amt), f, Element.ALIGN_RIGHT);
+                cell(table, payerName, f, Element.ALIGN_LEFT);
+
+                if (r.getUserId() != null) {
+                    names.putIfAbsent(r.getUserId(), bookerName);
+                    bear.merge(r.getUserId(), g.isSplitEven() ? share : amt, BigDecimal::add);
+                }
+                if (r.getPaidByUserId() != null) {
+                    names.putIfAbsent(r.getPaidByUserId(), payerName);
+                    paid.merge(r.getPaidByUserId(), amt, BigDecimal::add);
+                }
+            }
+            doc.add(table);
+            doc.add(spacer(8));
+
+            doc.add(totalLine("Tổng chi phí (đã thanh toán): ", vnd.format(total) + " đ", fBold, fBold));
+            if (g.isSplitEven()) {
+                doc.add(totalLine("Chia đều mỗi phòng: ", vnd.format(share) + " đ", f, fBold));
+            }
+            doc.add(spacer(10));
+
+            // Bang chia tien
+            Paragraph st = new Paragraph("CHIA TIỀN — ai trả / ai cần hoàn", fH);
+            st.setSpacingAfter(4);
+            doc.add(st);
+            PdfPTable s = new PdfPTable(new float[]{4f, 3f, 3f, 3.4f});
+            s.setWidthPercentage(100);
+            header(s, "Thành viên", fH);
+            header(s, "Phải chịu", fH);
+            header(s, "Đã chi", fH);
+            header(s, "Chênh lệch", fH);
+            for (Map.Entry<Long, String> e : names.entrySet()) {
+                BigDecimal chiu = bear.getOrDefault(e.getKey(), BigDecimal.ZERO);
+                BigDecimal chi = paid.getOrDefault(e.getKey(), BigDecimal.ZERO);
+                BigDecimal net = chi.subtract(chiu);
+                String diff;
+                if (net.signum() > 0) diff = "Được hoàn " + vnd.format(net) + " đ";
+                else if (net.signum() < 0) diff = "Cần trả " + vnd.format(net.abs()) + " đ";
+                else diff = "Đã cân bằng";
+                cell(s, e.getValue(), f, Element.ALIGN_LEFT);
+                cell(s, vnd.format(chiu) + " đ", f, Element.ALIGN_RIGHT);
+                cell(s, vnd.format(chi) + " đ", f, Element.ALIGN_RIGHT);
+                cell(s, diff, f, Element.ALIGN_RIGHT);
+            }
+            doc.add(s);
+
+            Paragraph note = new Paragraph(
+                    "Ghi chú: \"Phải chịu\" là phần mỗi người gánh ("
+                    + (g.isSplitEven() ? "chia đều theo số phòng" : "theo phòng của chính mình")
+                    + "); \"Đã chi\" là số tiền người đó thực trả. "
+                    + "Hóa đơn VAT của từng phòng xem trong đơn hàng cá nhân. Chứng từ phục vụ mục đích minh họa đồ án.", fSmall);
+            note.setSpacingBefore(16);
+            doc.add(note);
+
+            doc.close();
+            return baos.toByteArray();
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException("PDF_ERROR", "Lỗi tạo PDF phiếu chia tiền: " + e.getMessage(),
+                    HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     private byte[] build(Booking b, Company co, User booker) {
@@ -111,13 +256,20 @@ public class InvoiceService {
             doc.add(line("Mã số thuế: ", sellerTaxCode, fBold, f));
             doc.add(line("Địa chỉ: ", sellerAddress, fBold, f));
             doc.add(spacer(6));
-            doc.add(line("Đơn vị mua hàng: ", nz(co.getName()), fBold, f));
-            doc.add(line("Mã số thuế: ", nz(co.getTaxCode()), fBold, f));
-            doc.add(line("Địa chỉ: ", nz(co.getAddress()), fBold, f));
-            if (booker != null) {
-                String who = nz(booker.getFullName())
-                        + (booker.getEmail() != null ? " (" + booker.getEmail() + ")" : "");
-                doc.add(line("Người đặt: ", who, fBold, f));
+            if (co != null) {
+                doc.add(line("Đơn vị mua hàng: ", nz(co.getName()), fBold, f));
+                doc.add(line("Mã số thuế: ", nz(co.getTaxCode()), fBold, f));
+                doc.add(line("Địa chỉ: ", nz(co.getAddress()), fBold, f));
+                if (booker != null) {
+                    String who = nz(booker.getFullName())
+                            + (booker.getEmail() != null ? " (" + booker.getEmail() + ")" : "");
+                    doc.add(line("Người đặt: ", who, fBold, f));
+                }
+            } else {
+                doc.add(line("Khách hàng: ", booker != null ? nz(booker.getFullName()) : "", fBold, f));
+                if (booker != null && booker.getEmail() != null) {
+                    doc.add(line("Email: ", booker.getEmail(), fBold, f));
+                }
             }
             doc.add(spacer(10));
 
@@ -154,7 +306,8 @@ public class InvoiceService {
             doc.add(words);
 
             Paragraph note = new Paragraph(
-                    "Hình thức thanh toán: Ngân sách công ty (B2B). Chứng từ phục vụ mục đích minh họa đồ án.", fSmall);
+                    "Hình thức thanh toán: " + (co != null ? "Ngân sách công ty (B2B)" : "Thanh toán trực tuyến")
+                            + ". Chứng từ phục vụ mục đích minh họa đồ án.", fSmall);
             note.setSpacingBefore(16);
             doc.add(note);
 

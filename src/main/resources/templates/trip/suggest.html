@@ -34,5 +34,6 @@
     </div>
     <p class="muted" th:if="${#lists.isEmpty(suggestion.hotels())}" th:text="#{trip.noHotels}">Không có khách sạn ở thành phố này.</p>
 </div>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

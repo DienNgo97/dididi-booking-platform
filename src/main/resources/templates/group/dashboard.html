@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${group.title} + ' - ' + #{group.dashSuffix}">Nhóm đặt phòng</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:720px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <h1 style="margin-bottom:2px" th:text="${group.title}">Nhóm đặt phòng</h1>
+    <div class="muted">
+        🏨 <b th:text="${hotelName}"></b><span th:if="${hotelCity}"> · <span th:text="${hotelCity}"></span></span>
+        <span th:if="${group.roomName}"> · <span th:text="${group.roomName}"></span></span><br/>
+        📅 <span th:text="${group.checkIn}"></span> → <span th:text="${group.checkOut}"></span>
+    </div>
+
+    <!-- Trang thai nhom / han chot / chia deu (Phase 2) -->
+    <div class="card" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px">
+        <span th:if="${closed}" style="color:#b3261e;font-weight:600" th:text="#{group.closedTag}">🔒 Nhóm đã đóng</span>
+        <span th:unless="${closed}" style="color:#0e7a44;font-weight:600" th:text="#{group.openTag}">🟢 Đang mở</span>
+        <span th:if="${deadline != null}" class="muted"> · ⏳ <span th:text="#{group.deadline}">Hạn chót:</span>
+            <b id="gb-deadline" th:attr="data-dl=${deadline},data-expired=#{group.cdExpired},data-left=#{group.cdLeft},data-days=#{group.cdDays}" th:text="${deadline}"></b>
+            <span th:if="${expired}" style="color:#b3261e" th:text="#{group.expiredTag}">(đã quá hạn)</span>
+            <span th:unless="${expired}" id="gb-countdown"></span>
+        </span>
+        <span th:if="${splitEven and evenShare != null}" class="muted"> ·
+            🟰 <span th:text="#{group.splitEvenShort}">Chia đều:</span> <b th:text="${#numbers.formatInteger(evenShare,1,'COMMA')}">0</b> <span th:text="#{group.perPerson}">VND / người</span></span>
+    </div>
+
+    <!-- Link moi -->
+    <div class="card" style="margin-top:14px;background:#e7f5ee;border:1px solid #cce8da">
+        <b th:text="#{group.inviteLink}">Link mời nhóm</b>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <input id="invite-url" readonly
+                   style="flex:1;min-width:220px;padding:9px;border:1px solid #d3d9e4;border-radius:8px;background:#fff"/>
+            <button class="btn" type="button" th:attr="data-copied=#{group.copied}" onclick="copyInvite(this)" th:text="#{group.copy}">Sao chép</button>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:6px" th:text="#{group.inviteHint}">Gửi link này vào group chat — ai mở cũng có thể tham gia và tự trả phần mình.</div>
+        <div class="muted" th:if="${loggedIn}" style="font-size:12px;margin-top:4px" th:utext="#{group.savedNote}">
+            💾 Đã lưu trong <a href="/account/groups">Đơn của tôi → Đơn nhóm</a> — bạn có thể quay lại bất cứ lúc nào.
+        </div>
+        <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <img th:src="@{'/g/' + ${group.token} + '/qr.png'}" th:attr="alt=#{group.qrAlt}" alt="Mã QR tham gia nhóm"
+                 width="150" height="150" loading="lazy"
+                 style="border:1px solid #cce8da;border-radius:8px;background:#fff;padding:6px"/>
+            <div class="muted" style="font-size:13px" th:utext="#{group.qrHint}">📱 Hoặc <b>quét mã QR</b> này để mở link tham gia trên điện thoại.</div>
+        </div>
+    </div>
+
+    <!-- Chinh sua nhom (chi nguoi to chuc) -->
+    <div class="card" th:if="${isOrganizer}" style="margin-top:14px">
+        <b th:text="#{group.editGroup}">Chỉnh sửa nhóm</b> <span class="muted" style="font-size:12px" th:text="#{group.organizerOnly}">(chỉ người tạo nhóm thấy)</span>
+        <form th:action="@{'/g/' + ${group.token} + '/edit'}" method="post" style="margin-top:10px">
+            <label class="muted" th:text="#{group.groupName}">Tên nhóm</label><br/>
+            <input type="text" name="title" th:value="${group.title}" maxlength="80"
+                   style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px;margin-bottom:10px"/>
+            <label class="muted" th:text="#{group.roomClass}">Hạng phòng</label><br/>
+            <select name="roomTypeId"
+                    style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px;background:#fff">
+                <option th:each="rt : ${roomTypes}" th:value="${rt.id}"
+                        th:selected="${group.roomTypeId != null and rt.id == group.roomTypeId}"
+                        th:text="${rt.name} + ' — ' + ${#numbers.formatInteger(rt.basePrice,1,'COMMA')} + ' VND'">Phòng</option>
+            </select>
+            <div style="margin-top:10px">
+                <label class="muted" th:text="#{group.deadlineField}">Hạn chót tham gia &amp; thanh toán (để trống = không giới hạn)</label><br/>
+                <input type="datetime-local" name="deadline"
+                       th:value="${deadline != null ? deadline.toString() : ''}"
+                       style="padding:9px;border:1px solid #d3d9e4;border-radius:8px"/>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer">
+                <input type="checkbox" name="splitEven" value="true" th:checked="${splitEven}"/>
+                <span th:text="#{group.splitEvenLabel}">Chia đều chi phí cho mọi người (hiển thị phần mỗi người)</span>
+            </label>
+            <button class="btn" type="submit" style="margin-top:12px" th:text="#{group.saveChanges}">Lưu thay đổi</button>
+        </form>
+        <div class="muted" style="font-size:12px;margin-top:8px" th:utext="#{group.roomChangeNote}">
+            Đổi hạng phòng chỉ áp dụng cho các phòng <b>thêm mới</b> sau đó; phòng đã đặt giữ nguyên.
+        </div>
+        <hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
+        <form th:unless="${closed}" th:action="@{'/g/' + ${group.token} + '/close'}" method="post" style="display:inline-block">
+            <button class="btn ghost" type="submit"
+                    th:attr="data-confirm=#{group.confirmClose}" th:text="#{group.closeGroup}">🔒 Đóng nhóm</button>
+        </form>
+        <form th:if="${closed}" th:action="@{'/g/' + ${group.token} + '/reopen'}" method="post" style="display:inline-block">
+            <button class="btn" type="submit" th:text="#{group.reopenGroup}">🔓 Mở lại nhóm</button>
+        </form>
+
+        <hr style="border:none;border-top:1px solid #eee;margin:12px 0"/>
+        <div th:unless="${ended}">
+            <form th:action="@{'/g/' + ${group.token} + '/end'}" method="post" style="display:inline-block">
+                <button class="btn" type="submit"
+                        th:attr="data-confirm=#{group.confirmEnd}" th:text="#{group.endTrip}">🏁 Kết thúc chuyến đi</button>
+            </form>
+            <div class="muted" style="font-size:12px;margin-top:6px" th:text="#{group.endTripHint}">Bấm khi chuyến đi đã xong — để xuất hoá đơn chia tiền cho cả nhóm.</div>
+        </div>
+        <div th:if="${ended}">
+            <div style="color:#0e7a44;font-weight:600;margin-bottom:6px" th:text="#{group.tripEnded}">🏁 Chuyến đi đã kết thúc</div>
+            <a class="btn" th:href="@{'/g/' + ${group.token} + '/invoice'}" target="_blank" th:text="#{group.exportInvoice}">🧾 Xuất hoá đơn chia tiền (PDF)</a>
+            <form th:action="@{'/g/' + ${group.token} + '/reopen-trip'}" method="post" style="display:inline-block;margin-left:6px">
+                <button class="btn ghost" type="submit" th:text="#{group.reopenTrip}">Mở lại chuyến đi</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tom tat -->
+    <div class="card" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div><span th:text="#{group.members}">Thành viên:</span> <b th:text="${memberCount}">0</b> · <span th:text="#{group.paidLabel}">Đã trả:</span> <b th:text="${paidCount}">0</b>/<span th:text="${memberCount}">0</span></div>
+        <div class="price" style="font-size:16px">
+            <span th:text="#{group.paid}">Đã trả</span> <b th:text="${#numbers.formatInteger(totalPaid,1,'COMMA')}">0</b> /
+            <span th:text="${#numbers.formatInteger(totalAll,1,'COMMA')}">0</span> VND</div>
+    </div>
+
+    <!-- Chu nhom: thanh toan cho ca nhom (gop 1 giao dich) -->
+    <div th:if="${isOrganizer and unpaidCount > 0}" style="margin-top:10px">
+        <a class="btn" th:href="@{'/g/' + ${group.token} + '/pay-group'}"
+           th:attr="data-confirm=#{group.confirmPayGroup}" th:text="#{group.payGroup(${unpaidCount})}">
+            💳 Thanh toán cho cả nhóm (0 phòng chưa trả)</a>
+        <div class="muted" style="font-size:12px;margin-top:4px">
+            <span th:utext="#{group.payGroupNote}">Gộp tổng các phòng chưa trả vào <b>một giao dịch VNPay</b>; thanh toán xong xác nhận hết.</span>
+            <span th:if="${splitEven and evenShare != null}" th:utext="#{group.refundYou(${#numbers.formatInteger(evenShare,1,'COMMA')})}">Sau đó mỗi người hoàn lại bạn
+                <b>0</b> VND (chia đều).</span>
+        </div>
+    </div>
+
+    <!-- Danh sach thanh vien -->
+    <h2 style="margin:18px 0 6px;font-size:18px" th:text="#{group.roomsInGroup}">Các phòng trong nhóm</h2>
+    <p class="muted" th:if="${memberCount == 0}" th:text="#{group.noRooms}">Chưa có ai thêm phòng. Hãy là người đầu tiên bên dưới 👇</p>
+
+    <div class="list-item" th:each="m : ${members}">
+        <div>
+            <b th:text="${m.name()}">Tên</b>
+            <span class="muted" style="font-size:13px"> · <span th:text="${m.rooms()}">1</span> <span th:text="#{search.roomsUnit}">phòng</span> · <span th:text="#{trip.codeWord}">mã</span> <span th:text="${m.code()}"></span></span>
+            <div class="price" style="font-size:15px;margin-top:2px">
+                <span th:text="${m.amount() != null ? #numbers.formatInteger(m.amount(),1,'COMMA') : ''}"></span> VND</div>
+        </div>
+        <div style="text-align:right">
+            <span th:if="${m.status() == 'CONFIRMED'}" style="color:#0e7a44;font-weight:600" th:text="#{group.paidCheck}">✓ Đã trả</span>
+            <span th:if="${m.status() == 'PENDING_PAYMENT' and m.userId() != myId}" class="muted" th:text="#{group.pendingPay}">Chờ thanh toán</span>
+            <a th:if="${m.status() == 'PENDING_PAYMENT' and m.userId() == myId}" class="btn"
+               th:href="@{'/payment/' + ${m.code()}}" th:text="#{group.payMyShare}">Thanh toán phần của tôi</a>
+            <span th:if="${m.status() != 'CONFIRMED' and m.status() != 'PENDING_PAYMENT'}" class="muted" th:text="#{group.cancelledExpired}">Đã huỷ/hết hạn</span>
+            <form th:if="${m.status() == 'PENDING_PAYMENT' and (m.userId() == myId or isOrganizer)}"
+                  th:action="@{'/g/' + ${group.token} + '/room/' + ${m.code()} + '/delete'}" method="post"
+                  style="display:inline-block;margin-left:6px">
+                <button class="btn ghost" type="submit" style="padding:5px 10px;font-size:13px"
+                        th:attr="data-confirm=#{group.confirmDeleteRoom}" th:text="#{group.delete}">Xoá</button>
+            </form>
+            <form th:if="${isOrganizer and m.userId() != null and m.userId() != myId and m.status() == 'PENDING_PAYMENT'}"
+                  th:action="@{'/g/' + ${group.token} + '/member/' + ${m.userId()} + '/remove'}" method="post"
+                  style="display:inline-block;margin-left:6px">
+                <button class="btn ghost" type="submit" style="padding:5px 10px;font-size:13px;color:#b3261e"
+                        th:attr="data-confirm=#{group.confirmRemoveMember}" th:text="#{group.removeMember}">Xoá thành viên</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Luu y cho thanh vien: nhom truong co the tra ca nhom -->
+    <p class="muted" th:if="${loggedIn and !isOrganizer and unpaidCount > 0}"
+       style="font-size:13px;margin-top:10px;background:#e7f5ee;border:1px solid #cce8da;border-radius:8px;padding:10px">
+        <span th:utext="#{group.organizerPayNote}">💡 Nếu <b>nhóm trưởng</b> chọn "Thanh toán cho cả nhóm", bạn <b>không cần</b> tự trả phần của mình —
+        phòng của bạn sẽ được xác nhận tự động.</span><span th:if="${splitEven and evenShare != null}" th:utext="' ' + #{group.refundLeader(${#numbers.formatInteger(evenShare,1,'COMMA')})}"> Sau đó mỗi người
+        hoàn lại nhóm trưởng <b>0</b> VND (chia đều).</span>
+    </p>
+
+    <!-- Them phong cua toi -->
+    <div class="card" style="margin-top:18px">
+        <b th:text="#{group.addMyRoom}">Thêm phòng của tôi</b>
+        <div th:unless="${loggedIn}" style="margin-top:8px">
+            <p class="muted" th:text="#{group.loginToJoinNote}">Bạn cần đăng nhập để tham gia nhóm và thanh toán phần của mình.</p>
+            <a class="btn" href="/login" th:text="#{group.loginToJoin}">Đăng nhập để tham gia</a>
+        </div>
+        <div th:if="${loggedIn and !joinable}" class="muted" style="margin-top:8px">
+            <span th:if="${closed}" th:text="#{group.cantAddClosed}">🔒 Nhóm đã đóng nên không thể thêm phòng mới.</span>
+            <span th:if="${ended and !closed}" th:text="#{group.cantAddEnded}">🏁 Chuyến đi đã kết thúc nên không thể thêm phòng mới.</span>
+            <span th:if="${expired and !closed and !ended}" th:text="#{group.cantAddExpired}">⏰ Đã quá hạn chót nên không thể thêm phòng mới.</span>
+        </div>
+        <form th:if="${loggedIn and joinable}" th:action="@{'/g/' + ${group.token} + '/join'}" method="post"
+              style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+            <div><label class="muted" th:text="#{group.guestName}">Tên khách</label><br/>
+                <input type="text" name="guestName" th:value="${myName}" required
+                       style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div><label class="muted" th:text="#{group.roomClass}">Hạng phòng</label><br/>
+                <select name="roomTypeId" style="padding:8px;border:1px solid #d3d9e4;border-radius:8px;background:#fff">
+                    <option th:each="rt : ${roomTypes}" th:value="${rt.id}"
+                            th:selected="${group.roomTypeId != null and rt.id == group.roomTypeId}"
+                            th:text="${rt.name} + ' — ' + ${#numbers.formatInteger(rt.basePrice,1,'COMMA')} + ' VND'">Phòng</option>
+                </select></div>
+            <div><label class="muted" th:text="#{search.checkin}">Nhận phòng</label><br/>
+                <input type="date" name="checkIn" id="j-in" required
+                       th:value="${group.checkIn != null ? group.checkIn.toString() : ''}"
+                       style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div><label class="muted" th:text="#{search.checkout}">Trả phòng</label><br/>
+                <input type="date" name="checkOut" id="j-out" required
+                       th:value="${group.checkOut != null ? group.checkOut.toString() : ''}"
+                       style="padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <div><label class="muted" th:text="#{group.numRooms}">Số phòng</label><br/>
+                <input type="number" name="rooms" value="1" min="1"
+                       style="width:80px;padding:8px;border:1px solid #d3d9e4;border-radius:8px"/></div>
+            <button class="btn" type="submit" name="pay" value="false" th:text="#{group.addRoom}">Thêm phòng</button>
+            <button class="btn ghost" type="submit" name="pay" value="true" th:text="#{group.addAndPay}">Thêm &amp; thanh toán ngay</button>
+        </form>
+    </div>
+</div>
+<script>
+    document.getElementById('invite-url').value = window.location.href;
+    function copyInvite(btn){
+        var el=document.getElementById('invite-url');
+        navigator.clipboard.writeText(el.value).then(function(){
+            var t=btn.textContent; btn.textContent=btn.getAttribute('data-copied')||'Đã sao chép!';
+            setTimeout(function(){btn.textContent=t;},1500);
+        });
+    }
+    (function(){
+        function ymd(d){var z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10);}
+        var ci=document.getElementById('j-in'),co=document.getElementById('j-out');
+        if(!ci||!co)return;
+        ci.addEventListener('change',function(){
+            if(ci.value){co.min=ci.value;if(!co.value||co.value<=ci.value)co.value=ymd(new Date(new Date(ci.value).getTime()+864e5));}
+        });
+    })();
+    (function(){
+        var dlEl=document.getElementById('gb-deadline');
+        if(!dlEl)return;
+        var dl=new Date(dlEl.getAttribute('data-dl'));
+        var EXP=dlEl.getAttribute('data-expired')||' (đã quá hạn)';
+        var LEFT=dlEl.getAttribute('data-left')||' · còn ';
+        var DAYS=dlEl.getAttribute('data-days')||'ngày';
+        if(!isNaN(dl)) dlEl.textContent=dl.toLocaleString(document.documentElement.lang||'vi-VN',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'});
+        var cd=document.getElementById('gb-countdown');
+        if(!cd)return;
+        function tick(){
+            var ms=dl-new Date();
+            if(ms<=0){cd.textContent=EXP;cd.style.color='#b3261e';return;}
+            var d=Math.floor(ms/864e5),h=Math.floor(ms%864e5/36e5),m=Math.floor(ms%36e5/6e4);
+            cd.textContent=LEFT+(d>0?d+' '+DAYS+' ':'')+h+'h'+m+'p';
+            setTimeout(tick,30000);
+        }
+        tick();
+    })();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

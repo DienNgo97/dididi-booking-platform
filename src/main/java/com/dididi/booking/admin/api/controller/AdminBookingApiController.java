@@ -4,6 +4,7 @@ import com.dididi.booking.admin.api.dto.AdminBookingDto;
 import com.dididi.booking.admin.api.dto.RefundRequest;
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
+import com.dididi.booking.booking.domain.enums.CancelStatus;
 import com.dididi.booking.booking.repository.BookingRepository;
 import com.dididi.booking.booking.service.BookingService;
 import com.dididi.booking.common.dto.ApiResponse;
@@ -43,16 +44,22 @@ public class AdminBookingApiController {
         this.refundService = refundService;
     }
 
-    @Operation(summary = "Danh sách đơn (phân trang, lọc theo status tuỳ chọn)")
+    @Operation(summary = "Danh sách đơn (phân trang, lọc theo status hoặc cancelStatus tuỳ chọn)")
     @GetMapping
     public ApiResponse<PagedResponse<AdminBookingDto>> list(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) BookingStatus status) {
+            @RequestParam(required = false) BookingStatus status,
+            @RequestParam(required = false) CancelStatus cancelStatus) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Booking> result = (status == null)
-                ? bookingRepository.findAll(pageable)
-                : bookingRepository.findByStatus(status, pageable);
+        Page<Booking> result;
+        if (cancelStatus != null) {
+            result = bookingRepository.findByCancelStatus(cancelStatus, pageable);
+        } else if (status != null) {
+            result = bookingRepository.findByStatus(status, pageable);
+        } else {
+            result = bookingRepository.findAll(pageable);
+        }
         return ApiResponse.ok(PagedResponse.of(result.map(AdminBookingDto::from)));
     }
 
@@ -101,6 +108,52 @@ public class AdminBookingApiController {
         Booking updated = bookingRepository.findById(id).orElse(b);
         return ResponseEntity.ok(ApiResponse.ok(AdminBookingDto.from(updated),
                 "Đã hoàn tiền " + r.getAmount() + " " + r.getCurrency()));
+    }
+
+    @Operation(summary = "Duyệt yêu cầu huỷ của khách: hoàn tiền thực trả + chuyển CANCELLED")
+    @Transactional
+    @PostMapping("/{id}/cancel-request/approve")
+    public ResponseEntity<ApiResponse<AdminBookingDto>> approveCancel(
+            @PathVariable Long id, @RequestBody(required = false) RefundRequest req, Authentication auth) {
+        Booking b = bookingRepository.findById(id).orElse(null);
+        if (b == null) return ResponseEntity.notFound().build();
+        if (b.getCancelStatus() != CancelStatus.REQUESTED) {
+            throw new BusinessException("NO_CANCEL_REQUEST",
+                    "Đơn không có yêu cầu huỷ đang chờ duyệt.", HttpStatus.BAD_REQUEST);
+        }
+        if (req == null || req.reason() == null || req.reason().isBlank()) {
+            throw new BusinessException("REASON_REQUIRED",
+                    "Vui lòng ghi lý do duyệt huỷ.", HttpStatus.BAD_REQUEST);
+        }
+        String note = req.reason().trim();
+        // Hoan tien THUC TE da tra (Payment.amount = gia sau giam voucher) + chuyen CANCELLED + ghi audit.
+        refundService.refund(b.getPublicCode(), userId(auth), note, RoleUtils.isSuperAdmin(auth));
+        Booking after = bookingRepository.findById(id).orElse(b);
+        after.setCancelStatus(CancelStatus.APPROVED);
+        after.setCancelAdminNote(note);
+        bookingRepository.save(after);
+        return ResponseEntity.ok(ApiResponse.ok(AdminBookingDto.from(after), "Đã duyệt huỷ và hoàn tiền"));
+    }
+
+    @Operation(summary = "Từ chối yêu cầu huỷ của khách (đơn giữ nguyên, ghi lý do)")
+    @Transactional
+    @PostMapping("/{id}/cancel-request/reject")
+    public ResponseEntity<ApiResponse<AdminBookingDto>> rejectCancel(
+            @PathVariable Long id, @RequestBody(required = false) RefundRequest req) {
+        Booking b = bookingRepository.findById(id).orElse(null);
+        if (b == null) return ResponseEntity.notFound().build();
+        if (b.getCancelStatus() != CancelStatus.REQUESTED) {
+            throw new BusinessException("NO_CANCEL_REQUEST",
+                    "Đơn không có yêu cầu huỷ đang chờ duyệt.", HttpStatus.BAD_REQUEST);
+        }
+        if (req == null || req.reason() == null || req.reason().isBlank()) {
+            throw new BusinessException("REASON_REQUIRED",
+                    "Vui lòng ghi lý do từ chối.", HttpStatus.BAD_REQUEST);
+        }
+        b.setCancelStatus(CancelStatus.REJECTED);
+        b.setCancelAdminNote(req.reason().trim());
+        bookingRepository.save(b);
+        return ResponseEntity.ok(ApiResponse.ok(AdminBookingDto.from(b), "Đã từ chối yêu cầu huỷ"));
     }
 
     private Long userId(Authentication auth) {

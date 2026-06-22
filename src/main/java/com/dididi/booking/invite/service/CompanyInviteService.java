@@ -11,6 +11,7 @@ import com.dididi.booking.invite.domain.InviteStatus;
 import com.dididi.booking.invite.repository.CompanyInviteRepository;
 import com.dididi.booking.notification.EmailService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,7 +55,7 @@ public class CompanyInviteService {
         i.setInvitedByUserId(invitedByUserId);
         i.setExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS));
         repository.save(i);
-        emailService.sendCompanyInvite(i.getEmail(), c.getName(), baseUrl + "/company-invite/" + i.getToken());
+        emailService.sendCompanyInvite(i.getEmail(), c.getName(), baseUrl + "/company-invite/" + i.getToken(), LocaleContextHolder.getLocale());
         return CompanyInviteDto.from(i, baseUrl);
     }
 

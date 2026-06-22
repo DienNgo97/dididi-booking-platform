@@ -13,12 +13,13 @@ public record HotelApiDto(
         String description,
         Integer starRating,
         BigDecimal minPrice,
-        String currency) implements Serializable {
+        String currency,
+        Boolean active) implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
     public static HotelApiDto from(Hotel h) {
         return new HotelApiDto(h.getId(), h.getName(), h.getCity(), h.getAddress(),
-                h.getDescription(), h.getStarRating(), h.getMinPrice(), h.getCurrency());
+                h.getDescription(), h.getStarRating(), h.getMinPrice(), h.getCurrency(), h.isActive());
     }
 }

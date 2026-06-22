@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{legal.termsTitle}">Điều khoản sử dụng - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div style="max-width:860px;margin:24px auto 60px;padding:0 16px;line-height:1.75" th:switch="${#locale.language}">
+
+    <!-- ===== ENGLISH ===== -->
+    <div th:case="'en'">
+        <h1>Terms of Service</h1>
+        <p class="muted">Last updated: 11/06/2026</p>
+        <p>Welcome to <b>Dididi</b>. By accessing, creating an account or using the Dididi platform (including the website and app), you confirm that you have read, understood and agree to be bound by the terms below. If you do not agree, please stop using the service.</p>
+        <h2>1. Introduction</h2>
+        <p>Dididi is an online hotel and flight booking platform that acts as an <b>intermediary</b> connecting users with service providers (hotels, airlines, room-selling partners). Dididi is not the direct provider of accommodation or transport services.</p>
+        <h2>2. User accounts</h2>
+        <ul>
+            <li>You must register an account and <b>verify your email</b> to use all features.</li>
+            <li>You are responsible for keeping your login credentials (password, OTP) secure and for all activity under your account.</li>
+            <li>Information provided must be accurate and kept up to date. Dididi may suspend or terminate accounts showing signs of violation or fraud.</li>
+        </ul>
+        <h2>3. Dididi's role</h2>
+        <p>Dididi provides a platform for you to search, compare and book. The accommodation/transport service contract is between you and the relevant provider. Dididi strives to ensure accurate information but does not absolutely guarantee availability, prices or schedules provided by third parties.</p>
+        <h2>4. Booking and confirmation</h2>
+        <ul>
+            <li>A booking is only valid once confirmed by the system and successfully paid.</li>
+            <li>Prices are shown in VND; depending on the provider, prices may or may not include taxes and fees. Details are shown at the payment step.</li>
+            <li>You are responsible for carefully checking the information (dates, quantity, room type, passengers) before confirming.</li>
+        </ul>
+        <h2>5. Payment, vouchers and reward points</h2>
+        <ul>
+            <li>Payments are processed via the electronic payment gateway (VNPay) or by <b>company budget</b> for business accounts.</li>
+            <li>Vouchers and reward points apply under each program's conditions, have no cash value and may change or end upon notice.</li>
+        </ul>
+        <h2>6. Cancellation and refunds</h2>
+        <p>Cancellation and refund policies depend on the provider and the booking type (hotel/flight). Specific conditions are shown on the booking detail page. Refunds (if any) are processed via the original payment method.</p>
+        <h2>7. Business accounts</h2>
+        <p>Employees of a company may book using the company budget. Some bookings exceeding the threshold set by the company require manager <b>approval</b> before completion.</p>
+        <h2>8. Partners (Vendors)</h2>
+        <p>Partners listing rooms are responsible for the accuracy of hotel information, prices, availability and service quality. Commission rates and other obligations are performed under the agreement with Dididi.</p>
+        <h2>9. Prohibited conduct</h2>
+        <p>You must not: commit fraud or falsify information; interfere with, scan or overload the system; collect data without authorization; make fake bookings; use the service for unlawful purposes or to infringe the rights of others.</p>
+        <h2>10. Intellectual property</h2>
+        <p>All content, trademarks, logos and interface on the platform belong to Dididi or its licensors. You may not copy or exploit them without prior written permission.</p>
+        <h2>11. Limitation of liability</h2>
+        <p>To the extent permitted by law, Dididi is not liable for indirect or incidental damages arising beyond its reasonable control. Dididi's liability (if any) is limited to the maximum extent permitted by applicable law.</p>
+        <h2>12. Changes to the terms</h2>
+        <p>Dididi may update these terms from time to time. The new version takes effect when posted on the platform. Your continued use of the service means you accept the updated terms.</p>
+        <h2>13. Governing law and contact</h2>
+        <p>These terms are governed by the laws of Vietnam. For any questions, please contact: <a href="mailto:hotro@dididi.vn">hotro@dididi.vn</a>.</p>
+        <p style="margin-top:24px"><a href="/login">← Back to login</a> &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a></p>
+    </div>
+
+    <!-- ===== 中文 ===== -->
+    <div th:case="'zh'">
+        <h1>服务条款</h1>
+        <p class="muted">最后更新：11/06/2026</p>
+        <p>欢迎使用 <b>Dididi</b>。通过访问、注册账户或使用 Dididi 平台（包括网站和应用），即表示您已阅读、理解并同意遵守以下条款。如不同意，请停止使用本服务。</p>
+        <h2>1. 简介</h2>
+        <p>Dididi 是一个在线酒店和机票预订平台，作为<b>中介</b>连接用户与服务提供商（酒店、航空公司、房源合作伙伴）。Dididi 并非住宿或交通服务的直接提供方。</p>
+        <h2>2. 用户账户</h2>
+        <ul>
+            <li>您需要注册账户并<b>验证邮箱</b>才能使用全部功能。</li>
+            <li>您有责任妥善保管登录凭证（密码、OTP），并对账户下的所有活动负责。</li>
+            <li>所提供的信息必须准确并保持更新。Dididi 有权暂停或终止有违规或欺诈迹象的账户。</li>
+        </ul>
+        <h2>3. Dididi 的角色</h2>
+        <p>Dididi 提供平台供您搜索、比较和预订。住宿/交通服务合同是您与相应提供商之间的合同。Dididi 努力确保信息准确，但不对第三方提供的房态、价格或时刻表作绝对保证。</p>
+        <h2>4. 预订与确认</h2>
+        <ul>
+            <li>订单仅在系统确认且付款成功后才有效。</li>
+            <li>价格以 VND 显示；视提供商而定，价格可能含或不含税费。详情在付款步骤显示。</li>
+            <li>您有责任在确认前仔细核对信息（日期、数量、房型、乘客）。</li>
+        </ul>
+        <h2>5. 支付、优惠券与积分</h2>
+        <ul>
+            <li>付款通过电子支付网关（VNPay）处理，或对企业账户使用<b>公司预算</b>。</li>
+            <li>优惠券和积分按各项活动条件适用，不可兑换现金，并可能根据通知更改或结束。</li>
+        </ul>
+        <h2>6. 取消与退款</h2>
+        <p>取消和退款政策取决于提供商和订单类型（酒店/机票）。具体条件在订单详情页显示。退款（如有）将按原支付方式处理。</p>
+        <h2>7. 企业账户</h2>
+        <p>公司员工可使用公司预算预订。部分超过公司设定限额的订单需经管理者<b>审批</b>后才能完成。</p>
+        <h2>8. 合作伙伴（供应商）</h2>
+        <p>上架房源的合作伙伴对酒店信息、价格、房态和服务质量的准确性负责。佣金比例及其他义务按与 Dididi 的约定执行。</p>
+        <h2>9. 禁止行为</h2>
+        <p>您不得：欺诈或伪造信息；干扰、扫描或使系统过载；未经授权收集数据；进行虚假预订；将服务用于违法目的或侵犯他人权利。</p>
+        <h2>10. 知识产权</h2>
+        <p>平台上的所有内容、商标、标志和界面均归 Dididi 或其许可方所有。未经书面许可，您不得复制或利用。</p>
+        <h2>11. 责任限制</h2>
+        <p>在法律允许的范围内，Dididi 不对超出其合理控制范围的间接或附带损害负责。Dididi 的责任（如有）以现行法律允许的最大限度为限。</p>
+        <h2>12. 条款变更</h2>
+        <p>Dididi 可能不时更新条款。新版本自在平台发布之时起生效。您继续使用本服务即表示接受更新后的条款。</p>
+        <h2>13. 适用法律与联系方式</h2>
+        <p>本条款受越南法律管辖。如有任何疑问，请联系：<a href="mailto:hotro@dididi.vn">hotro@dididi.vn</a>。</p>
+        <p style="margin-top:24px"><a href="/login">← 返回登录</a> &nbsp;·&nbsp; <a href="/privacy">隐私政策</a></p>
+    </div>
+
+    <!-- ===== TIẾNG VIỆT (mặc định) ===== -->
+    <div th:case="*">
+        <h1>Điều khoản sử dụng</h1>
+        <p class="muted">Cập nhật lần cuối: 11/06/2026</p>
+        <p>Chào mừng bạn đến với <b>Dididi</b>. Bằng việc truy cập, đăng ký tài khoản hoặc sử dụng nền tảng
+            Dididi (bao gồm website và ứng dụng), bạn xác nhận đã đọc, hiểu và đồng ý tuân theo các điều khoản
+            dưới đây. Nếu không đồng ý, vui lòng ngừng sử dụng dịch vụ.</p>
+        <h2>1. Giới thiệu</h2>
+        <p>Dididi là nền tảng đặt phòng khách sạn và vé máy bay trực tuyến, đóng vai trò <b>trung gian</b> kết nối
+            người dùng với các đối tác cung cấp dịch vụ (khách sạn, hãng hàng không, đối tác bán phòng). Dididi
+            không phải là đơn vị trực tiếp cung cấp dịch vụ lưu trú hay vận chuyển.</p>
+        <h2>2. Tài khoản người dùng</h2>
+        <ul>
+            <li>Bạn cần đăng ký tài khoản và <b>xác thực email</b> để sử dụng đầy đủ tính năng.</li>
+            <li>Bạn chịu trách nhiệm bảo mật thông tin đăng nhập (mật khẩu, mã OTP) và mọi hoạt động phát sinh
+                dưới tài khoản của mình.</li>
+            <li>Thông tin cung cấp phải chính xác và được cập nhật. Dididi có quyền tạm khoá hoặc chấm dứt tài
+                khoản có dấu hiệu vi phạm hoặc gian lận.</li>
+        </ul>
+        <h2>3. Vai trò của Dididi</h2>
+        <p>Dididi cung cấp nền tảng để bạn tìm kiếm, so sánh và đặt chỗ. Hợp đồng dịch vụ lưu trú/vận chuyển là
+            giữa bạn và nhà cung cấp tương ứng. Dididi nỗ lực bảo đảm thông tin chính xác nhưng không bảo đảm
+            tuyệt đối về tình trạng phòng trống, giá hoặc lịch trình do bên thứ ba cung cấp.</p>
+        <h2>4. Đặt chỗ và xác nhận</h2>
+        <ul>
+            <li>Đơn đặt chỉ có hiệu lực khi được hệ thống xác nhận và thanh toán thành công.</li>
+            <li>Giá hiển thị bằng VND; tuỳ nhà cung cấp, giá có thể đã hoặc chưa bao gồm thuế, phí. Chi tiết được
+                hiển thị tại bước thanh toán.</li>
+            <li>Bạn có trách nhiệm kiểm tra kỹ thông tin (ngày, số lượng, hạng phòng, hành khách) trước khi xác nhận.</li>
+        </ul>
+        <h2>5. Thanh toán, voucher và điểm thưởng</h2>
+        <ul>
+            <li>Thanh toán được xử lý qua cổng thanh toán điện tử (VNPay) hoặc bằng <b>ngân sách công ty</b> đối với
+                tài khoản doanh nghiệp.</li>
+            <li>Voucher và điểm thưởng áp dụng theo điều kiện của từng chương trình, không có giá trị quy đổi thành
+                tiền mặt và có thể thay đổi hoặc kết thúc theo thông báo.</li>
+        </ul>
+        <h2>6. Huỷ đơn và hoàn tiền</h2>
+        <p>Chính sách huỷ và hoàn tiền phụ thuộc vào nhà cung cấp và loại đơn (khách sạn/vé). Điều kiện cụ thể được
+            hiển thị tại trang chi tiết đơn hàng. Khoản hoàn (nếu có) sẽ được xử lý theo phương thức thanh toán ban đầu.</p>
+        <h2>7. Tài khoản doanh nghiệp</h2>
+        <p>Nhân viên thuộc công ty có thể đặt chỗ bằng ngân sách công ty. Một số đơn vượt ngưỡng do công ty thiết lập
+            sẽ cần được người quản lý <b>phê duyệt</b> trước khi hoàn tất.</p>
+        <h2>8. Đối tác (Vendor)</h2>
+        <p>Đối tác đăng bán phòng chịu trách nhiệm về tính chính xác của thông tin khách sạn, giá, tình trạng phòng
+            trống và chất lượng dịch vụ. Mức hoa hồng và nghĩa vụ khác được thực hiện theo thoả thuận với Dididi.</p>
+        <h2>9. Hành vi bị cấm</h2>
+        <p>Bạn không được: gian lận hoặc giả mạo thông tin; can thiệp, dò quét hoặc gây quá tải hệ thống; thu thập dữ
+            liệu trái phép; đặt chỗ ảo; sử dụng dịch vụ cho mục đích vi phạm pháp luật hoặc xâm phạm quyền của bên khác.</p>
+        <h2>10. Sở hữu trí tuệ</h2>
+        <p>Toàn bộ nội dung, thương hiệu, logo và giao diện trên nền tảng thuộc về Dididi hoặc bên cấp phép. Bạn không
+            được sao chép, khai thác khi chưa được phép bằng văn bản.</p>
+        <h2>11. Giới hạn trách nhiệm</h2>
+        <p>Trong phạm vi pháp luật cho phép, Dididi không chịu trách nhiệm cho các thiệt hại gián tiếp, ngẫu nhiên phát
+            sinh nằm ngoài tầm kiểm soát hợp lý. Trách nhiệm của Dididi (nếu có) được giới hạn ở mức tối đa mà pháp luật
+            hiện hành quy định.</p>
+        <h2>12. Thay đổi điều khoản</h2>
+        <p>Dididi có thể cập nhật điều khoản theo thời gian. Phiên bản mới có hiệu lực kể từ khi được đăng tải trên nền tảng.
+            Việc bạn tiếp tục sử dụng dịch vụ đồng nghĩa với việc chấp nhận điều khoản đã cập nhật.</p>
+        <h2>13. Luật áp dụng và liên hệ</h2>
+        <p>Các điều khoản này được điều chỉnh bởi pháp luật Việt Nam. Mọi thắc mắc xin liên hệ:
+            <a href="mailto:hotro@dididi.vn">hotro@dididi.vn</a>.</p>
+        <p style="margin-top:24px"><a href="/login">← Quay lại đăng nhập</a> &nbsp;·&nbsp;
+            <a href="/privacy">Chính sách bảo mật</a></p>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

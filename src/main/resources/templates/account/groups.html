@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{group.myGroupsTitle}">Đơn nhóm - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <h1 th:text="#{nav.myBookings}">Đơn của tôi</h1>
+
+    <!-- Tab: Don ca nhan / Don nhom -->
+    <div style="display:flex;gap:8px;margin:8px 0 16px">
+        <a class="btn ghost" href="/account/bookings" th:text="#{group.personalBookings}">Đơn cá nhân</a>
+        <a class="btn" href="/account/groups" th:text="#{group.groupBookings}">👥 Đơn nhóm</a>
+    </div>
+
+    <p class="muted" th:unless="${hasAny}" th:utext="#{group.noGroups}">
+        Bạn chưa có nhóm đặt phòng nào. Mở một khách sạn rồi bấm
+        <b>"👥 Tạo nhóm — mời bạn bè, chia tiền"</b> để bắt đầu.
+    </p>
+
+    <div th:if="${hasAny}">
+        <!-- Tab phu: Dang len ke hoach / Da ket thuc (dong bo UX voi don ca nhan) -->
+        <div style="display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap">
+            <a class="btn" th:classappend="${activeTab == 'planning'} ? '' : 'ghost'"
+               th:href="@{/account/groups(status='planning')}"><span th:text="#{group.planning}">📝 Đang lên kế hoạch</span> (<span th:text="${planningCount}">0</span>)</a>
+            <a class="btn" th:classappend="${activeTab == 'ended'} ? '' : 'ghost'"
+               th:href="@{/account/groups(status='ended')}"><span th:text="#{group.ended}">✅ Đã kết thúc</span> (<span th:text="${endedCount}">0</span>)</a>
+        </div>
+
+        <p class="muted" th:if="${#lists.isEmpty(groups)}" style="font-size:13px">
+            <span th:if="${activeTab == 'ended'}" th:text="#{group.noEnded}">Chưa có chuyến đi nào kết thúc.</span>
+            <span th:unless="${activeTab == 'ended'}" th:text="#{group.noPlanning}">Không có nhóm nào đang lên kế hoạch.</span>
+        </p>
+
+        <div class="paginate" data-page-size="20">
+        <div class="list-item" th:each="g : ${groups}">
+            <div>
+                <h3 style="margin:0">
+                    <a th:href="@{'/g/' + ${g.token()}}" th:text="${g.title()}">Nhóm</a>
+                    <span class="muted" style="font-size:12px;font-weight:400">
+                        <span th:if="${g.organizer()}" th:text="#{group.iCreated}">· Tôi tạo</span>
+                        <span th:unless="${g.organizer()}" th:text="#{group.joined}">· Đã tham gia</span>
+                    </span>
+                </h3>
+                <div class="muted">🏨 <span th:text="${g.hotelName()}"></span>
+                    <span th:if="${g.checkIn() != null}"> · 📅 <span th:text="${g.checkIn()}"></span> → <span th:text="${g.checkOut()}"></span></span>
+                </div>
+                <div class="muted" style="font-size:13px">
+                    <span th:text="#{group.members}">Thành viên:</span> <b th:text="${g.memberCount()}">0</b> · <span th:text="#{group.paidLabel}">Đã trả:</span> <b th:text="${g.paidCount()}">0</b>/<span th:text="${g.memberCount()}">0</span>
+                </div>
+            </div>
+            <div style="text-align:right">
+                <a class="btn" th:href="@{'/g/' + ${g.token()}}" th:text="#{group.openGroup}">Mở nhóm →</a>
+                <a th:if="${g.ended() and g.organizer()}" class="btn ghost" th:href="@{'/g/' + ${g.token()} + '/invoice'}" target="_blank"
+                   style="margin-top:6px;display:inline-block" th:text="#{group.invoice}">🧾 Hoá đơn</a>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

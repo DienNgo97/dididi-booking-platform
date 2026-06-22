@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{legal.privacyTitle}">Chính sách bảo mật - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div style="max-width:860px;margin:24px auto 60px;padding:0 16px;line-height:1.75" th:switch="${#locale.language}">
+
+    <!-- ===== ENGLISH ===== -->
+    <div th:case="'en'">
+        <h1>Privacy Policy</h1>
+        <p class="muted">Last updated: 11/06/2026</p>
+        <p><b>Dididi</b> respects and is committed to protecting your privacy. This policy describes how we collect, use, store and protect personal data when you use the platform.</p>
+        <h2>1. Data we collect</h2>
+        <ul>
+            <li><b>Account information:</b> full name, email, password (encrypted), role, company (for business accounts).</li>
+            <li><b>Booking information:</b> hotel/flight booking history, travel dates, quantity, room type, contact details related to the booking.</li>
+            <li><b>Payment information:</b> processed via the payment gateway; Dididi <b>does not store full card numbers</b>.</li>
+            <li><b>Technical data:</b> login logs, IP address, device/browser information, cookies and sessions.</li>
+        </ul>
+        <h2>2. Purposes of use</h2>
+        <p>Data is used to: create and manage accounts; authenticate (activation email, OTP); process bookings and payments; provide customer support; improve service quality; prevent fraud and ensure security; comply with legal obligations.</p>
+        <h2>3. Legal basis for processing</h2>
+        <p>We process data based on: your consent when registering/logging in; the need to perform the service contract; Dididi's legitimate interests; and legal compliance obligations.</p>
+        <h2>4. Data sharing</h2>
+        <p>We only share data when necessary: with <b>providers</b> (hotels, airlines, partners) to complete bookings; with the <b>payment gateway</b> (VNPay) to process transactions; with technical service providers (email delivery, hosting, operations). Dididi <b>does not sell</b> your personal data.</p>
+        <h2>5. Cookies and login sessions</h2>
+        <p>We use cookies and sessions to maintain login state, remember preferences and ensure security. You can manage or delete cookies through your browser settings; disabling cookies may affect some features.</p>
+        <h2>6. Security</h2>
+        <p>We apply appropriate technical and organizational measures: passwords are <b>encrypted with BCrypt</b>; authentication via JWT and OTP; support for <b>logging out of all devices</b> when changing password; transmission over HTTPS is recommended. However, no system is absolutely secure; you should also keep your login credentials confidential.</p>
+        <h2>7. Data retention</h2>
+        <p>Data is stored for as long as necessary to serve the purposes above and as required by law, after which it is deleted or anonymized.</p>
+        <h2>8. Your rights</h2>
+        <p>You have the right to access, edit, request deletion of your account, withdraw consent and lodge complaints about data processing. To exercise these, please contact us via the information at the bottom of the page.</p>
+        <h2>9. Children's data</h2>
+        <p>The service is not directed at people under 16. We do not knowingly collect children's personal data; if discovered, such data will be deleted.</p>
+        <h2>10. Changes to this policy</h2>
+        <p>This policy may be updated from time to time. The new version takes effect when posted on the platform.</p>
+        <h2>11. Contact</h2>
+        <p>For any privacy questions, please email: <a href="mailto:hotro@dididi.vn">hotro@dididi.vn</a>.</p>
+        <p style="margin-top:24px"><a href="/login">← Back to login</a> &nbsp;·&nbsp; <a href="/terms">Terms of Service</a></p>
+    </div>
+
+    <!-- ===== 中文 ===== -->
+    <div th:case="'zh'">
+        <h1>隐私政策</h1>
+        <p class="muted">最后更新：11/06/2026</p>
+        <p><b>Dididi</b> 尊重并致力于保护您的隐私。本政策说明在您使用本平台时，我们如何收集、使用、存储和保护个人数据。</p>
+        <h2>1. 我们收集的数据</h2>
+        <ul>
+            <li><b>账户信息：</b>姓名、邮箱、密码（已加密）、角色、公司（企业账户）。</li>
+            <li><b>预订信息：</b>酒店/机票预订记录、出行日期、数量、房型、与订单相关的联系信息。</li>
+            <li><b>支付信息：</b>通过支付网关处理；Dididi <b>不存储完整的卡号</b>。</li>
+            <li><b>技术数据：</b>登录日志、IP 地址、设备/浏览器信息、Cookie 和会话。</li>
+        </ul>
+        <h2>2. 使用目的</h2>
+        <p>数据用于：创建和管理账户；身份验证（激活邮件、OTP）；处理预订和付款；客户服务；改进服务质量；防范欺诈并保障安全；遵守法律义务。</p>
+        <h2>3. 数据处理的法律依据</h2>
+        <p>我们基于以下依据处理数据：您在注册/登录时的同意；履行服务合同的需要；Dididi 的合法利益；以及遵守法律的义务。</p>
+        <h2>4. 数据共享</h2>
+        <p>我们仅在必要时共享数据：与<b>提供商</b>（酒店、航空公司、合作伙伴）共享以完成订单；与<b>支付网关</b>（VNPay）共享以处理交易；与技术服务提供商（邮件发送、托管、运营）共享。Dididi <b>不出售</b>您的个人数据。</p>
+        <h2>5. Cookie 与登录会话</h2>
+        <p>我们使用 Cookie 和会话来维持登录状态、记住偏好并保障安全。您可通过浏览器设置管理或删除 Cookie；禁用 Cookie 可能影响部分功能。</p>
+        <h2>6. 安全</h2>
+        <p>我们采取适当的技术和管理措施：密码使用 <b>BCrypt 加密</b>；通过 JWT 和 OTP 进行身份验证；更改密码时支持<b>登出所有设备</b>；建议通过 HTTPS 传输。然而，没有任何系统是绝对安全的；您也应妥善保管自己的登录凭证。</p>
+        <h2>7. 数据保留</h2>
+        <p>数据将在为上述目的服务所需的期间内以及法律规定的期限内保存，之后将被删除或匿名化。</p>
+        <h2>8. 您的权利</h2>
+        <p>您有权访问、修改、请求删除账户、撤回同意以及就数据处理提出投诉。如需行使，请通过页面底部的信息联系我们。</p>
+        <h2>9. 儿童数据</h2>
+        <p>本服务不面向 16 岁以下人士。我们不会故意收集儿童的个人数据；如发现，将予以删除。</p>
+        <h2>10. 政策变更</h2>
+        <p>本政策可能不时更新。新版本自在平台发布之时起生效。</p>
+        <h2>11. 联系方式</h2>
+        <p>有关隐私的任何问题，请发送邮件至：<a href="mailto:hotro@dididi.vn">hotro@dididi.vn</a>。</p>
+        <p style="margin-top:24px"><a href="/login">← 返回登录</a> &nbsp;·&nbsp; <a href="/terms">服务条款</a></p>
+    </div>
+
+    <!-- ===== TIẾNG VIỆT (mặc định) ===== -->
+    <div th:case="*">
+        <h1>Chính sách bảo mật</h1>
+        <p class="muted">Cập nhật lần cuối: 11/06/2026</p>
+        <p><b>Dididi</b> tôn trọng và cam kết bảo vệ quyền riêng tư của bạn. Chính sách này mô tả cách chúng tôi thu thập,
+            sử dụng, lưu trữ và bảo vệ dữ liệu cá nhân khi bạn sử dụng nền tảng.</p>
+        <h2>1. Dữ liệu chúng tôi thu thập</h2>
+        <ul>
+            <li><b>Thông tin tài khoản:</b> họ tên, email, mật khẩu (được mã hoá), vai trò, công ty (nếu là tài khoản doanh nghiệp).</li>
+            <li><b>Thông tin đặt chỗ:</b> lịch sử đặt phòng/vé, ngày đi, số lượng, hạng phòng, thông tin liên hệ liên quan đến đơn.</li>
+            <li><b>Thông tin thanh toán:</b> được xử lý qua cổng thanh toán; Dididi <b>không lưu trữ số thẻ đầy đủ</b>.</li>
+            <li><b>Dữ liệu kỹ thuật:</b> nhật ký đăng nhập, địa chỉ IP, thông tin thiết bị/trình duyệt, cookie và phiên.</li>
+        </ul>
+        <h2>2. Mục đích sử dụng</h2>
+        <p>Dữ liệu được dùng để: tạo và quản lý tài khoản; xác thực (email kích hoạt, mã OTP); xử lý đặt chỗ và thanh toán;
+            chăm sóc khách hàng; cải thiện chất lượng dịch vụ; phòng chống gian lận và bảo đảm an toàn; tuân thủ nghĩa vụ pháp lý.</p>
+        <h2>3. Cơ sở xử lý dữ liệu</h2>
+        <p>Chúng tôi xử lý dữ liệu dựa trên: sự đồng ý của bạn khi đăng ký/đăng nhập; nhu cầu thực hiện hợp đồng dịch vụ;
+            lợi ích hợp pháp của Dididi; và nghĩa vụ tuân thủ pháp luật.</p>
+        <h2>4. Chia sẻ dữ liệu</h2>
+        <p>Chúng tôi chỉ chia sẻ dữ liệu khi cần thiết: với <b>nhà cung cấp</b> (khách sạn, hãng hàng không, đối tác) để hoàn
+            tất đơn; với <b>cổng thanh toán</b> (VNPay) để xử lý giao dịch; với nhà cung cấp dịch vụ kỹ thuật (gửi email,
+            lưu trữ, vận hành). Dididi <b>không bán</b> dữ liệu cá nhân của bạn.</p>
+        <h2>5. Cookie và phiên đăng nhập</h2>
+        <p>Chúng tôi sử dụng cookie và phiên để duy trì trạng thái đăng nhập, ghi nhớ tuỳ chọn và bảo đảm an toàn. Bạn có thể
+            quản lý hoặc xoá cookie thông qua cài đặt trình duyệt; việc tắt cookie có thể ảnh hưởng đến một số tính năng.</p>
+        <h2>6. Bảo mật</h2>
+        <p>Chúng tôi áp dụng các biện pháp kỹ thuật và quản lý phù hợp: mật khẩu được <b>mã hoá bằng BCrypt</b>; xác thực bằng
+            JWT và OTP; hỗ trợ <b>đăng xuất khỏi mọi thiết bị</b> khi đổi mật khẩu; khuyến nghị truyền tải qua HTTPS. Tuy nhiên,
+            không có hệ thống nào an toàn tuyệt đối; bạn cũng cần giữ bí mật thông tin đăng nhập của mình.</p>
+        <h2>7. Lưu trữ dữ liệu</h2>
+        <p>Dữ liệu được lưu trong khoảng thời gian cần thiết để phục vụ các mục đích nêu trên và theo quy định của pháp luật,
+            sau đó được xoá hoặc ẩn danh hoá.</p>
+        <h2>8. Quyền của bạn</h2>
+        <p>Bạn có quyền truy cập, chỉnh sửa, yêu cầu xoá tài khoản, rút lại sự đồng ý và khiếu nại về việc xử lý dữ liệu. Để
+            thực hiện, vui lòng liên hệ với chúng tôi qua thông tin ở cuối trang.</p>
+        <h2>9. Dữ liệu trẻ em</h2>
+        <p>Dịch vụ không hướng tới người dưới 16 tuổi. Chúng tôi không cố ý thu thập dữ liệu cá nhân của trẻ em; nếu phát hiện,
+            dữ liệu đó sẽ được xoá.</p>
+        <h2>10. Thay đổi chính sách</h2>
+        <p>Chính sách này có thể được cập nhật theo thời gian. Phiên bản mới có hiệu lực kể từ khi được đăng tải trên nền tảng.</p>
+        <h2>11. Liên hệ</h2>
+        <p>Mọi câu hỏi về quyền riêng tư xin gửi về: <a href="mailto:hotro@dididi.vn">hotro@dididi.vn</a>.</p>
+        <p style="margin-top:24px"><a href="/login">← Quay lại đăng nhập</a> &nbsp;·&nbsp;
+            <a href="/terms">Điều khoản sử dụng</a></p>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

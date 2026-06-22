@@ -1,0 +1,23 @@
+# Profile rieng cho integration test (kich hoat bang @ActiveProfiles("test")).
+# - Cac seeder deu @Profile("dev") nen o profile "test" chung KHONG chay -> context nhe, sach.
+# - Tat gui email (EmailService ton trong app.mail.enabled) de khong cham SMTP that.
+# - Giu ddl-auto=update de Hibernate tu tao schema tren MySQL Testcontainers.
+# DB/Redis: do TestcontainersConfiguration/CorporateTestContainers cung cap qua @ServiceConnection,
+# khong can khai datasource/redis o day.
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+app:
+  mail:
+    enabled: false        # tat email trong test
+  seed:
+    demo: false           # belt-and-suspenders (DemoDataSeeder cung da bi chan boi @Profile("dev"))
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+    # Bo qua canh bao "sync that bai" tu scheduler nen (flight-provider/hotel-pms khong chay khi test):
+    com.dididi.booking.integration: error

@@ -7,17 +7,69 @@
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
 <div class="wrap" style="max-width:560px">
+    <div th:replace="~{fragments/site :: flash}"></div>
     <h1 th:text="#{trip.title}">Trip Planner</h1>
-    <p class="muted" th:text="#{trip.subtitle}">Nhập điểm đến, Dididi gợi ý chuyến bay + khách sạn phù hợp.</p>
-    <form action="/trip-planner/suggest" method="get" class="card">
-        <label class="muted" th:text="#{trip.dest}">Điểm đến (thành phố)</label><br/>
-        <input type="text" name="city" th:placeholder="#{trip.destExample}" placeholder="VD: Da Nang, Ha Noi, TP.HCM" required
-               style="width:100%;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:10px"/>
-        <label class="muted" th:text="#{trip.fromLabel}">Đi từ sân bay (tuỳ chọn)</label><br/>
-        <input type="text" name="from" th:placeholder="#{trip.fromExample}" placeholder="VD: HAN"
-               style="width:100%;padding:9px;border:1px solid #cdd3dd;border-radius:8px;margin-bottom:14px"/>
-        <button class="btn" type="submit" th:text="#{trip.submit}">Gợi ý chuyến đi</button>
+    <p class="muted" th:text="#{trip.plannerIntro}">Nhập điểm đến và thời gian — Dididi dẫn bạn đặt lần lượt: vé chiều đi → vé chiều về → khách sạn.</p>
+
+    <form action="/trip-planner/outbound" method="get" class="card">
+        <label class="muted" th:text="#{trip.destination}">Điểm đến</label><br/>
+        <select name="dest" required
+                style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px;margin-bottom:10px">
+            <option value="" th:text="#{trip.chooseDest}">— Chọn điểm đến —</option>
+            <option value="TP.HCM">TP.HCM (SGN)</option>
+            <option value="Hà Nội">Hà Nội (HAN)</option>
+            <option value="Đà Nẵng">Đà Nẵng (DAD)</option>
+            <option value="Nha Trang">Nha Trang (CXR)</option>
+            <option value="Huế">Huế (HUI)</option>
+            <option value="Phú Quốc">Phú Quốc (PQC)</option>
+        </select>
+
+        <label class="muted" th:text="#{trip.fromAirport}">Đi từ sân bay</label><br/>
+        <select name="from" required
+                style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px;margin-bottom:10px">
+            <option value="" th:text="#{trip.chooseFromAirport}">— Chọn sân bay đi —</option>
+            <option value="SGN">TP.HCM (SGN)</option>
+            <option value="HAN">Hà Nội (HAN)</option>
+            <option value="DAD">Đà Nẵng (DAD)</option>
+            <option value="CXR">Nha Trang (CXR)</option>
+            <option value="HUI">Huế (HUI)</option>
+            <option value="PQC">Phú Quốc (PQC)</option>
+        </select>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:150px">
+                <label class="muted" th:text="#{trip.arriveDate}">Ngày đến (đi)</label><br/>
+                <input type="date" name="depart" id="tp-depart" required
+                       style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px"/>
+            </div>
+            <div style="flex:1;min-width:150px">
+                <label class="muted" th:text="#{trip.leaveDate}">Ngày rời (về)</label><br/>
+                <input type="date" name="ret" id="tp-ret" required
+                       style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px"/>
+            </div>
+        </div>
+
+        <button class="btn" type="submit" style="margin-top:14px" th:text="#{trip.findTrip}">Tìm chuyến đi →</button>
     </form>
+    <p class="muted" style="font-size:12px;margin-top:8px" th:text="#{trip.plannerTip}">Mẹo: chọn điểm đến khác sân bay đi để có chuyến bay phù hợp.</p>
 </div>
+<script>
+    (function () {
+        function ymd(d) { var z = new Date(d.getTime() - d.getTimezoneOffset() * 60000); return z.toISOString().slice(0, 10); }
+        var today = ymd(new Date());
+        var ci = document.getElementById('tp-depart'), co = document.getElementById('tp-ret');
+        if (!ci || !co) return;
+        ci.min = today; co.min = today;
+        if (!ci.value) ci.value = today;
+        if (!co.value || co.value <= ci.value) co.value = ymd(new Date(new Date(ci.value).getTime() + 864e5));
+        ci.addEventListener('change', function () {
+            if (ci.value) {
+                co.min = ci.value;
+                if (!co.value || co.value <= ci.value) co.value = ymd(new Date(new Date(ci.value).getTime() + 864e5));
+            }
+        });
+    })();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
 </body>
 </html>

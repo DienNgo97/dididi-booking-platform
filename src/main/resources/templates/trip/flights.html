@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{trip.flightsTitle}">Chuyến bay - Trip Planner</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:680px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <p class="muted"><a href="/trip-planner">← Trip Planner</a></p>
+
+    <h1 th:if="${leg == 'outbound'}" th:text="#{trip.flightStep1}">Bước 1/3 · Vé máy bay chiều đi</h1>
+    <h1 th:if="${leg == 'return'}" th:text="#{trip.flightStep2}">Bước 2/3 · Vé máy bay chiều về</h1>
+
+    <div class="card" style="background:#e7f5ee;border:1px solid #cce8da">
+        <b th:text="${routeFrom} + ' → ' + ${routeTo}">SGN → DAD</b>
+        · <span th:text="#{trip.dateWord}">ngày</span> <b th:text="${flightDate}">--</b>
+        <div class="muted" style="font-size:13px;margin-top:4px">
+            <span th:text="#{trip.tripLabel}">Chuyến đi:</span> <span th:text="${from}"></span> ⇄ <span th:text="${dest}"></span>
+            · <span th:text="${depart}"></span> → <span th:text="${ret}"></span>
+        </div>
+    </div>
+
+    <div class="paginate" data-page-size="20">
+    <div class="list-item" th:each="f : ${flights}">
+        <div>
+            <h3 style="margin:0"><span th:text="${f.airlineCode}"></span> <span th:text="${f.flightNumber}"></span></h3>
+            <div class="muted"><span th:text="${f.fromAirport}"></span> → <span th:text="${f.toAirport}"></span>
+                · <span th:text="${f.departureTime}"></span></div>
+            <div class="price" style="font-size:15px;margin-top:4px">
+                <span th:text="${f.price != null ? #numbers.formatInteger(f.price,1,'COMMA') : ''}"></span>
+                <span th:text="${f.currency}"></span> <span class="muted" style="font-size:12px" th:text="#{trip.perSeat}">/ ghế</span>
+                <span class="muted" style="font-size:12px" th:if="${f.availableSeats != null}"
+                      th:text="#{trip.seatsLeft(${f.availableSeats})}">· còn 5 ghế</span>
+            </div>
+        </div>
+        <a class="btn"
+           th:href="@{'/booking/flight/' + ${f.id}(tripLeg=${leg}, tripDest=${dest}, tripFrom=${from}, tripDepart=${depart}, tripReturn=${ret})}"
+           th:text="#{trip.selectFlight}">Chọn vé</a>
+    </div>
+    </div>
+
+    <p class="muted" th:if="${#lists.isEmpty(flights)}" th:text="#{trip.noFlightsAvail}">
+        Không có chuyến bay còn trống cho ngày này. Bạn có thể quay lại đổi ngày, hoặc bỏ qua để tiếp tục.</p>
+
+    <div style="margin-top:16px">
+        <a th:if="${leg == 'outbound'}" class="btn ghost"
+           th:href="@{/trip-planner/inbound(dest=${dest}, from=${from}, depart=${depart}, ret=${ret})}"
+           th:text="#{trip.skipOutbound}">Bỏ qua vé chiều đi →</a>
+        <a th:if="${leg == 'return'}" class="btn ghost"
+           th:href="@{/trip-planner/stay(dest=${dest}, depart=${depart}, ret=${ret})}"
+           th:text="#{trip.skipReturn}">Bỏ qua vé chiều về →</a>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

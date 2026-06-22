@@ -35,7 +35,7 @@ public class BookingApiController {
         Booking b;
         if ("FLIGHT".equalsIgnoreCase(req.type())) {
             b = bookingService.createFlightBooking(userId, req.flightId(), req.passengerName(),
-                    req.contactEmail(), req.seats() == null ? 1 : req.seats());
+                    req.contactEmail(), req.seats() == null ? 1 : req.seats(), null, java.math.BigDecimal.ZERO);
         } else if ("HOTEL".equalsIgnoreCase(req.type())) {
             b = bookingService.createHotelBooking(userId, req.hotelId(), req.roomTypeId(), req.roomName(),
                     req.guestName(), req.checkIn(), req.checkOut(), req.rooms() == null ? 1 : req.rooms());
@@ -59,8 +59,11 @@ public class BookingApiController {
 
     @Operation(summary = "Huỷ đơn")
     @PostMapping("/{code}/cancel")
-    public ApiResponse<BookingDto> cancel(@PathVariable String code, Authentication auth) {
-        return ApiResponse.ok(BookingDto.from(bookingService.cancel(code, userId(auth))), "Đã huỷ");
+    public ApiResponse<BookingDto> cancel(@PathVariable String code,
+                                          @RequestParam(required = false) String reason,
+                                          Authentication auth) {
+        return ApiResponse.ok(BookingDto.from(bookingService.requestCancel(code, userId(auth), reason)),
+                "Đã gửi yêu cầu huỷ, chờ admin duyệt");
     }
 
     @Operation(summary = "Thanh toán (giả lập) → xác nhận đơn")

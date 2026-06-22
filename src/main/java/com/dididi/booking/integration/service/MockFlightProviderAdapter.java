@@ -2,6 +2,8 @@ package com.dididi.booking.integration.service;
 
 import com.dididi.booking.integration.dto.FlightBookResult;
 import com.dididi.booking.integration.dto.FlightItem;
+import com.dididi.booking.integration.dto.SeatHoldResult;
+import com.dididi.booking.integration.dto.SeatMapResult;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
@@ -53,5 +55,41 @@ public class MockFlightProviderAdapter implements FlightDataSource {
                         "seats", seats))
                 .retrieve()
                 .body(FlightBookResult.class);
+    }
+
+    // ===== So do ghe / giu cho (seat selection) =====
+
+    /** Lay so do ghe + gia + trang thai cua 1 chuyen. */
+    @Retry(name = "flightProvider")
+    @CircuitBreaker(name = "flightProvider")
+    public SeatMapResult getSeatMap(Long externalId) {
+        return client.get().uri("/flights/{id}/seats", externalId).retrieve().body(SeatMapResult.class);
+    }
+
+    /** Giu cho cac ghe (holdRef = ma don). Nem HttpClientErrorException neu 409 (ghe da co nguoi giu/dat). */
+    public SeatHoldResult holdSeats(Long externalId, List<String> seatCodes, String holdRef, int minutes) {
+        return client.post()
+                .uri("/flights/{id}/seats/hold", externalId)
+                .body(Map.of("seatCodes", seatCodes, "holdRef", holdRef, "holdMinutes", minutes))
+                .retrieve()
+                .body(SeatHoldResult.class);
+    }
+
+    /** Xac nhan ghe (HELD -> BOOKED) khi thanh toan thanh cong. */
+    public void confirmSeats(Long externalId, String holdRef) {
+        client.post()
+                .uri("/flights/{id}/seats/confirm", externalId)
+                .body(Map.of("holdRef", holdRef))
+                .retrieve()
+                .toBodilessEntity();
+    }
+
+    /** Nha cac ghe dang giu theo holdRef (huy/het han thanh toan). */
+    public void releaseSeats(Long externalId, String holdRef) {
+        client.post()
+                .uri("/flights/{id}/seats/release", externalId)
+                .body(Map.of("holdRef", holdRef))
+                .retrieve()
+                .toBodilessEntity();
     }
 }

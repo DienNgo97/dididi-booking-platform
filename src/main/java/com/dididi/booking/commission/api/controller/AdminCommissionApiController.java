@@ -71,9 +71,10 @@ public class AdminCommissionApiController {
         return ApiResponse.ok(null, "Đã gỡ hoa hồng riêng");
     }
 
-    @Operation(summary = "Báo cáo hoa hồng theo vendor (đơn HOTEL đã xác nhận)")
+    @Operation(summary = "Báo cáo hoa hồng theo vendor (đơn HOTEL đã xác nhận) - CHỈ SUPER_ADMIN")
     @GetMapping("/report")
-    public ApiResponse<CommissionReportDto> report() {
+    public ApiResponse<CommissionReportDto> report(Authentication auth) {
+        RoleUtils.requireSuperAdmin(auth);
         return ApiResponse.ok(commissionService.report());
     }
 }

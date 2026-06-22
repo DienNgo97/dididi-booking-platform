@@ -68,13 +68,19 @@ public class ApprovalService {
         return r != null && r.getStatus() == ApprovalStatus.PENDING;
     }
 
-    public List<ApprovalRequestDto> listPending(Long companyId) {
+    /** Danh sach yeu cau phe duyet theo trang thai (PENDING / APPROVED / REJECTED), loc theo company tuy chon. */
+    public List<ApprovalRequestDto> list(ApprovalStatus status, Long companyId) {
         List<ApprovalRequest> list = (companyId == null)
-                ? repository.findByStatusOrderByIdDesc(ApprovalStatus.PENDING)
-                : repository.findByCompanyIdAndStatusOrderByIdDesc(companyId, ApprovalStatus.PENDING);
+                ? repository.findByStatusOrderByIdDesc(status)
+                : repository.findByCompanyIdAndStatusOrderByIdDesc(companyId, status);
         List<ApprovalRequestDto> out = new ArrayList<>();
         for (ApprovalRequest r : list) out.add(toDto(r));
         return out;
+    }
+
+    /** Giu tuong thich: mac dinh tra cac yeu cau PENDING. */
+    public List<ApprovalRequestDto> listPending(Long companyId) {
+        return list(ApprovalStatus.PENDING, companyId);
     }
 
     @Transactional
