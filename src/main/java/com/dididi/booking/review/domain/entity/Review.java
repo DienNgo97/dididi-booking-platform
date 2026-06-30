@@ -4,6 +4,7 @@ import com.dididi.booking.booking.domain.enums.BookingType;
 import com.dididi.booking.common.domain.BaseEntity;
 import com.dididi.booking.review.domain.enums.ReviewStatus;
 import jakarta.persistence.*;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.Instant;
 
@@ -15,6 +16,7 @@ import java.time.Instant;
 @Entity
 @Table(name = "reviews",
         uniqueConstraints = @UniqueConstraint(name = "uk_reviews_booking", columnNames = "booking_id"))
+@SQLRestriction("deleted_at IS NULL")
 public class Review extends BaseEntity {
 
     @Column(name = "booking_id", nullable = false)

@@ -59,6 +59,7 @@ class BookingServiceOversellTest {
     @Mock EmailService emailService;
     @Mock LoyaltyService loyaltyService;
     @Mock GroupBookingRepository groupBookingRepository;
+    @Mock com.dididi.booking.notification.service.UserNotificationService userNotificationService;
 
     BookingService service;
 
@@ -66,7 +67,7 @@ class BookingServiceOversellTest {
     void setUp() {
         service = new BookingService(bookingRepository, flightRepository, hotelRepository, flightAdapter,
                 pmsAdapter, roomTypeRepository, roomInventoryRepository, emailService, loyaltyService,
-                groupBookingRepository);
+                groupBookingRepository, userNotificationService);
     }
 
     // ---------- BP-BK-01: ve cuc bo (externalId >= 900000) ----------

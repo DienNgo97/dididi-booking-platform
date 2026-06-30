@@ -128,11 +128,16 @@ public class AdminUserApiController {
                                                                 @RequestParam Role role,
                                                                 Authentication auth) {
         RoleUtils.requireSuperAdmin(auth);
+        // SEC: khong cho tu ha quyen chinh minh -> tranh tu khoa toan bo quyen quan tri (lockout).
+        Long actorId = Long.valueOf(auth.getName());
+        if (actorId.equals(id) && role != Role.SUPER_ADMIN) {
+            throw new BusinessException("SELF_DEMOTE", "Không thể tự hạ quyền của chính mình", HttpStatus.BAD_REQUEST);
+        }
         return userRepository.findById(id)
                 .map(u -> {
                     u.setRole(role);
                     userRepository.save(u);
-                    events.publishEvent(new AuditEvent(Long.valueOf(auth.getName()),
+                    events.publishEvent(new AuditEvent(actorId,
                             "CHANGE_USER_ROLE", "USER", id, "role=" + role));
                     return ResponseEntity.ok(ApiResponse.ok(AdminUserDto.from(u), "Role updated"));
                 })

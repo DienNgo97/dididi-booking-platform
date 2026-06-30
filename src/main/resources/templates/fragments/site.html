@@ -11,6 +11,22 @@
         <a href="/trip-planner"><svg th:replace="~{fragments/icons :: i('route','')}"></svg> <span th:text="#{nav.trip}">Trip Planner</span></a>
         <a href="/community"><svg th:replace="~{fragments/icons :: i('compass','')}"></svg> <span th:text="#{nav.community}">Cộng đồng</span></a>
         <span class="sp"></span>
+        <span sec:authorize="isAuthenticated()" class="dd dd-bell" id="ddBell">
+            <button class="dd-btn dd-bell-btn" type="button" aria-label="Thông báo" title="Thông báo">
+                <svg th:replace="~{fragments/icons :: i('bell','')}"></svg>
+                <span class="dd-badge" th:if="${notifUnread != null and notifUnread > 0}"
+                      th:text="${notifUnread > 99 ? '99+' : notifUnread}">0</span>
+            </button>
+            <div class="dd-menu dd-notif">
+                <div class="dd-notif-head">
+                    <b>Thông báo</b>
+                    <a href="/notifications">Xem tất cả</a>
+                </div>
+                <div class="dd-notif-list" id="ddNotifList">
+                    <div class="dd-notif-empty">Đang tải…</div>
+                </div>
+            </div>
+        </span>
         <span sec:authorize="isAuthenticated()" class="dd dd-acc">
             <button class="dd-btn" type="button">
                 <span class="dd-ava" aria-hidden="true"
@@ -81,6 +97,34 @@
         agentThanks: /*[[#{chat.agentThanks}]]*/ 'Dạ không có gì ạ',
         agentDefault: /*[[#{chat.agentDefault}]]*/ 'Dạ em đã ghi nhận thông tin'
     };
+    </script>
+    <script>
+    (function(){
+        var bell=document.getElementById('ddBell'); if(!bell) return;
+        var listEl=document.getElementById('ddNotifList');
+        var btn=bell.querySelector('.dd-bell-btn');
+        var loaded=false;
+        function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+        function ic(id){ return '<svg class="ic"><use href="#'+(id||'ic-bell')+'"></use></svg>'; }
+        function render(items){
+            if(!items||!items.length){ listEl.innerHTML='<div class="dd-notif-empty">Chưa có thông báo nào</div>'; return; }
+            listEl.innerHTML=items.map(function(n){
+                return '<a class="dd-notif-item'+(n.read?'':' is-unread')+'" href="'+esc(n.url||'/notifications')+'">'
+                    +'<span class="dd-notif-ic">'+ic(n.icon)+'</span>'
+                    +'<span class="dd-notif-tx"><b>'+esc(n.title)+'</b><span>'+esc(n.text)+'</span></span></a>';
+            }).join('');
+        }
+        btn.addEventListener('click', function(){
+            setTimeout(function(){
+                if(bell.classList.contains('open') && !loaded){
+                    loaded=true; listEl.innerHTML='<div class="dd-notif-empty">Đang tải…</div>';
+                    fetch('/notifications/recent',{headers:{'Accept':'application/json'}})
+                        .then(function(r){return r.json();}).then(render)
+                        .catch(function(){ listEl.innerHTML='<div class="dd-notif-empty">Không tải được</div>'; loaded=false; });
+                }
+            },0);
+        });
+    })();
     </script>
 </div>
 <div th:fragment="flash">

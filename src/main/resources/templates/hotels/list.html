@@ -24,7 +24,77 @@
         </div>
         </div>
     </div>
+    <div class="hsearch-layout">
+    <aside class="hfilter">
+        <form class="hfilter-form" id="hfilterForm" onsubmit="return false">
+            <div class="hf-head"><b>Bộ lọc</b><button type="button" class="hf-clear" id="hfClear">Xoá lọc</button></div>
+
+            <div class="hf-sec">
+                <div class="hf-title">Giá mỗi đêm (đ)</div>
+                <div class="hf-price">
+                    <input type="number" name="priceMin" min="0" step="100000" placeholder="Tối thiểu" th:value="${fPriceMin}"/>
+                    <span>–</span>
+                    <input type="number" name="priceMax" min="0" step="100000" placeholder="Tối đa" th:value="${fPriceMax}"/>
+                </div>
+            </div>
+
+            <div class="hf-sec">
+                <div class="hf-title">Hạng sao</div>
+                <label class="hf-opt" th:each="s : ${ {5,4,3} }">
+                    <input type="checkbox" name="stars" th:value="${s}" th:checked="${fStars.contains(s)}"/>
+                    <span th:text="${s} + ' sao'">5 sao</span>
+                </label>
+            </div>
+
+            <div class="hf-sec">
+                <div class="hf-title">Điểm đánh giá</div>
+                <label class="hf-opt"><input type="radio" name="minRating" value="4.5" th:checked="${fMinRating != null and fMinRating == 4.5}"/> <span>Từ 4.5 ★</span></label>
+                <label class="hf-opt"><input type="radio" name="minRating" value="4"   th:checked="${fMinRating != null and fMinRating == 4}"/> <span>Từ 4.0 ★</span></label>
+                <label class="hf-opt"><input type="radio" name="minRating" value="3.5" th:checked="${fMinRating != null and fMinRating == 3.5}"/> <span>Từ 3.5 ★</span></label>
+                <label class="hf-opt"><input type="radio" name="minRating" value=""    th:checked="${fMinRating == null}"/> <span>Tất cả</span></label>
+            </div>
+
+            <div class="hf-sec">
+                <div class="hf-title">Loại chỗ ở</div>
+                <label class="hf-opt" th:each="t : ${allTypes}">
+                    <input type="checkbox" name="types" th:value="${t.name()}" th:checked="${fTypes.contains(t.name())}"/>
+                    <span th:text="${t.viName}">Khách sạn</span>
+                </label>
+            </div>
+
+            <div class="hf-sec">
+                <div class="hf-title">Nổi bật</div>
+                <label class="hf-opt" th:each="t : ${allTags}">
+                    <input type="checkbox" name="tags" th:value="${t.name()}" th:checked="${fTags.contains(t.name())}"/>
+                    <span th:text="${t.viName}">Sát biển</span>
+                </label>
+            </div>
+
+            <div class="hf-sec">
+                <div class="hf-title">Tiện nghi</div>
+                <label class="hf-opt" th:each="a : ${allAmenities}">
+                    <input type="checkbox" name="amenities" th:value="${a.name()}" th:checked="${fAmenities.contains(a.name())}"/>
+                    <span th:text="${a.viName}">Wifi</span>
+                </label>
+            </div>
+
+            <p class="hf-hint">Bộ lọc áp dụng ngay khi bạn chọn — không cần tải lại trang.</p>
+        </form>
+    </aside>
+    <div class="hresults">
     <h1><span th:text="#{hotels.title}">Khách sạn</span><span class="muted" th:if="${city}"> · <span th:text="${city}"></span></span></h1>
+    <div class="hresult-bar">
+        <span class="hresult-count"><b id="hcount">0</b> chỗ ở</span>
+        <label class="hresult-sort">Sắp xếp:
+            <select id="hsort">
+                <option value=""           th:selected="${fSort == null or fSort == ''}">Đề xuất</option>
+                <option value="price_asc"  th:selected="${fSort == 'price_asc'}">Giá: thấp → cao</option>
+                <option value="price_desc" th:selected="${fSort == 'price_desc'}">Giá: cao → thấp</option>
+                <option value="rating_desc"th:selected="${fSort == 'rating_desc'}">Đánh giá cao nhất</option>
+                <option value="stars_desc" th:selected="${fSort == 'stars_desc'}">Hạng sao cao nhất</option>
+            </select>
+        </label>
+    </div>
     <!-- Bản đồ kết quả tìm kiếm (Nhóm 2 - Google Maps) -->
     <div class="map-wrap" th:if="${hotels != null and !#lists.isEmpty(hotels)}">
         <div class="map-bar">
@@ -34,8 +104,9 @@
         </div>
         <div id="hotelsMap" class="hotel-map hotel-map-lg" style="display:none"></div>
     </div>
-    <div class="paginate" data-page-size="20">
-    <div class="hcard" th:each="h : ${hotels}">
+    <div class="hlist" id="hlist" data-page-size="20">
+    <div class="hcard" th:each="h : ${hotels}"
+         th:attr="data-price=${h.minPrice != null ? h.minPrice.longValue() : ''},data-star=${h.starRating != null ? h.starRating : 0},data-rating=${ratings.get(h.id)},data-type=${h.propertyType != null ? h.propertyType.name() : ''},data-amen=${amenStr.get(h.id)},data-tags=${tagStr.get(h.id)}">
         <a class="hcard-stretch" th:aria-label="${h.name}"
            th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}"></a>
         <div class="hcard-img">
@@ -75,7 +146,9 @@
         </div>
     </div>
     </div>
-    <p class="muted" th:if="${#lists.isEmpty(hotels)}" th:text="#{hotels.empty}">Không có khách sạn phù hợp.</p>
+    <p class="muted" id="hempty" style="display:none" th:text="#{hotels.empty}">Không có khách sạn phù hợp.</p>
+    </div><!-- /.hresults -->
+    </div><!-- /.hsearch-layout -->
 </div>
 <script>
 (function () {
@@ -104,6 +177,117 @@
                 .catch(function () { btn.disabled = false; form.submit(); });
         });
     });
+})();
+</script>
+<script>
+/* Bộ lọc / sắp xếp / phân trang khách sạn — chạy hoàn toàn ở client, cập nhật tức thì, không tải lại trang. */
+(function () {
+    var form = document.getElementById('hfilterForm');
+    var box = document.getElementById('hlist');
+    if (!form || !box) return;
+    var size = parseInt(box.getAttribute('data-page-size') || '20', 10);
+    var cards = Array.prototype.slice.call(box.querySelectorAll('.hcard'));
+    var origin = cards.slice();                 // thứ tự gốc cho "Đề xuất"
+    var ord = new Map(); origin.forEach(function (c, i) { ord.set(c, i); });
+    var sortSel = document.getElementById('hsort');
+    var countEl = document.getElementById('hcount');
+    var emptyEl = document.getElementById('hempty');
+    var pager = document.createElement('nav'); pager.className = 'pager';
+    box.parentNode.insertBefore(pager, box.nextSibling);
+
+    function num(v) { v = parseFloat(v); return isNaN(v) ? null : v; }
+    function checked(name) { return Array.prototype.map.call(form.querySelectorAll('input[name="' + name + '"]:checked'), function (i) { return i.value; }); }
+    function radio(name) { var el = form.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ''; }
+    function field(name) { var el = form.querySelector('[name="' + name + '"]'); return el ? el.value : ''; }
+
+    function matched() {
+        var pMin = num(field('priceMin')), pMax = num(field('priceMax'));
+        var stars = checked('stars'), types = checked('types'), tags = checked('tags'), amens = checked('amenities');
+        var minR = num(radio('minRating'));
+        return cards.filter(function (c) {
+            var price = num(c.getAttribute('data-price'));
+            var star = c.getAttribute('data-star') || '0';
+            var rating = num(c.getAttribute('data-rating')) || 0;
+            var type = c.getAttribute('data-type') || '';
+            var amen = (c.getAttribute('data-amen') || '').split(/\s+/).filter(Boolean);
+            var tg = (c.getAttribute('data-tags') || '').split(/\s+/).filter(Boolean);
+            if (pMin != null && (price == null || price < pMin)) return false;
+            if (pMax != null && (price == null || price > pMax)) return false;
+            if (stars.length && stars.indexOf(star) < 0) return false;            // sao: OR
+            if (types.length && types.indexOf(type) < 0) return false;            // loại: OR
+            if (minR != null && minR > 0 && rating < minR) return false;          // điểm: ngưỡng
+            if (amens.length && !amens.every(function (a) { return amen.indexOf(a) >= 0; })) return false; // tiện nghi: AND
+            if (tags.length && !tags.some(function (t) { return tg.indexOf(t) >= 0; })) return false;       // nổi bật: OR
+            return true;
+        });
+    }
+
+    function sortList(list) {
+        var s = sortSel ? sortSel.value : '';
+        var g = function (c, k, d) { var v = num(c.getAttribute(k)); return v == null ? d : v; };
+        if (s === 'price_asc') list.sort(function (a, b) { return g(a, 'data-price', 1e15) - g(b, 'data-price', 1e15); });
+        else if (s === 'price_desc') list.sort(function (a, b) { return g(b, 'data-price', -1) - g(a, 'data-price', -1); });
+        else if (s === 'rating_desc') list.sort(function (a, b) { return g(b, 'data-rating', 0) - g(a, 'data-rating', 0); });
+        else if (s === 'stars_desc') list.sort(function (a, b) { return g(b, 'data-star', 0) - g(a, 'data-star', 0); });
+        else list.sort(function (a, b) { return ord.get(a) - ord.get(b); });      // Đề xuất: thứ tự gốc
+        return list;
+    }
+
+    var cur = 1, view = [];
+    function pgList(c, t) { var r = [], i; if (t <= 7) { for (i = 1; i <= t; i++) r.push(i); return r; } r.push(1); var s = Math.max(2, c - 1), e = Math.min(t - 1, c + 1); if (s > 2) r.push('…'); for (i = s; i <= e; i++) r.push(i); if (e < t - 1) r.push('…'); r.push(t); return r; }
+    function drawPager() {
+        var pages = Math.ceil(view.length / size); pager.innerHTML = ''; if (pages <= 1) return;
+        function add(label, page, o) { o = o || {}; if (label === '…') { var gp = document.createElement('span'); gp.className = 'gap'; gp.textContent = '…'; pager.appendChild(gp); return; } var b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (o.active) b.className = 'is-active'; if (o.disabled) b.disabled = true; if (!o.disabled && !o.active) b.addEventListener('click', function () { go(page, true); }); pager.appendChild(b); }
+        add('‹', cur - 1, { disabled: cur === 1 });
+        pgList(cur, pages).forEach(function (n) { add(n, n, { active: n === cur }); });
+        add('›', cur + 1, { disabled: cur === pages });
+    }
+    function go(p, scroll) {
+        var pages = Math.max(1, Math.ceil(view.length / size));
+        cur = Math.min(Math.max(1, p), pages);
+        view.forEach(function (c, i) { c.style.display = (i >= (cur - 1) * size && i < cur * size) ? '' : 'none'; });
+        drawPager();
+        if (scroll) { var y = box.getBoundingClientRect().top + window.pageYOffset - 130; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); }
+    }
+
+    function apply() {
+        cards.forEach(function (c) { c.style.display = 'none'; });
+        view = sortList(matched());
+        view.forEach(function (c) { box.appendChild(c); });        // sắp lại DOM theo thứ tự đã sort
+        if (countEl) countEl.textContent = view.length;
+        if (emptyEl) emptyEl.style.display = view.length ? 'none' : '';
+        cur = 1; go(1, false);
+        syncUrl();
+    }
+
+    function syncUrl() {
+        var p = new URLSearchParams();
+        if (field('priceMin')) p.set('priceMin', field('priceMin'));
+        if (field('priceMax')) p.set('priceMax', field('priceMax'));
+        checked('stars').forEach(function (v) { p.append('stars', v); });
+        checked('types').forEach(function (v) { p.append('types', v); });
+        checked('tags').forEach(function (v) { p.append('tags', v); });
+        checked('amenities').forEach(function (v) { p.append('amenities', v); });
+        var mr = radio('minRating'); if (mr) p.set('minRating', mr);
+        if (sortSel && sortSel.value) p.set('sort', sortSel.value);
+        var qs = p.toString();
+        history.replaceState(null, '', '/hotels' + (qs ? ('?' + qs) : ''));
+    }
+
+    form.addEventListener('change', apply);
+    var t; form.addEventListener('input', function (e) { if (!e.target || e.target.type !== 'number') return; clearTimeout(t); t = setTimeout(apply, 350); });
+    if (sortSel) sortSel.addEventListener('change', apply);
+    var clr = document.getElementById('hfClear');
+    if (clr) clr.addEventListener('click', function () {
+        form.querySelectorAll('input[type=checkbox]').forEach(function (i) { i.checked = false; });
+        var all = form.querySelector('input[name=minRating][value=""]'); if (all) all.checked = true;
+        var pn = form.querySelector('[name=priceMin]'); if (pn) pn.value = '';
+        var px = form.querySelector('[name=priceMax]'); if (px) px.value = '';
+        if (sortSel) sortSel.value = '';
+        apply();
+    });
+
+    apply();   // chạy lần đầu — tôn trọng trạng thái form do server render từ URL
 })();
 </script>
 <script th:inline="javascript">

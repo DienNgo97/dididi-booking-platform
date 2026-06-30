@@ -2,6 +2,7 @@ package com.dididi.booking.admin.api.controller;
 
 import com.dididi.booking.admin.api.dto.AdminBookingDto;
 import com.dididi.booking.admin.api.dto.RefundRequest;
+import com.dididi.booking.audit.event.AuditEvent;
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.domain.enums.CancelStatus;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -36,12 +38,21 @@ public class AdminBookingApiController {
     private final BookingRepository bookingRepository;
     private final BookingService bookingService;
     private final RefundService refundService;
+    private final com.dididi.booking.notification.service.UserNotificationService userNotificationService;
+    private final ApplicationEventPublisher events;
+    private final com.dididi.booking.voucher.service.VoucherService voucherService;
 
     public AdminBookingApiController(BookingRepository bookingRepository, BookingService bookingService,
-                                     RefundService refundService) {
+                                     RefundService refundService,
+                                     com.dididi.booking.notification.service.UserNotificationService userNotificationService,
+                                     ApplicationEventPublisher events,
+                                     com.dididi.booking.voucher.service.VoucherService voucherService) {
         this.bookingRepository = bookingRepository;
         this.bookingService = bookingService;
         this.refundService = refundService;
+        this.userNotificationService = userNotificationService;
+        this.events = events;
+        this.voucherService = voucherService;
     }
 
     @Operation(summary = "Danh sách đơn (phân trang, lọc theo status hoặc cancelStatus tuỳ chọn)")
@@ -80,7 +91,7 @@ public class AdminBookingApiController {
     @Operation(summary = "Huỷ đơn (admin) - chuyển CANCELLED, hoàn trả tồn kho DIRECT")
     @Transactional
     @PostMapping("/{id}/cancel")
-    public ResponseEntity<ApiResponse<AdminBookingDto>> cancel(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<AdminBookingDto>> cancel(@PathVariable Long id, Authentication auth) {
         return bookingRepository.findById(id)
                 .map(b -> {
                     if (b.getStatus() == BookingStatus.PENDING_PAYMENT
@@ -90,6 +101,11 @@ public class AdminBookingApiController {
                     }
                     b.setStatus(BookingStatus.CANCELLED);
                     bookingRepository.save(b);
+                    voucherService.releaseForBooking(b.getId());   // BP-VOU-03: trả voucher để khách dùng lại
+                    Long actorId = null;
+                    try { if (auth != null) actorId = Long.valueOf(auth.getName()); } catch (Exception ignored) { }
+                    events.publishEvent(new AuditEvent(actorId, "CANCEL_BOOKING", "BOOKING", b.getId(),
+                            "Admin huỷ đơn " + b.getPublicCode()));
                     return ResponseEntity.ok(ApiResponse.ok(AdminBookingDto.from(b), "Cancelled"));
                 })
                 .orElse(ResponseEntity.notFound().build());
@@ -154,6 +170,13 @@ public class AdminBookingApiController {
         b.setCancelStatus(CancelStatus.REJECTED);
         b.setCancelAdminNote(req.reason().trim());
         bookingRepository.save(b);
+        try {
+            userNotificationService.create(b.getUserId(),
+                    com.dididi.booking.notification.domain.UserNotificationType.BOOKING_CANCEL_REJECTED,
+                    "Yêu cầu huỷ bị từ chối",
+                    "Yêu cầu huỷ đơn " + b.getPublicCode() + " không được duyệt: " + req.reason().trim(),
+                    "/account/bookings", b.getId());
+        } catch (Exception ignored) { }
         return ResponseEntity.ok(ApiResponse.ok(AdminBookingDto.from(b), "Đã từ chối yêu cầu huỷ"));
     }
 

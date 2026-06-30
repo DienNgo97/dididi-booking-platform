@@ -42,6 +42,9 @@ public class RefundService {
     private final LoyaltyTransactionRepository loyaltyRepository;
     private final EmailService emailService;
     private final ApplicationEventPublisher events;
+    private final com.dididi.booking.notification.service.UserNotificationService userNotificationService;
+    private final com.dididi.booking.corporate.service.CompanyService companyService;
+    private final com.dididi.booking.voucher.service.VoucherService voucherService;
     private final BigDecimal superAdminThreshold;
 
     // BP-PAY-02: default khop policy (5.000.000 VND ~ don lon thuong can SUPER_ADMIN duyet) va trung
@@ -52,6 +55,9 @@ public class RefundService {
                          PaymentRepository paymentRepository, RefundRepository refundRepository,
                          LoyaltyTransactionRepository loyaltyRepository,
                          EmailService emailService, ApplicationEventPublisher events,
+                         com.dididi.booking.notification.service.UserNotificationService userNotificationService,
+                         com.dididi.booking.corporate.service.CompanyService companyService,
+                         com.dididi.booking.voucher.service.VoucherService voucherService,
                          @Value("${app.refund.super-admin-threshold:5000000}") BigDecimal superAdminThreshold) {
         this.bookingRepository = bookingRepository;
         this.bookingService = bookingService;
@@ -60,6 +66,9 @@ public class RefundService {
         this.loyaltyRepository = loyaltyRepository;
         this.emailService = emailService;
         this.events = events;
+        this.userNotificationService = userNotificationService;
+        this.companyService = companyService;
+        this.voucherService = voucherService;
         this.superAdminThreshold = superAdminThreshold;
     }
 
@@ -112,12 +121,27 @@ public class RefundService {
         //     Tranh nong: book -> confirm (cong N diem) -> refund van giu diem (farming + thoi hang).
         reverseLoyaltyPoints(b);
 
+        // 3c) BP-PAY-06: don tra bang NGAN SACH CONG TY -> hoan lai han muc (charge co inverse), tranh ro ri budget.
+        if ("COMPANY_BUDGET".equals(p.getMethod()) && b.getCompanyId() != null) {
+            companyService.release(b.getCompanyId(), p.getAmount(), b.getId());
+        }
+
+        // 3d) BP-VOU-03: trả voucher đã dùng cho đơn này -> khách có thể dùng lại mã cho lần sau.
+        voucherService.releaseForBooking(b.getId());
+
         // 4) Audit qua event - ghi sau khi commit + bat dong bo.
         events.publishEvent(new AuditEvent(adminUserId, "REFUND", "BOOKING", b.getId(),
                 "Hoàn " + r.getAmount() + " " + r.getCurrency() + " cho đơn " + b.getPublicCode()
                         + (reason != null && !reason.isBlank() ? " — lý do: " + reason : "")));
 
         emailService.sendRefunded(b, r.getAmount(), LocaleContextHolder.getLocale());   // email hoan tien (phong thu)
+        try {
+            userNotificationService.create(b.getUserId(),
+                    com.dididi.booking.notification.domain.UserNotificationType.REFUND_COMPLETED,
+                    "Hoàn tiền thành công",
+                    "Đã hoàn " + r.getAmount() + " " + r.getCurrency() + " cho đơn " + b.getPublicCode() + ".",
+                    "/account/bookings", b.getId());
+        } catch (Exception ignored) { }
         return r;
     }
 

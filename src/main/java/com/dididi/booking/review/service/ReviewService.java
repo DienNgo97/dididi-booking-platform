@@ -35,13 +35,17 @@ public class ReviewService {
     private final HotelRepository hotelRepository;
     private final boolean autoPublish;
 
+    private final com.dididi.booking.notification.service.UserNotificationService userNotificationService;
+
     public ReviewService(ReviewRepository reviewRepository, BookingRepository bookingRepository,
                          UserRepository userRepository, HotelRepository hotelRepository,
+                         com.dididi.booking.notification.service.UserNotificationService userNotificationService,
                          @Value("${app.review.auto-publish:true}") boolean autoPublish) {
         this.reviewRepository = reviewRepository;
         this.bookingRepository = bookingRepository;
         this.userRepository = userRepository;
         this.hotelRepository = hotelRepository;
+        this.userNotificationService = userNotificationService;
         this.autoPublish = autoPublish;
     }
 
@@ -146,9 +150,21 @@ public class ReviewService {
         if (!hotel.getId().equals(r.getTargetId())) {
             throw new BusinessException("FORBIDDEN", "Đánh giá không thuộc khách sạn của bạn", HttpStatus.FORBIDDEN);
         }
+        // Chi tra loi duoc danh gia DA CONG KHAI (khong tra loi review dang an/cho duyet -> tranh ro ri review bi an).
+        if (r.getStatus() != ReviewStatus.PUBLISHED) {
+            throw new BusinessException("REVIEW_NOT_PUBLISHED", "Chỉ trả lời được đánh giá đã công khai", HttpStatus.BAD_REQUEST);
+        }
         r.setVendorReply(reply);
         r.setVendorReplyAt(Instant.now());
-        return reviewRepository.save(r);
+        Review saved = reviewRepository.save(r);
+        try {
+            userNotificationService.create(saved.getUserId(),
+                    com.dididi.booking.notification.domain.UserNotificationType.REVIEW_REPLY,
+                    "Khách sạn đã trả lời đánh giá",
+                    hotel.getName() + " vừa phản hồi đánh giá của bạn.",
+                    "/hotels/" + hotel.getId(), saved.getId());
+        } catch (Exception ignored) { }
+        return saved;
     }
 
     /** Tat ca review tren khach san cua vendor (moi trang thai) - cho UI vendor. */
@@ -179,9 +195,11 @@ public class ReviewService {
 
     @Transactional
     public void delete(Long reviewId) {
-        if (!reviewRepository.existsById(reviewId)) {
-            throw new BusinessException("NOT_FOUND", "Không tìm thấy đánh giá", HttpStatus.NOT_FOUND);
-        }
-        reviewRepository.deleteById(reviewId);
+        Review r = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException("NOT_FOUND", "Không tìm thấy đánh giá", HttpStatus.NOT_FOUND));
+        // SOFT-DELETE theo quy ước BaseEntity (trước đây hard-delete trái quy ước). @SQLRestriction sẽ ẩn khỏi mọi truy vấn.
+        r.setStatus(ReviewStatus.HIDDEN);
+        r.setDeletedAt(java.time.Instant.now());
+        reviewRepository.save(r);
     }
 }

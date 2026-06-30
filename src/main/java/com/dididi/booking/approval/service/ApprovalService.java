@@ -93,7 +93,7 @@ public class ApprovalService {
                     "Đơn không còn ở trạng thái chờ thanh toán (hiện tại: " + b.getStatus() + ")", HttpStatus.CONFLICT);
         }
         // Tru ngan sach (vuot -> BUDGET_EXCEEDED, rollback) roi xac nhan.
-        companyService.charge(r.getCompanyId(), b.getAmount());
+        companyService.charge(r.getCompanyId(), b.getAmount(), b.getId());
         paymentService.payByCompany(b);
         b.setCompanyId(r.getCompanyId());
         bookingService.markConfirmed(b);

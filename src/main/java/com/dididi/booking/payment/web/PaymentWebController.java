@@ -9,7 +9,9 @@ import com.dididi.booking.corporate.api.dto.CompanyDto;
 import com.dididi.booking.corporate.service.CompanyService;
 import com.dididi.booking.corporate.service.CorporateBookingService;
 import com.dididi.booking.payment.domain.entity.Payment;
+import com.dididi.booking.payment.domain.entity.PaymentAttempt;
 import com.dididi.booking.payment.domain.enums.PaymentStatus;
+import com.dididi.booking.payment.repository.PaymentAttemptRepository;
 import com.dididi.booking.payment.service.PaymentService;
 import com.dididi.booking.payment.vnpay.VnPayService;
 import com.dididi.booking.web.CurrentUser;
@@ -54,13 +56,15 @@ public class PaymentWebController {
     private final CorporateBookingService corporateBookingService;
     private final com.dididi.booking.voucher.service.VoucherService voucherService;
     private final com.dididi.booking.group.service.GroupBookingService groupService;
+    private final PaymentAttemptRepository paymentAttemptRepository;
 
     public PaymentWebController(BookingService bookingService, BookingRepository bookingRepository,
                                 PaymentService paymentService, VnPayService vnPayService,
                                 CurrentUser currentUser, CompanyService companyService,
                                 CorporateBookingService corporateBookingService,
                                 com.dididi.booking.voucher.service.VoucherService voucherService,
-                                com.dididi.booking.group.service.GroupBookingService groupService) {
+                                com.dididi.booking.group.service.GroupBookingService groupService,
+                                PaymentAttemptRepository paymentAttemptRepository) {
         this.bookingService = bookingService;
         this.bookingRepository = bookingRepository;
         this.paymentService = paymentService;
@@ -70,6 +74,33 @@ public class PaymentWebController {
         this.corporateBookingService = corporateBookingService;
         this.voucherService = voucherService;
         this.groupService = groupService;
+        this.paymentAttemptRepository = paymentAttemptRepository;
+    }
+
+    /** Ghi nhật ký 1 lần VNPay gọi về (return/IPN) để đối soát. Lỗi ghi log KHÔNG được chặn thanh toán. */
+    private void recordAttempt(String direction, Map<String, String> params, boolean signatureValid) {
+        try {
+            String txnRef = params.get("vnp_TxnRef");
+            PaymentAttempt a = new PaymentAttempt();
+            a.setDirection(direction);
+            a.setTxnRef(txnRef);
+            a.setResponseCode(params.get("vnp_ResponseCode"));
+            a.setSignatureValid(signatureValid);
+            try {
+                String amt = params.get("vnp_Amount");
+                if (amt != null) a.setAmount(new BigDecimal(amt).movePointLeft(2));
+            } catch (Exception ignore) { }
+            paymentService.findByTxnRef(txnRef).ifPresent(p -> { a.setPaymentId(p.getId()); a.setBookingId(p.getBookingId()); });
+            StringBuilder sb = new StringBuilder();
+            params.forEach((k, v) -> {
+                if (k == null || k.toLowerCase().contains("securehash")) return;
+                if (sb.length() > 0) sb.append('&');
+                sb.append(k).append('=').append(v);
+            });
+            String raw = sb.toString();
+            a.setRawParams(raw.length() > 2000 ? raw.substring(0, 2000) : raw);
+            paymentAttemptRepository.save(a);
+        } catch (Exception ignore) { /* ghi attempt lỗi không được chặn luồng thanh toán */ }
     }
 
     @GetMapping("/payment/{code}")
@@ -195,7 +226,9 @@ public class PaymentWebController {
         String txnStatus = params.get("vnp_TransactionStatus");
         String publicCode = extractCode(txnRef);
 
-        if (!vnPayService.isValid(params)) {
+        boolean validSig = vnPayService.isValid(params);
+        recordAttempt("RETURN", params, validSig);
+        if (!validSig) {
             ra.addFlashAttribute("error", "Chu ky VNPay khong hop le. Vui long thu lai.");
             return (publicCode == null || publicCode.isEmpty()) ? "redirect:/account/bookings"
                     : "redirect:/account/bookings/" + publicCode;
@@ -293,7 +326,9 @@ public class PaymentWebController {
     @Transactional
     public Map<String, String> vnpayIpn(@RequestParam Map<String, String> params) {
         Map<String, String> res = new HashMap<>();
-        if (!vnPayService.isValid(params)) {
+        boolean validSig = vnPayService.isValid(params);
+        recordAttempt("IPN", params, validSig);
+        if (!validSig) {
             res.put("RspCode", "97"); res.put("Message", "Invalid signature"); return res;
         }
         String txnRef = params.get("vnp_TxnRef");

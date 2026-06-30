@@ -47,7 +47,8 @@ public class SecurityWebConfig {
                                 "/community/more/hotel/**", "/community/more/tag/**",
                                 "/community/media/**", "/community/avatar/**", "/community/cover/**").permitAll()
                         .requestMatchers("/account/**", "/booking/**", "/payment/**", "/checkout/**",
-                                "/company-invite/**", "/groups/**", "/g/**", "/community/**").authenticated()
+                                "/company-invite/**", "/groups/**", "/g/**", "/community/**",
+                                "/notifications/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .formLogin(f -> f

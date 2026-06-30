@@ -4,6 +4,8 @@ import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.repository.BookingRepository;
 import com.dididi.booking.booking.service.BookingService;
+import com.dididi.booking.payment.domain.enums.PaymentStatus;
+import com.dididi.booking.payment.repository.PaymentRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,10 +29,13 @@ public class PaymentExpiryScheduler {
 
     private final BookingRepository bookingRepository;
     private final BookingService bookingService;
+    private final PaymentRepository paymentRepository;
 
-    public PaymentExpiryScheduler(BookingRepository bookingRepository, BookingService bookingService) {
+    public PaymentExpiryScheduler(BookingRepository bookingRepository, BookingService bookingService,
+                                  PaymentRepository paymentRepository) {
         this.bookingRepository = bookingRepository;
         this.bookingService = bookingService;
+        this.paymentRepository = paymentRepository;
     }
 
     @Scheduled(fixedRate = 300_000)   // 5 phut
@@ -40,6 +45,10 @@ public class PaymentExpiryScheduler {
         if (stale.isEmpty()) return;
         int failed = 0;
         for (Booking b : stale) {
+            // BP-PAY-05: KHONG giet don da THANH TOAN (callback xac nhan tre/mat) -> bo qua neu Payment da PAID.
+            boolean alreadyPaid = paymentRepository.findByBookingId(b.getId())
+                    .map(p -> p.getStatus() == PaymentStatus.PAID).orElse(false);
+            if (alreadyPaid) continue;
             try {
                 bookingService.markPaymentExpired(b);   // doi FAILED + releaseProviderInventory (best-effort)
                 failed++;

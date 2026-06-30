@@ -1,5 +1,6 @@
 package com.dididi.booking.identity.service;
 
+import com.dididi.booking.audit.event.AuditEvent;
 import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.identity.domain.entity.User;
 import com.dididi.booking.identity.domain.entity.UserToken;
@@ -10,6 +11,7 @@ import com.dididi.booking.identity.repository.UserRepository;
 import com.dididi.booking.identity.repository.UserTokenRepository;
 import com.dididi.booking.notification.EmailService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.session.SessionInformation;
@@ -51,6 +53,7 @@ public class AccountService {
     private final EmailService emailService;
     private final RefreshTokenService refreshTokenService;
     private final SessionRegistry sessionRegistry;
+    private final ApplicationEventPublisher events;
 
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
@@ -63,13 +66,15 @@ public class AccountService {
 
     public AccountService(UserRepository userRepository, UserTokenRepository tokenRepository,
                           PasswordEncoder passwordEncoder, EmailService emailService,
-                          RefreshTokenService refreshTokenService, SessionRegistry sessionRegistry) {
+                          RefreshTokenService refreshTokenService, SessionRegistry sessionRegistry,
+                          ApplicationEventPublisher events) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.refreshTokenService = refreshTokenService;
         this.sessionRegistry = sessionRegistry;
+        this.events = events;
     }
 
     public static boolean isStrong(String pw) {
@@ -157,6 +162,7 @@ public class AccountService {
         tokenRepository.save(t);
 
         logoutEverywhere(u);
+        events.publishEvent(new AuditEvent(u.getId(), "PASSWORD_RESET", "USER", u.getId(), "Dat lai mat khau qua email"));
         return true;
     }
 
@@ -191,6 +197,7 @@ public class AccountService {
         expireOtherWebSessions(u.getEmail(), currentSessionId);
         refreshTokenService.revokeAllForUser(u.getId());
         refreshTokenService.invalidateAccessTokensBefore(u.getId());
+        events.publishEvent(new AuditEvent(u.getId(), "PASSWORD_CHANGE", "USER", u.getId(), "Doi mat khau"));
     }
 
     // ---------------- Hồ sơ: quản lý thiết bị đăng nhập ----------------
@@ -248,6 +255,7 @@ public class AccountService {
         refreshTokenService.revokeAllForUser(u.getId());
         refreshTokenService.invalidateAccessTokensBefore(u.getId());
         expireWebSessions(oldEmail);
+        events.publishEvent(new AuditEvent(u.getId(), "ACCOUNT_CLOSED", "USER", u.getId(), "Khach tu dong tai khoan"));
     }
 
     // ---------------- Hồ sơ: gửi lại email kích hoạt ----------------

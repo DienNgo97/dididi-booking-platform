@@ -5,6 +5,8 @@ import com.dididi.booking.booking.repository.BookingRepository;
 import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.corporate.api.dto.CompanyUpsertRequest;
 import com.dididi.booking.corporate.domain.entity.Company;
+import com.dididi.booking.corporate.domain.entity.CompanyBudgetTxn;
+import com.dididi.booking.corporate.repository.CompanyBudgetTxnRepository;
 import com.dididi.booking.corporate.repository.CompanyRepository;
 import com.dididi.booking.identity.domain.entity.User;
 import com.dididi.booking.identity.repository.UserRepository;
@@ -23,12 +25,19 @@ public class CompanyService {
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
     private final BookingRepository bookingRepository;
+    private final CompanyBudgetTxnRepository budgetTxnRepository;
 
     public CompanyService(CompanyRepository companyRepository, UserRepository userRepository,
-                          BookingRepository bookingRepository) {
+                          BookingRepository bookingRepository, CompanyBudgetTxnRepository budgetTxnRepository) {
         this.companyRepository = companyRepository;
         this.userRepository = userRepository;
         this.bookingRepository = bookingRepository;
+        this.budgetTxnRepository = budgetTxnRepository;
+    }
+
+    /** Sổ cái biến động ngân sách của 1 công ty (mới nhất trước) — cho trang đối soát admin. */
+    public List<CompanyBudgetTxn> budgetLedger(Long companyId) {
+        return budgetTxnRepository.findByCompanyIdOrderByIdDesc(companyId);
     }
 
     public List<Company> list() { return companyRepository.findAllByOrderByName(); }
@@ -133,7 +142,7 @@ public class CompanyService {
 
     /** Tru han muc cong ty; neu khong du -> chan (BUDGET_EXCEEDED). */
     @Transactional
-    public void charge(Long companyId, BigDecimal amount) {
+    public void charge(Long companyId, BigDecimal amount, Long bookingId) {
         Company c = get(companyId);
         if (!c.isActive()) {
             throw new BusinessException("COMPANY_INACTIVE", "Công ty đang bị khoá", HttpStatus.CONFLICT);
@@ -147,5 +156,23 @@ public class CompanyService {
         }
         c.setBudgetUsed(c.getBudgetUsed().add(amount));
         companyRepository.save(c);
+        budgetTxnRepository.save(new CompanyBudgetTxn(companyId, bookingId, amount, "CHARGE", "Trừ hạn mức cho đơn"));
+    }
+
+    /**
+     * Hoan lai han muc cong ty khi REFUND don da tru ngan sach (dao nguoc {@link #charge}).
+     * Goi tu RefundService. Idempotent o tang goi (moi don chi refund 1 lan, Payment->REFUNDED chan lap lai).
+     * Khong de budgetUsed am.
+     */
+    @Transactional
+    public void release(Long companyId, BigDecimal amount, Long bookingId) {
+        if (companyId == null || amount == null || amount.signum() <= 0) return;
+        Company c = companyRepository.findById(companyId).orElse(null);
+        if (c == null) return;
+        BigDecimal used = c.getBudgetUsed() == null ? BigDecimal.ZERO : c.getBudgetUsed();
+        BigDecimal newUsed = used.subtract(amount);
+        c.setBudgetUsed(newUsed.signum() < 0 ? BigDecimal.ZERO : newUsed);
+        companyRepository.save(c);
+        budgetTxnRepository.save(new CompanyBudgetTxn(companyId, bookingId, amount, "RELEASE", "Hoàn hạn mức do refund"));
     }
 }

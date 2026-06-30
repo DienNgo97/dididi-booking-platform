@@ -11,12 +11,14 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.SQLRestriction;
 
 /**
  * Bai dang. Tac gia hien thi = (actorType, actorId): USER -> users.id, HOTEL -> hotels.id.
  * authorUserId = nguoi thuc su tao bai (khi dang duoi danh nghia khach san, day la user VENDOR).
  * Gan du lich tuy chon: hotelId / bookingId / reviewId / toa do check-in.
  */
+@SQLRestriction("deleted_at IS NULL")
 @Entity
 @Table(name = "social_posts", indexes = {
         @Index(name = "idx_post_actor", columnList = "actor_type,actor_id,id"),

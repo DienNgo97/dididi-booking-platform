@@ -70,11 +70,30 @@ public class VoucherService {
             throw new BusinessException("MIN_ORDER",
                     "Đơn tối thiểu " + v.getMinOrderAmount().toBigInteger() + " VND để dùng mã này", HttpStatus.CONFLICT);
         }
-        // BP-VOU-02: gioi han luot dung enforce NGUYEN TU qua ban ghi VoucherRedemption (unique code+user).
-        // Neu user nay da ap ma -> da co redemption (giu qua nhieu lan ap/go cung 1 don) -> bo qua, cho ap lai.
-        boolean alreadyRedeemed = redemptionRepository.existsByVoucherCodeAndUserId(v.getCode(), userId);
-        if (!alreadyRedeemed) {
-            // perUserLimit: voucher hien chi ho tro 1 luot/user (redemption la 1 row/user). >1 chua dung den.
+        // BP-VOU-03: 1 lượt/user enforce qua VoucherRedemption (unique code+user) VÀ chặn dùng lại khi suất
+        // đang gắn 1 đơn CÒN HIỆU LỰC. (Trước đây phần áp giảm giá chạy vô điều kiện -> mã usageLimit=1 vẫn
+        // áp được cho nhiều đơn = lạm dụng.) Nếu đơn cũ đã huỷ/hết hạn -> trả suất về cho đơn mới (HOÀN voucher).
+        java.util.Optional<VoucherRedemption> existing =
+                redemptionRepository.findByVoucherCodeAndUserId(v.getCode(), userId);
+        if (existing.isPresent()) {
+            VoucherRedemption red = existing.get();
+            Long heldBooking = red.getBookingId();
+            if (heldBooking != null && !heldBooking.equals(b.getId())) {
+                Booking other = bookingRepository.findById(heldBooking).orElse(null);
+                boolean otherActive = other != null
+                        && (other.getStatus() == BookingStatus.PENDING_PAYMENT
+                            || other.getStatus() == BookingStatus.CONFIRMED);
+                if (otherActive) {
+                    throw new BusinessException("VOUCHER_IN_USE",
+                            "Bạn đã dùng mã này cho đơn " + other.getPublicCode()
+                                    + ". Hãy gỡ mã ở đơn đó hoặc huỷ đơn trước khi dùng lại.", HttpStatus.CONFLICT);
+                }
+                // Đơn cũ không còn hiệu lực -> chuyển suất sang đơn hiện tại (dùng lại mã cho lần sau).
+                red.setBookingId(b.getId());
+                redemptionRepository.save(red);
+            }
+            // heldBooking == đơn hiện tại -> áp lại trên cùng đơn (idempotent), không làm gì thêm.
+        } else {
             if (v.getUsageLimit() != null
                     && redemptionRepository.countByVoucherCode(v.getCode()) >= v.getUsageLimit()) {
                 throw new BusinessException("VOUCHER_USED_UP", "Mã giảm giá đã hết lượt sử dụng", HttpStatus.CONFLICT);
@@ -82,7 +101,6 @@ public class VoucherService {
             try {
                 redemptionRepository.saveAndFlush(new VoucherRedemption(v.getCode(), userId, b.getId()));
             } catch (DataIntegrityViolationException ex) {
-                // Race: 1 request khac da chiem suat user nay (hoac tong luot) -> bao het luot user.
                 throw new BusinessException("VOUCHER_USER_LIMIT", "Bạn đã dùng hết lượt cho mã này", HttpStatus.CONFLICT);
             }
         }
@@ -119,6 +137,17 @@ public class VoucherService {
             b.setOriginalAmount(null);
         }
         return bookingRepository.save(b);
+    }
+
+    /**
+     * BP-VOU-03: TRẢ voucher khi đơn bị huỷ / hoàn tiền / hết hạn -> xoá suất redemption gắn đơn này,
+     * để khách dùng lại mã cho lần sau. Gọi từ RefundService + admin huỷ đơn.
+     * (Đơn hết hạn tự động: apply() đã tự "trỏ lại" suất khi đơn cũ không còn hiệu lực, nên vẫn dùng lại được.)
+     */
+    @Transactional
+    public void releaseForBooking(Long bookingId) {
+        if (bookingId == null) return;
+        redemptionRepository.findByBookingId(bookingId).ifPresent(redemptionRepository::delete);
     }
 
     private BigDecimal computeDiscount(Voucher v, BigDecimal base) {
