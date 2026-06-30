@@ -13,7 +13,7 @@
     <div class="gallery">
         <div class="gallery-main">
             <img th:if="${!#lists.isEmpty(images)}" th:src="${images[0].url()}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
-            <div class="ph" th:if="${#lists.isEmpty(images)}">🏨</div>
+            <div class="ph" th:if="${#lists.isEmpty(images)}"><svg th:replace="~{fragments/icons :: i('building','')}"></svg></div>
         </div>
         <div class="gallery-thumbs" th:if="${images != null and images.size() > 1}">
             <img th:each="img,it : ${images}" th:if="${it.index > 0}" th:src="${img.url()}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
@@ -24,8 +24,8 @@
         <div class="dt-title">
             <h1 th:text="${hotel.name}">Hotel</h1>
             <div class="dt-sub">
-                <span class="stars" th:if="${hotel.starRating != null}" th:text="${hotel.starRating + '★'}"></span>
-                · 📍 <span th:text="${hotel.city}"></span> · <span th:text="${hotel.address}"></span>
+                <span class="stars" th:if="${hotel.starRating != null}"><span th:text="${hotel.starRating}"></span><svg th:replace="~{fragments/icons :: i('star','ic-fill')}"></svg></span>
+                · <svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg> <span th:text="${hotel.city}"></span> · <span th:text="${hotel.address}"></span>
             </div>
         </div>
         <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -38,13 +38,32 @@
                 <input type="hidden" name="back" th:value="@{'/hotels/' + ${hotel.id}}"/>
                 <button class="btn ghost" type="submit"
                         th:style="${wishlisted} ? 'color:#c0392b;border-color:#c0392b' : ''"
-                        th:text="(${wishlisted} ? '♥ ' : '♡ ') + (${wishlisted} ? #{wishlist.saved} : #{wishlist.save})">♡ Lưu</button>
+                        ><svg th:replace="~{fragments/icons :: i('heart', ${wishlisted} ? 'ic-fill' : '')}"></svg> <span th:text="${wishlisted} ? #{wishlist.saved} : #{wishlist.save}">Lưu</span></button>
             </form>
         </div>
     </div>
 
     <div class="card" style="margin-top:8px">
         <p style="margin:0" th:text="${hotel.description}"></p>
+    </div>
+
+    <!-- Vị trí, loại hình & tiện ích (Nhóm 1 + Nhóm 2) -->
+    <div class="card" style="margin-top:12px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+            <span class="badge" th:if="${hotel.propertyType != null}" th:text="${hotel.propertyType.viName}">Khách sạn</span>
+            <span class="chip" th:each="tg : ${hotel.tags}" th:text="${tg.viName}">Đặc điểm</span>
+        </div>
+        <div class="muted" style="margin-bottom:10px">
+            <svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg>
+            <span th:text="${hotel.address}">địa chỉ</span>
+        </div>
+        <div th:if="${hotel.amenities != null and !hotel.amenities.isEmpty()}" class="amenities">
+            <span class="amenity" th:each="am : ${hotel.amenities}">
+                <svg th:replace="~{fragments/icons :: i('check','ic-brand')}"></svg>
+                <span th:text="${am.viName}">Tiện ích</span>
+            </span>
+        </div>
+        <div th:if="${hotel.hasGeo()}" id="hotelMap" class="hotel-map" style="margin-top:12px"></div>
     </div>
 
     <h2 style="margin-top:24px" th:text="#{hotels.chooseRoom}">Chọn phòng & đặt</h2>
@@ -54,13 +73,11 @@
         <a th:href="@{/hotels/{id}(id=${hotel.id},stay='day',checkIn=${checkIn},adults=${adults},children=${children},rooms=${roomsWanted},trip=${trip})}"
            th:class="${stay == 'day'} ? 'btn' : 'btn ghost'" th:text="#{hotels.dayuseBtn}">Chỗ ở trong ngày (theo giờ)</a>
     </div>
-    <p class="muted" th:if="${stay == 'day'}" th:utext="#{hotels.dayuseNote}">
-        🕐 Chỗ ở trong ngày: lưu trú <b>≤ 4 giờ tính nửa giá</b> phòng, <b>trên 4 giờ tính full giá</b>.
-        Mỗi lượt đặt cách nhau <b>2 giờ</b> để khách sạn dọn phòng.
-    </p>
-    <p class="muted" th:unless="${stay == 'day'}" th:utext="#{hotels.overnightNote}">
-        🛏 Qua đêm: nhận phòng từ <b>14:00</b>, trả phòng trước <b>12:00</b>.
-    </p>
+    <p class="muted" th:if="${stay == 'day'}">
+        <svg th:replace="~{fragments/icons :: i('clock','')}"></svg> <span th:utext="#{hotels.dayuseNote}">Chỗ ở trong ngày: lưu trú <b>≤ 4 giờ tính nửa giá</b> phòng, <b>trên 4 giờ tính full giá</b>.
+        Mỗi lượt đặt cách nhau <b>2 giờ</b> để khách sạn dọn phòng.</span></p>
+    <p class="muted" th:unless="${stay == 'day'}">
+        <svg th:replace="~{fragments/icons :: i('bed','')}"></svg> <span th:utext="#{hotels.overnightNote}">Qua đêm: nhận phòng từ <b>14:00</b>, trả phòng trước <b>12:00</b>.</span></p>
     <p class="muted" th:if="${guests != null}">
         <span th:utext="#{hotels.searchingFor(${guests})}">Đang tìm cho <b>2</b> khách</span><span th:if="${checkIn != null and checkOut != null}">
         · <span th:text="${checkIn}"></span> → <span th:text="${checkOut}"></span></span>.
@@ -118,7 +135,7 @@
                th:text="#{bulk.link}">Đặt theo nhóm (nhiều phòng)</a>
             &nbsp;·&nbsp;
             <a th:href="@{/groups/new(hotelId=${hotel.id},roomTypeId=${r.id()},roomName=${r.name()},checkIn=${checkIn},checkOut=${checkOut})}"
-               style="font-weight:600" th:text="#{hotels.createGroup}">👥 Tạo nhóm — mời bạn bè, chia tiền</a>
+               style="font-weight:600"><svg th:replace="~{fragments/icons :: i('users','')}"></svg> <span th:text="#{hotels.createGroup}">Tạo nhóm — mời bạn bè, chia tiền</span></a>
         </p>
         <p class="muted" sec:authorize="!isAuthenticated()" style="margin-top:10px">
             <a href="/login" th:text="#{nav.login}">Đăng nhập</a> <span th:text="#{hotels.toBook}">để đặt phòng.</span>
@@ -127,14 +144,14 @@
 
     <h2 style="margin-top:28px"><span th:text="#{hotels.guestReviews}">Đánh giá của khách</span>
         <span class="muted" th:if="${reviewCount > 0}">
-            — <span class="stars" th:text="${avgRating} + '★'"></span>
+            — <span class="stars"><span th:text="${avgRating}"></span><svg th:replace="~{fragments/icons :: i('star','ic-fill')}"></svg></span>
             (<span th:text="${reviewCount}"></span>)</span>
     </h2>
     <p class="muted" th:if="${reviewCount == 0}" th:text="#{hotels.noReviewsYet}">Chưa có đánh giá nào cho khách sạn này.</p>
     <div class="card" th:each="rv : ${reviews}" style="margin-bottom:10px">
         <div>
             <b th:text="${rv.reviewerName}">Khách</b>
-            <span class="stars" th:text="${rv.rating + '★'}"></span>
+            <span class="stars"><span th:text="${rv.rating}"></span><svg th:replace="~{fragments/icons :: i('star','ic-fill')}"></svg></span>
             <span class="muted" style="float:right" th:text="${rv.createdAt.toString().substring(0,10)}"></span>
         </div>
         <p th:if="${rv.comment}" th:text="${rv.comment}" style="margin:6px 0"></p>
@@ -154,9 +171,18 @@
         </div>
     </div>
 </div>
+<script th:if="${hotel.hasGeo()}" th:inline="javascript">
+    window.initHotelMap = function () {
+        var el = document.getElementById('hotelMap'); if (!el || !window.google) return;
+        var pos = { lat: /*[[${hotel.lat}]]*/ 16.0, lng: /*[[${hotel.lng}]]*/ 108.0 };
+        var map = new google.maps.Map(el, { center: pos, zoom: 15, mapTypeControl: false, streetViewControl: true });
+        new google.maps.Marker({ position: pos, map: map, title: /*[[${hotel.name}]]*/ 'Khách sạn' });
+    };
+</script>
+<th:block th:if="${hotel.hasGeo()}" th:replace="~{fragments/maps :: loader('initHotelMap')}"></th:block>
 <script th:inline="javascript">
     window.DD_HD = {
-        timeOutAfterIn: /*[[#{hd.timeOutAfterIn}]]*/ '⚠ Giờ trả phải sau giờ nhận',
+        timeOutAfterIn: /*[[#{hd.timeOutAfterIn}]]*/ ' Giờ trả phải sau giờ nhận',
         stayPrefix: /*[[#{hd.stayPrefix}]]*/ 'Lưu trú',
         hoursUnit: /*[[#{hd.hoursUnit}]]*/ 'giờ',
         halfPrice: /*[[#{hd.halfPrice}]]*/ 'nửa giá phòng',
@@ -198,7 +224,7 @@
             var rEl = form.querySelector('input[name=rooms]'); var rooms = rEl ? (parseInt(rEl.value, 10) || 1) : 1;
             var a = toMin(di.value), b = toMin(don.value);
             var H = window.DD_HD || {};
-            if (a == null || b == null || b <= a) { prev.textContent = H.timeOutAfterIn || '⚠ Giờ trả phải sau giờ nhận'; return; }
+            if (a == null || b == null || b <= a) { prev.textContent = H.timeOutAfterIn || ' Giờ trả phải sau giờ nhận'; return; }
             var mins = b - a, hours = Math.round((mins / 60) * 10) / 10;
             var half = mins <= 240;
             var total = base * (half ? 0.5 : 1) * rooms;
@@ -237,7 +263,7 @@
 </script>
 <!-- Lightbox: xem ảnh khách sạn cỡ lớn -->
 <div class="lightbox" id="lightbox" aria-hidden="true">
-    <button class="lb-close" id="lbClose" type="button" aria-label="Đóng" th:attr="aria-label=#{toast.close}">✕</button>
+    <button class="lb-close" id="lbClose" type="button" aria-label="Đóng" th:attr="aria-label=#{toast.close}"><svg th:replace="~{fragments/icons :: i('x','ic-danger')}"></svg></button>
     <button class="lb-nav lb-prev" id="lbPrev" type="button" aria-label="Ảnh trước" th:attr="aria-label=#{hotels.prevPhoto}">‹</button>
     <img class="lb-photo" id="lbPhoto" src="" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
     <button class="lb-nav lb-next" id="lbNext" type="button" aria-label="Ảnh sau" th:attr="aria-label=#{hotels.nextPhoto}">›</button>

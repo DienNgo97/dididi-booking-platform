@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  Loader Google Maps JS API. Tham số: callback = tên hàm window được gọi khi Maps sẵn sàng.
+  Chỉ nhúng khi đã cấu hình app.maps.api-key (đưa ra view qua GlobalNavAdvice -> ${mapsApiKey}).
+  Cách dùng:
+    <th:block th:replace="~{fragments/maps :: loader('initHotelMap')}"></th:block>
+-->
+<th:block th:fragment="loader(callback)">
+  <script th:if="${mapsApiKey != null and !#strings.isEmpty(mapsApiKey)}" async
+          th:src="|https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&loading=async&callback=${callback}|"></script>
+  <script th:unless="${mapsApiKey != null and !#strings.isEmpty(mapsApiKey)}" th:inline="javascript">
+    /* Chưa cấu hình API key -> báo nhẹ trong khung bản đồ, không vỡ trang. */
+    (function () {
+      var msg = /*[[#{maps.noKey}]]*/ 'Chưa cấu hình Google Maps API key (app.maps.api-key).';
+      document.querySelectorAll('.hotel-map').forEach(function (el) {
+        el.classList.add('map-nokey'); el.textContent = msg;
+      });
+    })();
+  </script>
+</th:block>
+</body>
+</html>

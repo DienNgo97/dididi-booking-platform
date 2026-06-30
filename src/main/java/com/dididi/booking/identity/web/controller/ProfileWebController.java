@@ -1,0 +1,164 @@
+package com.dididi.booking.identity.web.controller;
+
+import com.dididi.booking.common.exception.BusinessException;
+import com.dididi.booking.identity.domain.entity.User;
+import com.dididi.booking.identity.domain.enums.UserStatus;
+import com.dididi.booking.identity.service.AccountService;
+import com.dididi.booking.identity.service.ProfileService;
+import com.dididi.booking.web.CurrentUser;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+/**
+ * Trang "Hồ sơ của tôi" (web khách): bảo mật tài khoản + thông tin cá nhân.
+ * Tất cả route nằm dưới /account/** nên đã yêu cầu đăng nhập (SecurityWebConfig).
+ */
+@Controller
+public class ProfileWebController {
+
+    private final CurrentUser currentUser;
+    private final ProfileService profileService;
+    private final AccountService accountService;
+
+    public ProfileWebController(CurrentUser currentUser, ProfileService profileService,
+                                AccountService accountService) {
+        this.currentUser = currentUser;
+        this.profileService = profileService;
+        this.accountService = accountService;
+    }
+
+    private static String sessionId(HttpServletRequest req) {
+        var s = req.getSession(false);
+        return s != null ? s.getId() : null;
+    }
+
+    // ---------------- Trang hồ sơ ----------------
+
+    @GetMapping("/account/profile")
+    public String profile(Authentication auth, Model model) {
+        User u = currentUser.require(auth);
+        model.addAttribute("user", u);
+        model.addAttribute("emailVerified", u.getStatus() == UserStatus.ACTIVE);
+        return "account/profile";
+    }
+
+    // ---------------- Thông tin cá nhân ----------------
+
+    @PostMapping("/account/profile/name")
+    public String updateName(@RequestParam String fullName, Authentication auth, RedirectAttributes ra) {
+        try {
+            profileService.updateName(currentUser.id(auth), fullName);
+            ra.addFlashAttribute("message", "Đã cập nhật tên hiển thị.");
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/account/profile";
+    }
+
+    // ---------------- Số điện thoại (OTP) ----------------
+
+    @PostMapping("/account/profile/phone/send")
+    public String sendPhoneOtp(@RequestParam String phone, Authentication auth, RedirectAttributes ra) {
+        try {
+            profileService.startPhoneVerification(currentUser.id(auth), phone);
+            ra.addFlashAttribute("message", "Đã gửi mã OTP. Vui lòng nhập mã để xác thực số điện thoại.");
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/account/profile";
+    }
+
+    @PostMapping("/account/profile/phone/confirm")
+    public String confirmPhone(@RequestParam String code, Authentication auth, RedirectAttributes ra) {
+        try {
+            profileService.confirmPhone(currentUser.id(auth), code);
+            ra.addFlashAttribute("message", "Đã xác thực số điện thoại.");
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/account/profile";
+    }
+
+    // ---------------- Mật khẩu ----------------
+
+    @PostMapping("/account/profile/password")
+    public String changePassword(@RequestParam(required = false) String currentPassword,
+                                 @RequestParam String newPassword,
+                                 @RequestParam String confirmPassword,
+                                 Authentication auth, HttpServletRequest req, RedirectAttributes ra) {
+        try {
+            if (!newPassword.equals(confirmPassword)) {
+                throw new BusinessException("PASSWORD_MISMATCH", "Mật khẩu xác nhận không khớp");
+            }
+            accountService.changePassword(currentUser.id(auth), currentPassword, newPassword, sessionId(req));
+            ra.addFlashAttribute("message", "Đã đổi mật khẩu. Các thiết bị khác đã được đăng xuất.");
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/account/profile";
+    }
+
+    // ---------------- Liên kết Google ----------------
+
+    @PostMapping("/account/profile/google/unlink")
+    public String unlinkGoogle(Authentication auth, RedirectAttributes ra) {
+        try {
+            profileService.unlinkGoogle(currentUser.id(auth));
+            ra.addFlashAttribute("message", "Đã gỡ liên kết Google.");
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/account/profile";
+    }
+
+    // ---------------- Email: gửi lại kích hoạt ----------------
+
+    @PostMapping("/account/profile/email/resend")
+    public String resendVerification(Authentication auth, RedirectAttributes ra) {
+        accountService.resendVerification(currentUser.id(auth));
+        ra.addFlashAttribute("message", "Đã gửi lại email kích hoạt (nếu tài khoản chưa xác thực).");
+        return "redirect:/account/profile";
+    }
+
+    // ---------------- Khóa đăng nhập / thiết bị ----------------
+
+    @GetMapping("/account/profile/devices")
+    public String devices(Authentication auth, HttpServletRequest req, Model model) {
+        User u = currentUser.require(auth);
+        model.addAttribute("sessions", accountService.listWebSessions(u.getEmail(), sessionId(req)));
+        return "account/login-devices";
+    }
+
+    @PostMapping("/account/profile/devices/logout-others")
+    public String logoutOthers(Authentication auth, HttpServletRequest req, RedirectAttributes ra) {
+        User u = currentUser.require(auth);
+        int n = accountService.logoutOtherDevices(u.getId(), u.getEmail(), sessionId(req));
+        ra.addFlashAttribute("message", "Đã đăng xuất khỏi " + n + " thiết bị khác (và các phiên ứng dụng).");
+        return "redirect:/account/profile/devices";
+    }
+
+    // ---------------- Xoá tài khoản ----------------
+
+    @PostMapping("/account/profile/close")
+    public String closeAccount(@RequestParam(required = false) String password,
+                               Authentication auth, HttpServletRequest req, HttpServletResponse resp,
+                               RedirectAttributes ra) {
+        try {
+            accountService.closeAccount(currentUser.id(auth), password);
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+            return "redirect:/account/profile";
+        }
+        // Đăng xuất NGAY phiên hiện tại (cả form-login lẫn Google) rồi về trang chủ ẩn danh.
+        new SecurityContextLogoutHandler().logout(req, resp, auth);
+        return "redirect:/?account-closed";
+    }
+}

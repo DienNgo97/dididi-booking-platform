@@ -7,7 +7,10 @@ import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.voucher.api.dto.VoucherUpsertRequest;
 import com.dididi.booking.voucher.domain.Voucher;
 import com.dididi.booking.voucher.domain.VoucherDiscountType;
+import com.dididi.booking.voucher.domain.VoucherRedemption;
+import com.dididi.booking.voucher.repository.VoucherRedemptionRepository;
 import com.dididi.booking.voucher.repository.VoucherRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,10 +26,13 @@ public class VoucherService {
 
     private final VoucherRepository voucherRepository;
     private final BookingRepository bookingRepository;
+    private final VoucherRedemptionRepository redemptionRepository;
 
-    public VoucherService(VoucherRepository voucherRepository, BookingRepository bookingRepository) {
+    public VoucherService(VoucherRepository voucherRepository, BookingRepository bookingRepository,
+                          VoucherRedemptionRepository redemptionRepository) {
         this.voucherRepository = voucherRepository;
         this.bookingRepository = bookingRepository;
+        this.redemptionRepository = redemptionRepository;
     }
 
     // ---------------- Khach hang: ap / go voucher ----------------
@@ -41,6 +47,11 @@ public class VoucherService {
                 .orElseThrow(() -> new BusinessException("VOUCHER_NOT_FOUND", "Mã giảm giá không tồn tại", HttpStatus.NOT_FOUND));
         if (!v.isActive()) {
             throw new BusinessException("VOUCHER_INACTIVE", "Mã giảm giá đã ngừng áp dụng", HttpStatus.CONFLICT);
+        }
+        // BP-LOY-01: voucher rieng (doi tu diem) chi nguoi so huu duoc dung.
+        if (v.getOwnerUserId() != null && !v.getOwnerUserId().equals(userId)) {
+            throw new BusinessException("VOUCHER_NOT_OWNED",
+                    "Mã giảm giá này thuộc về người dùng khác", HttpStatus.FORBIDDEN);
         }
         Instant now = Instant.now();
         if (v.getValidFrom() != null && now.isBefore(v.getValidFrom())) {
@@ -59,14 +70,21 @@ public class VoucherService {
             throw new BusinessException("MIN_ORDER",
                     "Đơn tối thiểu " + v.getMinOrderAmount().toBigInteger() + " VND để dùng mã này", HttpStatus.CONFLICT);
         }
-        // Gioi han luot dung (tinh tren don da CONFIRMED).
-        if (v.getUsageLimit() != null
-                && bookingRepository.countByVoucherCodeAndStatus(v.getCode(), BookingStatus.CONFIRMED) >= v.getUsageLimit()) {
-            throw new BusinessException("VOUCHER_USED_UP", "Mã giảm giá đã hết lượt sử dụng", HttpStatus.CONFLICT);
-        }
-        if (v.getPerUserLimit() != null
-                && bookingRepository.countByUserIdAndVoucherCodeAndStatus(userId, v.getCode(), BookingStatus.CONFIRMED) >= v.getPerUserLimit()) {
-            throw new BusinessException("VOUCHER_USER_LIMIT", "Bạn đã dùng hết lượt cho mã này", HttpStatus.CONFLICT);
+        // BP-VOU-02: gioi han luot dung enforce NGUYEN TU qua ban ghi VoucherRedemption (unique code+user).
+        // Neu user nay da ap ma -> da co redemption (giu qua nhieu lan ap/go cung 1 don) -> bo qua, cho ap lai.
+        boolean alreadyRedeemed = redemptionRepository.existsByVoucherCodeAndUserId(v.getCode(), userId);
+        if (!alreadyRedeemed) {
+            // perUserLimit: voucher hien chi ho tro 1 luot/user (redemption la 1 row/user). >1 chua dung den.
+            if (v.getUsageLimit() != null
+                    && redemptionRepository.countByVoucherCode(v.getCode()) >= v.getUsageLimit()) {
+                throw new BusinessException("VOUCHER_USED_UP", "Mã giảm giá đã hết lượt sử dụng", HttpStatus.CONFLICT);
+            }
+            try {
+                redemptionRepository.saveAndFlush(new VoucherRedemption(v.getCode(), userId, b.getId()));
+            } catch (DataIntegrityViolationException ex) {
+                // Race: 1 request khac da chiem suat user nay (hoac tong luot) -> bao het luot user.
+                throw new BusinessException("VOUCHER_USER_LIMIT", "Bạn đã dùng hết lượt cho mã này", HttpStatus.CONFLICT);
+            }
         }
 
         BigDecimal discount = computeDiscount(v, base);
@@ -84,6 +102,10 @@ public class VoucherService {
     /** Go voucher: amount tra ve gia goc tru uu dai hang; xoa discount/voucher (giu uu dai hang). */
     @Transactional
     public Booking remove(Booking b) {
+        // BP-VOU-02: tha suat su dung da chiem khi ap (de user co the doi sang ma khac / dung lai sau).
+        if (b.getId() != null) {
+            redemptionRepository.findByBookingId(b.getId()).ifPresent(redemptionRepository::delete);
+        }
         BigDecimal tierDiscount = b.getTierDiscountAmount() != null ? b.getTierDiscountAmount() : BigDecimal.ZERO;
         if (b.getOriginalAmount() != null) {
             BigDecimal afterTier = b.getOriginalAmount().subtract(tierDiscount);
@@ -147,15 +169,18 @@ public class VoucherService {
     }
 
     private void apply(Voucher v, VoucherUpsertRequest req) {
+        // BP-VOU-01: PUT/PATCH mot phan chi ghi de field CO MAT trong request (non-null).
+        // Truoc day caps/limits/validity bi set vo dieu kien -> payload thieu field = xoa trang cap
+        // (PERCENT mat tran giam -> giam toan don; mat usageLimit -> dung vo han). Gio null-guard tat ca.
         if (req.description() != null) v.setDescription(req.description());
         if (req.discountType() != null) v.setDiscountType(VoucherDiscountType.valueOf(req.discountType()));
         if (req.discountValue() != null) v.setDiscountValue(req.discountValue());
-        v.setMaxDiscount(req.maxDiscount());
-        v.setMinOrderAmount(req.minOrderAmount());
-        v.setUsageLimit(req.usageLimit());
-        v.setPerUserLimit(req.perUserLimit());
-        v.setValidFrom(req.validFrom());
-        v.setValidTo(req.validTo());
+        if (req.maxDiscount() != null) v.setMaxDiscount(req.maxDiscount());
+        if (req.minOrderAmount() != null) v.setMinOrderAmount(req.minOrderAmount());
+        if (req.usageLimit() != null) v.setUsageLimit(req.usageLimit());
+        if (req.perUserLimit() != null) v.setPerUserLimit(req.perUserLimit());
+        if (req.validFrom() != null) v.setValidFrom(req.validFrom());
+        if (req.validTo() != null) v.setValidTo(req.validTo());
         if (req.active() != null) v.setActive(req.active());
     }
 }

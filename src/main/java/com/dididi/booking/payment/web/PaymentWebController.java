@@ -18,6 +18,7 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -180,8 +181,14 @@ public class PaymentWebController {
         return "redirect:" + url;
     }
 
-    /** VNPay dieu huong trinh duyet nguoi dung ve day sau khi thanh toan. */
+    /**
+     * VNPay dieu huong trinh duyet nguoi dung ve day sau khi thanh toan.
+     * BP-PAY-03: @Transactional + chi mutate khi Payment dang PENDING (markConfirmed da idempotent).
+     * BP-PAY-01: coi return la UNTRUSTED — phai kiem tra vnp_Amount == payment.amount*100 truoc khi confirm
+     * (giong IPN). Ap dung cho CA nhanh thuong lan nhanh tra-ca-nhom.
+     */
     @GetMapping("/payment/vnpay-return")
+    @Transactional
     public String vnpayReturn(@RequestParam Map<String, String> params, RedirectAttributes ra, HttpSession session) {
         String txnRef = params.get("vnp_TxnRef");
         String responseCode = params.get("vnp_ResponseCode");
@@ -190,7 +197,7 @@ public class PaymentWebController {
 
         if (!vnPayService.isValid(params)) {
             ra.addFlashAttribute("error", "Chu ky VNPay khong hop le. Vui long thu lai.");
-            return publicCode.isEmpty() ? "redirect:/account/bookings"
+            return (publicCode == null || publicCode.isEmpty()) ? "redirect:/account/bookings"
                     : "redirect:/account/bookings/" + publicCode;
         }
         Optional<Payment> op = paymentService.findByTxnRef(txnRef);
@@ -204,13 +211,19 @@ public class PaymentWebController {
         // === Thanh toan GOP CA NHOM (txnRef = "GRP{groupId}_{ts}") ===
         if (txnRef != null && txnRef.startsWith("GRP")) {
             Long groupId = parseGroupId(txnRef);
+            // BP-PAY-01: so tien tra phai khop so tien giao dich da khoi tao.
+            if (ok && !amountMatches(p, params)) {
+                String token = (groupId != null) ? groupService.tokenOf(groupId) : "";
+                ra.addFlashAttribute("error", "Số tiền thanh toán không khớp giao dịch. Đơn KHÔNG được xác nhận.");
+                return token.isEmpty() ? "redirect:/account/bookings" : "redirect:/g/" + token;
+            }
             if (ok) {
                 if (p.getStatus() == PaymentStatus.PENDING) {
                     paymentService.markPaid(p, params.get("vnp_TransactionNo"),
                             params.get("vnp_BankCode"), responseCode, params.get("vnp_PayDate"));
                 }
                 String token = (groupId != null) ? groupService.confirmGroupBookings(groupId) : "";
-                ra.addFlashAttribute("message", "Thanh toan VNPay thanh cong! Da xac nhan toan bo phong cua nhom.");
+                ra.addFlashAttribute("message", "Thanh toan VNPay thanh cong! Da xac nhan cac phong da chon cua nhom.");
                 return token.isEmpty() ? "redirect:/account/bookings" : "redirect:/g/" + token;
             } else {
                 if (p.getStatus() == PaymentStatus.PENDING) {
@@ -223,6 +236,12 @@ public class PaymentWebController {
         }
 
         Booking b = bookingRepository.findById(p.getBookingId()).orElse(null);
+        // BP-PAY-01: kiem tra so tien truoc khi xac nhan don thuong.
+        if (ok && !amountMatches(p, params)) {
+            ra.addFlashAttribute("error", "Số tiền thanh toán không khớp giao dịch. Đơn KHÔNG được xác nhận.");
+            String mcode = (b != null) ? b.getPublicCode() : publicCode;
+            return (mcode == null || mcode.isEmpty()) ? "redirect:/account/bookings" : "redirect:/account/bookings/" + mcode;
+        }
         if (ok) {
             if (p.getStatus() == PaymentStatus.PENDING) {
                 paymentService.markPaid(p, params.get("vnp_TransactionNo"),
@@ -247,7 +266,7 @@ public class PaymentWebController {
         if (ok && b != null && isTripBooking(session, b.getPublicCode())) {
             return "redirect:/trip-planner/pay-next";
         }
-        return code.isEmpty() ? "redirect:/account/bookings" : "redirect:/account/bookings/" + code;
+        return (code == null || code.isEmpty()) ? "redirect:/account/bookings" : "redirect:/account/bookings/" + code;
     }
 
     /** Don co nam trong gio "chuyen di" dang thanh toan tuan tu (luu trong session) khong? */
@@ -271,6 +290,7 @@ public class PaymentWebController {
     /** IPN server-to-server tu VNPay. Can URL public (ngrok) khi cau hinh ben merchant. */
     @GetMapping("/payment/vnpay-ipn")
     @ResponseBody
+    @Transactional
     public Map<String, String> vnpayIpn(@RequestParam Map<String, String> params) {
         Map<String, String> res = new HashMap<>();
         if (!vnPayService.isValid(params)) {
@@ -315,5 +335,20 @@ public class PaymentWebController {
         if (txnRef == null) return "";
         int i = txnRef.lastIndexOf('_');
         return i > 0 ? txnRef.substring(0, i) : txnRef;
+    }
+
+    /**
+     * BP-PAY-01: so tien VNPay tra ve (vnp_Amount, don vi = VND*100) phai khop payment.amount*100.
+     * Tra false neu lech hoac khong parse duoc -> coi nhu khong hop le, KHONG confirm.
+     */
+    private static boolean amountMatches(Payment p, Map<String, String> params) {
+        try {
+            if (p.getAmount() == null) return false;
+            long expected = p.getAmount().multiply(BigDecimal.valueOf(100)).longValueExact();
+            long got = Long.parseLong(params.getOrDefault("vnp_Amount", "-1"));
+            return expected == got;
+        } catch (Exception ex) {
+            return false;   // fail-closed
+        }
     }
 }

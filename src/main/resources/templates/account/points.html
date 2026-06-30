@@ -19,10 +19,10 @@
             <div>
                 <div class="muted" th:text="#{points.tier}">Hạng</div>
                 <div style="font-weight:700;font-size:18px" th:switch="${tier}">
-                    <span th:case="'SILVER'" th:text="#{points.tierSilver}">🥈 Bạc</span>
-                    <span th:case="'GOLD'" th:text="#{points.tierGold}">🥇 Vàng</span>
-                    <span th:case="'PLATINUM'">💎 Platinum</span>
-                    <span th:case="'DIAMOND'">💠 Diamond</span>
+                    <span th:case="'SILVER'"><svg th:replace="~{fragments/icons :: i('award','')}"></svg> <span th:text="#{points.tierSilver}">Bạc</span></span>
+                    <span th:case="'GOLD'"><svg th:replace="~{fragments/icons :: i('award','ic-amber')}"></svg> <span th:text="#{points.tierGold}">Vàng</span></span>
+                    <span th:case="'PLATINUM'"><svg th:replace="~{fragments/icons :: i('diamond','')}"></svg> Platinum</span>
+                    <span th:case="'DIAMOND'"><svg th:replace="~{fragments/icons :: i('diamond','')}"></svg> Diamond</span>
                     <span th:case="*" th:text="${tier}"></span>
                 </div>
                 <div class="muted" style="font-size:12px;margin-top:2px" th:switch="${tier}">

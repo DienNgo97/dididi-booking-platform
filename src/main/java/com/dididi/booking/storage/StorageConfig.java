@@ -30,8 +30,9 @@ public class StorageConfig {
     @Bean
     public MultipartConfigElement multipartConfigElement() {
         MultipartConfigFactory factory = new MultipartConfigFactory();
-        factory.setMaxFileSize(DataSize.ofMegabytes(5));
-        factory.setMaxRequestSize(DataSize.ofMegabytes(5));
+        // Cong dong cho dang anh + video ngan -> nang gioi han (anh van bi chan 8MB, video 64MB tai service).
+        factory.setMaxFileSize(DataSize.ofMegabytes(80));
+        factory.setMaxRequestSize(DataSize.ofMegabytes(300));
         return factory.createMultipartConfig();
     }
 }

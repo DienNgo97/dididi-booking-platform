@@ -19,14 +19,14 @@
         </div>
         <div class="muted" th:text="#{account.type} + ' ' + ${booking.type}"></div>
         <div class="muted"><span th:text="#{account.status}">Trạng thái:</span> <b th:text="${booking.status}"></b></div>
-        <div th:if="${pendingApproval}" style="margin-top:6px;color:#b26a00;font-weight:600"
-             th:text="'⏳ ' + #{approval.pending}">Đang chờ phê duyệt</div>
+        <div th:if="${pendingApproval}" style="margin-top:6px;color:#b26a00;font-weight:600">
+             <svg th:replace="~{fragments/icons :: i('hourglass','')}"></svg> <span th:text="#{approval.pending}">Đang chờ phê duyệt</span></div>
         <div class="muted" th:if="${booking.providerConfirmation != null}"
              th:text="#{account.providerConfirmation} + ' ' + ${booking.providerConfirmation}"></div>
         <div th:if="${booking.checkIn != null and !booking.dayUse}" class="muted">
             <span th:text="${booking.checkIn}"></span> → <span th:text="${booking.checkOut}"></span></div>
         <div th:if="${booking.dayUse}" class="muted">
-            <span th:text="#{payment.dayUseLabel}">🕐 Trong ngày:</span> <span th:text="${booking.checkIn}"></span>
+            <span><svg th:replace="~{fragments/icons :: i('clock','')}"></svg> <span th:text="#{payment.dayUseLabel}">Trong ngày:</span></span> <span th:text="${booking.checkIn}"></span>
             · <span th:text="${booking.checkInTime}"></span>–<span th:text="${booking.checkOutTime}"></span>
             · <span th:text="${booking.quantity}"></span> <span th:text="#{common.roomsUnit}">phòng</span></div>
         <div th:if="${booking.travelDate != null}" class="muted">
@@ -51,7 +51,7 @@
         <div th:if="${booking.status.name() == 'PENDING_PAYMENT'}" style="margin-top:14px">
             <!-- Chi don khach san DIRECT (co roomTypeId) moi sua duoc -->
             <details th:if="${booking.roomTypeId != null}">
-                <summary style="cursor:pointer;font-weight:600;color:#3dac78" th:text="#{account.editBooking}">✏️ Sửa thông tin đơn</summary>
+                <summary style="cursor:pointer;font-weight:600;color:#3dac78"><svg th:replace="~{fragments/icons :: i('pencil','')}"></svg> <span th:text="#{account.editBooking}">Sửa thông tin đơn</span></summary>
 
                 <!-- Qua dem: ngay nhan / ngay tra / so phong -->
                 <form th:if="${!booking.dayUse}"
@@ -104,18 +104,18 @@
         <div style="margin-top:14px" th:switch="${booking.cancelStatus.name()}">
             <div th:case="'REQUESTED'"
                  style="padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;color:#9a3412">
-                <div th:utext="#{account.cancelRequested}">⏳ <b>Đã gửi yêu cầu huỷ</b>, đang chờ admin duyệt.</div>
+                <div><svg th:replace="~{fragments/icons :: i('hourglass','')}"></svg> <span th:utext="#{account.cancelRequested}"><b>Đã gửi yêu cầu huỷ</b>, đang chờ admin duyệt.</span></div>
                 <div class="muted" style="margin-top:4px"><span th:text="#{account.yourReason}">Lý do của bạn:</span> <span th:text="${booking.cancelReason}"></span></div>
             </div>
             <div th:case="'APPROVED'"
                  style="padding:12px;background:#fbe6e3;border:1px solid #f3b4ab;border-radius:10px;color:#c0392b">
-                <div th:utext="#{account.cancelApproved}">✓ <b>Đơn đã được huỷ</b> và hoàn lại số tiền bạn đã thanh toán.</div>
+                <div><svg th:replace="~{fragments/icons :: i('check','ic-brand')}"></svg> <span th:utext="#{account.cancelApproved}"><b>Đơn đã được huỷ</b> và hoàn lại số tiền bạn đã thanh toán.</span></div>
                 <div class="muted" style="margin-top:4px" th:if="${booking.cancelAdminNote != null}"><span th:text="#{account.adminNote}">Ghi chú của admin:</span> <span th:text="${booking.cancelAdminNote}"></span></div>
             </div>
             <div th:case="*" th:if="${booking.status.name() == 'CONFIRMED'}">
                 <div th:if="${booking.cancelStatus.name() == 'REJECTED'}"
                      style="padding:12px;background:#fbe6e3;border:1px solid #f3b4ab;border-radius:10px;color:#c0392b;margin-bottom:10px">
-                    <div th:utext="#{account.cancelRejected}">✕ <b>Yêu cầu huỷ trước đó đã bị từ chối.</b></div>
+                    <div><svg th:replace="~{fragments/icons :: i('x','ic-danger')}"></svg> <span th:utext="#{account.cancelRejected}"><b>Yêu cầu huỷ trước đó đã bị từ chối.</b></span></div>
                     <div class="muted" style="margin-top:4px" th:if="${booking.cancelAdminNote != null}"><span th:text="#{account.reasonLabel}">Lý do:</span> <span th:text="${booking.cancelAdminNote}"></span></div>
                 </div>
 
@@ -139,7 +139,7 @@
                         Trong vòng 48 giờ, vui lòng liên hệ hỗ trợ khách hàng để được giúp đỡ.
                     </div>
                     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-                        <button type="button" class="btn" th:attr="onclick=|DididiSupport.open('${booking.publicCode}')|" th:text="#{account.contactSupport}">💬 Gặp hỗ trợ</button>
+                        <button type="button" class="btn" th:attr="onclick=|DididiSupport.open('${booking.publicCode}')|"><svg th:replace="~{fragments/icons :: i('message','')}"></svg> <span th:text="#{account.contactSupport}">Gặp hỗ trợ</span></button>
                         <a class="btn ghost" th:href="@{/support(booking=${booking.publicCode})}" th:text="#{account.openSupportPage}">Mở trang hỗ trợ</a>
                     </div>
                 </div>
@@ -172,7 +172,7 @@
         <h3 style="margin-top:0" th:text="#{account.yourReview}">Đánh giá của bạn</h3>
 
         <div th:if="${myReview != null}">
-            <span class="stars" th:text="${myReview.rating + '★'}"></span>
+            <span class="stars"><span th:text="${myReview.rating}"></span><svg th:replace="~{fragments/icons :: i('star','ic-fill')}"></svg></span>
             <p th:if="${myReview.comment}" th:text="${myReview.comment}" style="margin:6px 0"></p>
             <div th:if="${myReviewImages != null and !#lists.isEmpty(myReviewImages)}"
                  style="display:flex;gap:8px;flex-wrap:wrap;margin:6px 0">
@@ -209,7 +209,7 @@
             <br/>
             <label class="muted" style="display:block;margin-top:10px;margin-bottom:4px" th:text="#{account.photoOptional}">Ảnh (không bắt buộc)</label>
             <label class="btn ghost" style="display:inline-flex;align-items:center;gap:6px" for="reviewImages">
-                <span aria-hidden="true">📷</span> <span th:text="#{account.choosePhotos}">Chọn ảnh</span>
+                <span aria-hidden="true"><svg th:replace="~{fragments/icons :: i('camera','')}"></svg></span> <span th:text="#{account.choosePhotos}">Chọn ảnh</span>
             </label>
             <input id="reviewImages" type="file" name="images" accept="image/*" multiple hidden th:attr="data-delimg=#{account.delImg}"/>
             <span class="muted" style="margin-left:8px;font-size:12px" th:text="#{account.maxPhotos}">Tối đa 5 ảnh</span>

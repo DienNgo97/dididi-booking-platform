@@ -230,18 +230,60 @@ public class GroupBookingService {
         groupRepo.save(g);
     }
 
-    /** Xac nhan TAT CA phong dang cho thanh toan cua nhom (dung sau khi tra gop 1 giao dich). Tra ve token de chuyen huong. */
+    /**
+     * BP-GRP-01: chot tap booking se thanh toan khi mo giao dich "tra ca nhom".
+     * Tra ve danh sach booking PENDING_PAYMENT hien tai (de tinh tong) va luu ID set len group,
+     * de luc return chi confirm dung cac booking nay.
+     */
+    @Transactional
+    public List<Booking> beginGroupPayment(Long groupId) {
+        List<Booking> pending = new ArrayList<>();
+        StringBuilder ids = new StringBuilder();
+        for (Booking b : bookingRepository.findByGroupIdOrderByCreatedAtAsc(groupId)) {
+            if (b.getStatus() == BookingStatus.PENDING_PAYMENT) {
+                pending.add(b);
+                if (ids.length() > 0) ids.append(',');
+                ids.append(b.getId());
+            }
+        }
+        groupRepo.findById(groupId).ifPresent(g -> {
+            g.setPayGroupBookingIds(ids.length() > 0 ? ids.toString() : null);
+            groupRepo.save(g);
+        });
+        return pending;
+    }
+
+    /**
+     * Xac nhan CHI cac phong da chot luc bam "tra ca nhom" (BP-GRP-01) — khong phai moi don con PENDING.
+     * Goi sau khi VNPay return thanh cong cho giao dich gop. Tra ve token de chuyen huong.
+     */
     @Transactional
     public String confirmGroupBookings(Long groupId) {
         GroupBooking g = groupRepo.findById(groupId).orElse(null);
         Long organizerId = (g != null) ? g.getOrganizerUserId() : null;
+        Set<Long> chosen = parseIds(g != null ? g.getPayGroupBookingIds() : null);
         for (Booking b : bookingRepository.findByGroupIdOrderByCreatedAtAsc(groupId)) {
+            // Chi confirm don NAM TRONG tap da chot (neu co tap chot). Phong them sau khong duoc confirm.
+            if (!chosen.isEmpty() && !chosen.contains(b.getId())) continue;
             if (b.getStatus() == BookingStatus.PENDING_PAYMENT) {
                 if (organizerId != null) b.setPaidByUserId(organizerId);  // tra gop -> chu nhom chi tien
                 bookingService.markConfirmed(b);
             }
         }
+        if (g != null) {
+            g.setPayGroupBookingIds(null);   // dung 1 lan: tra xong thi xoa tap da chot
+            groupRepo.save(g);
+        }
         return g != null ? g.getToken() : "";
+    }
+
+    private static Set<Long> parseIds(String csv) {
+        Set<Long> out = new LinkedHashSet<>();
+        if (csv == null || csv.isBlank()) return out;
+        for (String part : csv.split(",")) {
+            try { out.add(Long.parseLong(part.trim())); } catch (NumberFormatException ignore) { /* bo qua */ }
+        }
+        return out;
     }
 
     public String tokenOf(Long groupId) {

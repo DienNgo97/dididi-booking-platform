@@ -43,9 +43,11 @@ public class MockFlightProviderAdapter implements FlightDataSource {
         return arr == null ? List.of() : Arrays.asList(arr);
     }
 
-    /** Dat cho 1 chuyen bay (externalId la id ben flight-provider). */
-    @Retry(name = "flightProvider")
-    @CircuitBreaker(name = "flightProvider")
+    /**
+     * Dat cho 1 chuyen bay (externalId la id ben flight-provider).
+     * KHONG @Retry/@CircuitBreaker (BP-INT-03): /book khong idempotent — retry sau timeout/5xx co the
+     * tao 2-3 booking that + tru kho nhieu lan. Loi cua 1 lan goi de tang len cho caller xu ly.
+     */
     public FlightBookResult bookFlight(Long externalId, String passengerName, String contactEmail, int seats) {
         log.debug("Booking flight {} for {} ({} seats)", externalId, passengerName, seats);
         return client.post()
@@ -55,6 +57,21 @@ public class MockFlightProviderAdapter implements FlightDataSource {
                         "seats", seats))
                 .retrieve()
                 .body(FlightBookResult.class);
+    }
+
+    /**
+     * Huy 1 booking ve da dat qua provider theo confirmationCode (BP-BK-03 / INT-01):
+     * POST /flights/{id}/cancel?confirmationCode=... -> provider tra ghe ve kho.
+     * Dung cho ve provider khong chon cho (giu cho la whole-flight book, khong co holdRef).
+     */
+    public void cancelBooking(Long externalId, String confirmationCode) {
+        client.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/flights/{id}/cancel")
+                        .queryParam("confirmationCode", confirmationCode)
+                        .build(externalId))
+                .retrieve()
+                .toBodilessEntity();
     }
 
     // ===== So do ghe / giu cho (seat selection) =====

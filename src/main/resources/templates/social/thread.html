@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="'Trò chuyện với ' + ${other.name} + ' - Dididi'">Tin nhắn</title>
+    <link rel="stylesheet" href="/css/site.css"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <div th:replace="~{social/fragments :: tabs('messages')}"></div>
+
+    <div class="sx-layout">
+        <div th:replace="~{social/fragments :: railLeft('messages')}"></div>
+        <main class="sx-main sx-dmmain">
+            <div class="dm-layout">
+                <aside class="dm-list">
+                    <div class="dm-list-head">
+                        <h2>Tin nhắn</h2>
+                        <a href="/community/people" class="sx-iconbtn" title="Nhắn tin mới"><svg th:replace="~{fragments/icons :: i('pencil','')}"></svg></a>
+                    </div>
+                    <div class="dm-list-body">
+                        <a th:each="c : ${conversations}" th:href="${c.url}" class="dm-conv"
+                           th:classappend="${c.id == convId} ? 'active' : (${c.unread > 0} ? 'unread' : '')">
+                            <span class="sx-ava" aria-hidden="true">
+                                <img th:if="${c.other.avatarUrl}" th:src="${c.other.avatarUrl}" alt=""/>
+                                <span th:unless="${c.other.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(c.other.name,0,1))}">D</span>
+                            </span>
+                            <div class="dm-conv-body">
+                                <div class="dm-conv-top">
+                                    <b th:text="${c.other.name}">Tên</b>
+                                    <span class="sx-time" th:attr="data-ts=${c.lastMessageAtMs}"></span>
+                                </div>
+                                <span class="dm-conv-preview" th:text="${c.preview != null ? c.preview : 'Bắt đầu trò chuyện…'}">tin</span>
+                            </div>
+                        </a>
+                    </div>
+                </aside>
+
+                <section class="dm-thread">
+                    <header class="dm-thread-head">
+                        <a href="/community/messages" class="sx-iconbtn dm-back" title="Hộp thư"><svg th:replace="~{fragments/icons :: i('arrow-left','')}"></svg></a>
+                        <a th:href="${other.profileUrl}" class="sx-ava sm" aria-hidden="true">
+                            <img th:if="${other.avatarUrl}" th:src="${other.avatarUrl}" alt=""/>
+                            <span th:unless="${other.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(other.name,0,1))}">D</span>
+                        </a>
+                        <a th:href="${other.profileUrl}" class="dm-thread-name" th:text="${other.name}">Tên</a>
+                    </header>
+
+                    <div id="dmMessages" class="dm-messages" th:attr="data-conv=${convId},data-last=${lastId}">
+                        <div th:replace="~{social/dm-fragments :: messages}"></div>
+                    </div>
+
+                    <form id="dmComposer" class="dm-composer" enctype="multipart/form-data">
+                        <label class="sx-iconbtn" title="Gửi ảnh">
+                            <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
+                            <input type="file" name="image" accept="image/*" hidden/>
+                        </label>
+                        <input type="text" name="content" autocomplete="off" placeholder="Nhắn tin…"/>
+                        <button type="submit" class="sx-iconbtn dm-send" aria-label="Gửi"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></button>
+                    </form>
+                </section>
+            </div>
+        </main>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<div th:replace="~{social/fragments :: scripts}"></div>
+<script>
+    (function () {
+        var box = document.getElementById('dmMessages');
+        if (!box) return;
+        var convId = box.getAttribute('data-conv');
+        var lastId = parseInt(box.getAttribute('data-last') || '0', 10);
+        var csrf = (document.querySelector('meta[name=_csrf]') || {}).content;
+        var csrfH = (document.querySelector('meta[name=_csrf_header]') || {}).content;
+        function scrollBottom() { box.scrollTop = box.scrollHeight; }
+        function appendHtml(html) {
+            var tmp = document.createElement('div'); tmp.innerHTML = html;
+            Array.prototype.slice.call(tmp.children).forEach(function (n) {
+                var id = n.getAttribute ? n.getAttribute('data-id') : null;
+                if (id) { if (box.querySelector('.dm-msg[data-id="' + id + '"]')) return; lastId = Math.max(lastId, parseInt(id, 10)); }
+                box.appendChild(n);
+            });
+            if (window.DDSocial) window.DDSocial.init(box);
+            scrollBottom();
+        }
+        scrollBottom();
+        var form = document.getElementById('dmComposer');
+        var file = form.querySelector('input[type=file]');
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var fd = new FormData(form);
+            var H = {}; if (csrf && csrfH) H[csrfH] = csrf;
+            fetch('/community/messages/' + convId + '/send', { method: 'POST', body: fd, headers: H, credentials: 'same-origin' })
+                .then(function (r) { return r.text(); })
+                .then(function (h) { appendHtml(h); form.reset(); })
+                .catch(function () {});
+        });
+        file.addEventListener('change', function () {
+            if (file.files && file.files.length) {
+                if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event('submit'));
+            }
+        });
+        setInterval(function () {
+            fetch('/community/messages/' + convId + '/poll?afterId=' + lastId, { credentials: 'same-origin' })
+                .then(function (r) { return r.text(); })
+                .then(function (h) { if (h && h.trim()) appendHtml(h); })
+                .catch(function () {});
+        }, 3000);
+    })();
+</script>
+</body>
+</html>

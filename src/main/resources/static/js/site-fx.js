@@ -103,5 +103,46 @@
         onScroll();
       }
     } catch (e) { /* ignore */ }
+
+    // 5) Hero LAI (.hero-kb): slideshow Ken Burns + chữ điểm đến đổi theo ảnh + dots + thanh tiến trình
+    try {
+      var cine = document.querySelector(".hero-cine");
+      if (cine) {
+        var slides = Array.prototype.slice.call(cine.querySelectorAll(".hero-slide"));
+        var rotEl = document.getElementById("heroRot");
+        var dotsBox = document.getElementById("heroDots");
+        var heroBar = document.getElementById("heroBar");
+        var cities = ["Phú Quốc", "Vịnh Hạ Long", "Sa Pa", "Nha Trang"];
+        if (slides.length) {
+          var dots = [];
+          var setWord = function (c) {
+            if (!rotEl) return;
+            rotEl.style.animation = "none"; void rotEl.offsetWidth;
+            rotEl.textContent = c; rotEl.style.animation = "fxWordIn .6s var(--ease)";
+          };
+          var runBar = function () {
+            if (!heroBar) return;
+            heroBar.classList.remove("run"); void heroBar.offsetWidth; heroBar.classList.add("run");
+          };
+          var show = function (i) {
+            slides.forEach(function (s, k) { s.classList.toggle("on", k === i); if (dots[k]) dots[k].classList.toggle("on", k === i); });
+            setWord(cities[i % cities.length]); runBar(); idx = i;
+          };
+          var next = function () { show((idx + 1) % slides.length); };
+          var go = function (i) { show(i); clearInterval(timer); timer = setInterval(next, 6000); };
+          var idx = 0, timer;
+          if (dotsBox) {
+            slides.forEach(function (_, k) {
+              var b = document.createElement("b");
+              if (k === 0) b.className = "on";
+              b.addEventListener("click", function () { go(k); });
+              dotsBox.appendChild(b); dots.push(b);
+            });
+          }
+          setWord(cities[0]); runBar();
+          timer = setInterval(next, 6000);
+        }
+      }
+    } catch (e) { /* ignore */ }
   });
 })();

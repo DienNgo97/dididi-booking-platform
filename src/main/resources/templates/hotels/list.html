@@ -15,35 +15,44 @@
         <div class="smini-bar">
         <a class="smini-brand" href="/">Dididi</a>
         <div class="smini-pill">
-            <span class="smini-seg"><b>🏨 <span th:text="${city != null and !#strings.isEmpty(city)} ? ${city} : #{hotels.anyDest}">Hà Nội</span></b></span>
+            <span class="smini-seg"><b><svg th:replace="~{fragments/icons :: i('building','')}"></svg> <span th:text="${city != null and !#strings.isEmpty(city)} ? ${city} : #{hotels.anyDest}">Hà Nội</span></b></span>
             <span class="smini-div"></span>
             <span class="smini-seg grow" th:text="${checkIn != null and !#strings.isEmpty(checkIn) ? (checkIn + (checkOut != null and !#strings.isEmpty(checkOut) ? ' → ' + checkOut : '')) : null} ?: #{hotels.pickDate}">Chọn ngày</span>
             <span class="smini-div opt"></span>
             <span class="smini-seg opt" th:text="${(adults != null ? adults : 2)} + ' ' + #{search.adultsUnit} + ' · ' + ${(rooms != null ? rooms : 1)} + ' ' + #{search.roomsUnit}">2 người lớn · 1 phòng</span>
-            <button type="button" class="smini-go" aria-label="Tìm" th:attr="aria-label=#{flights.search}">🔍</button>
+            <button type="button" class="smini-go" aria-label="Tìm" th:attr="aria-label=#{flights.search}"><svg th:replace="~{fragments/icons :: i('search','')}"></svg></button>
         </div>
         </div>
     </div>
     <h1><span th:text="#{hotels.title}">Khách sạn</span><span class="muted" th:if="${city}"> · <span th:text="${city}"></span></span></h1>
+    <!-- Bản đồ kết quả tìm kiếm (Nhóm 2 - Google Maps) -->
+    <div class="map-wrap" th:if="${hotels != null and !#lists.isEmpty(hotels)}">
+        <div class="map-bar">
+            <button type="button" class="btn ghost" id="toggleMap"><svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg>
+                <span data-show th:text="#{maps.showMap}">Xem bản đồ</span><span data-hide hidden th:text="#{maps.hideMap}">Ẩn bản đồ</span></button>
+            <button type="button" class="btn ghost" id="nearMe"><svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg> <span th:text="#{maps.nearMe}">Khách sạn gần tôi</span></button>
+        </div>
+        <div id="hotelsMap" class="hotel-map hotel-map-lg" style="display:none"></div>
+    </div>
     <div class="paginate" data-page-size="20">
     <div class="hcard" th:each="h : ${hotels}">
         <a class="hcard-stretch" th:aria-label="${h.name}"
            th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}"></a>
         <div class="hcard-img">
             <img th:if="${covers.get(h.id) != null}" th:src="${covers.get(h.id)}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
-            <div class="ph" th:if="${covers.get(h.id) == null}">🏨</div>
+            <div class="ph" th:if="${covers.get(h.id) == null}"><svg th:replace="~{fragments/icons :: i('building','')}"></svg></div>
             <form class="hcard-heart" sec:authorize="isAuthenticated()" th:action="@{/account/wishlist/toggle}" method="post">
                 <input type="hidden" name="hotelId" th:value="${h.id}"/>
                 <input type="hidden" name="back"
                        th:value="${city != null and !#strings.isEmpty(city)} ? @{/hotels(city=${city})} : '/hotels'"/>
                 <button type="submit" class="wish-btn" th:title="#{nav.wishlist}"
                         th:classappend="${wishlistedIds != null and wishlistedIds.contains(h.id)} ? 'is-on' : ''"
-                        th:text="${wishlistedIds != null and wishlistedIds.contains(h.id)} ? '♥' : '♡'">♡</button>
+                        ><svg th:replace="~{fragments/icons :: i('heart', ${wishlistedIds != null and wishlistedIds.contains(h.id)} ? 'ic-fill' : '')}"></svg></button>
             </form>
         </div>
         <div class="hcard-body">
             <h3><a th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}" th:text="${h.name}">Hotel</a></h3>
-            <div class="hcard-loc">📍 <span th:text="${h.city}"></span> · <span th:text="${h.address}"></span></div>
+            <div class="hcard-loc"><svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg> <span th:text="${h.city}"></span> · <span th:text="${h.address}"></span></div>
             <div class="chips">
                 <span class="chip" th:if="${h.starRating != null}" th:text="${h.starRating} + ' ' + #{hotels.starsUnit}">4 sao</span>
                 <span class="chip" th:text="#{hotels.instantConfirm}">Xác nhận tức thì</span>
@@ -88,11 +97,83 @@
                 .then(function (r) { if (r.status === 401 || r.status === 403) { window.location = '/login'; return null; } return r.json(); })
                 .then(function (d) {
                     if (!d) return;
-                    btn.textContent = d.wishlisted ? '♥' : '♡';
+                    btn.innerHTML = d.wishlisted ? '<svg class="ic ic-fill" viewBox="0 0 24 24"><use href="#ic-heart"></use></svg>' : '<svg class="ic" viewBox="0 0 24 24"><use href="#ic-heart"></use></svg>';
                     btn.classList.toggle('is-on', !!d.wishlisted);
                     btn.disabled = false;
                 })
                 .catch(function () { btn.disabled = false; form.submit(); });
+        });
+    });
+})();
+</script>
+<script th:inline="javascript">
+    window.DD_MAPS_KEY = /*[[${mapsApiKey}]]*/ '';
+    window.DD_MAPS_T = {
+        detail: /*[[#{maps.viewDetail}]]*/ 'Xem chi tiết',
+        noKey: /*[[#{maps.noKey}]]*/ 'Chưa cấu hình Google Maps API key.',
+        night: /*[[#{hotels.perNight}]]*/ '/ đêm'
+    };
+    window.DD_HOTELS = [];
+    [# th:each="h : ${hotels}"][# th:if="${h.hasGeo()}"]
+    window.DD_HOTELS.push({ id: [[${h.id}]], name: [[${h.name}]], lat: [[${h.lat}]], lng: [[${h.lng}]], price: [[${h.minPrice}]], star: [[${h.starRating}]], url: [[@{/hotels/{id}(id=${h.id})}]] });
+    [/][/]
+</script>
+<script>
+(function () {
+    var toggle = document.getElementById('toggleMap'), near = document.getElementById('nearMe'), el = document.getElementById('hotelsMap');
+    if (!toggle || !el) return;
+    var loaded = false, map = null, info = null;
+    function open(show) {
+        el.style.display = show ? 'block' : 'none';
+        toggle.querySelectorAll('[data-show]').forEach(function (x) { x.hidden = show; });
+        toggle.querySelectorAll('[data-hide]').forEach(function (x) { x.hidden = !show; });
+    }
+    function build() {
+        if (!window.google || !google.maps) { el.classList.add('map-nokey'); el.textContent = window.DD_MAPS_T.noKey; return; }
+        var hs = window.DD_HOTELS || [];
+        map = new google.maps.Map(el, { zoom: 12, mapTypeControl: false, center: hs.length ? { lat: hs[0].lat, lng: hs[0].lng } : { lat: 16.05, lng: 108.2 } });
+        info = new google.maps.InfoWindow();
+        var b = new google.maps.LatLngBounds();
+        hs.forEach(function (h) {
+            var m = new google.maps.Marker({ position: { lat: h.lat, lng: h.lng }, map: map, title: h.name });
+            b.extend(m.getPosition());
+            m.addListener('click', function () {
+                var price = h.price ? Number(h.price).toLocaleString('vi-VN') + 'đ ' + window.DD_MAPS_T.night : '';
+                info.setContent('<div style="min-width:170px;font-size:13px"><b>' + h.name + '</b><br>' + (h.star ? ('★ ' + h.star + ' · ') : '') + price + '<br><a href="' + h.url + '">' + window.DD_MAPS_T.detail + ' →</a></div>');
+                info.open(map, m);
+            });
+        });
+        if (hs.length) map.fitBounds(b);
+        window.__hotelsMap = map;
+    }
+    window.initHotelsMap = build;
+    function ensure(cb) {
+        if (window.google && google.maps) { if (!map) build(); if (cb) cb(); return; }
+        if (loaded) return; loaded = true;
+        var key = window.DD_MAPS_KEY || '';
+        if (!key) { open(true); el.classList.add('map-nokey'); el.textContent = window.DD_MAPS_T.noKey; return; }
+        window.initHotelsMap = function () { build(); if (cb) cb(); };
+        var s = document.createElement('script'); s.async = true;
+        s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&loading=async&callback=initHotelsMap';
+        document.head.appendChild(s);
+    }
+    toggle.addEventListener('click', function () {
+        var show = el.style.display === 'none' || !el.style.display;
+        open(show);
+        if (show) ensure(function () { if (map) google.maps.event.trigger(map, 'resize'); });
+    });
+    if (near) near.addEventListener('click', function () {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(function (p) {
+            open(true);
+            ensure(function () {
+                if (!map) return;
+                var loc = { lat: p.coords.latitude, lng: p.coords.longitude };
+                map.setCenter(loc); map.setZoom(13);
+                new google.maps.Marker({ position: loc, map: map, title: 'Vị trí của bạn',
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#2f8b60', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 } });
+                google.maps.event.trigger(map, 'resize');
+            });
         });
     });
 })();

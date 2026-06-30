@@ -13,12 +13,12 @@
         <div class="smini-bar">
         <a class="smini-brand" href="/">Dididi</a>
         <div class="smini-pill">
-            <span class="smini-seg"><b>🛫 <span th:text="(${from != null and !#strings.isEmpty(from)} ? ${from} : #{flights.anywhere}) + ' → ' + (${to != null and !#strings.isEmpty(to)} ? ${to} : #{flights.anywhere})">HAN → SGN</span></b></span>
+            <span class="smini-seg"><b><svg th:replace="~{fragments/icons :: i('plane','')}"></svg> <span th:text="(${from != null and !#strings.isEmpty(from)} ? ${from} : #{flights.anywhere}) + ' → ' + (${to != null and !#strings.isEmpty(to)} ? ${to} : #{flights.anywhere})">HAN → SGN</span></b></span>
             <span class="smini-div"></span>
             <span class="smini-seg grow" th:text="${date != null} ? ${date} : #{flights.anyDay}">2026-07-01</span>
             <span class="smini-div opt"></span>
             <span class="smini-seg opt">Vietnam Airlines</span>
-            <button type="button" class="smini-go" aria-label="Tìm" th:attr="aria-label=#{flights.search}">🔍</button>
+            <button type="button" class="smini-go" aria-label="Tìm" th:attr="aria-label=#{flights.search}"><svg th:replace="~{fragments/icons :: i('search','')}"></svg></button>
         </div>
         </div>
     </div>
@@ -28,7 +28,7 @@
         <a class="fcard-stretch" th:aria-label="${f.airlineCode + ' ' + f.flightNumber}"
            th:href="@{/booking/flight/{id}(id=${f.id},cabin=${cabin})}"></a>
         <div class="fcard-airline">
-            <div class="fcard-logo">✈</div>
+            <div class="fcard-logo"><svg th:replace="~{fragments/icons :: i('plane','')}"></svg></div>
             <div><b th:text="${f.airlineCode}">VN</b> <span class="muted" th:text="${f.flightNumber}"></span>
                 <div class="muted" style="font-size:11px">Vietnam Airlines</div></div>
         </div>

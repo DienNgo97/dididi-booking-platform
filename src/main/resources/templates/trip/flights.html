@@ -17,7 +17,7 @@
         <b th:text="${routeFrom} + ' → ' + ${routeTo}">SGN → DAD</b>
         · <span th:text="#{trip.dateWord}">ngày</span> <b th:text="${flightDate}">--</b>
         <div class="muted" style="font-size:13px;margin-top:4px">
-            <span th:text="#{trip.tripLabel}">Chuyến đi:</span> <span th:text="${from}"></span> ⇄ <span th:text="${dest}"></span>
+            <span th:text="#{trip.tripLabel}">Chuyến đi:</span> <span th:text="${from}"></span> <svg th:replace="~{fragments/icons :: i('swap','')}"></svg> <span th:text="${dest}"></span>
             · <span th:text="${depart}"></span> → <span th:text="${ret}"></span>
         </div>
     </div>

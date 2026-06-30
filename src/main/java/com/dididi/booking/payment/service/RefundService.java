@@ -6,6 +6,9 @@ import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.repository.BookingRepository;
 import com.dididi.booking.booking.service.BookingService;
 import com.dididi.booking.common.exception.BusinessException;
+import com.dididi.booking.loyalty.domain.LoyaltyTransaction;
+import com.dididi.booking.loyalty.domain.LoyaltyTxnType;
+import com.dididi.booking.loyalty.repository.LoyaltyTransactionRepository;
 import com.dididi.booking.notification.EmailService;
 import com.dididi.booking.payment.domain.entity.Payment;
 import com.dididi.booking.payment.domain.entity.Refund;
@@ -36,18 +39,25 @@ public class RefundService {
     private final BookingService bookingService;
     private final PaymentRepository paymentRepository;
     private final RefundRepository refundRepository;
+    private final LoyaltyTransactionRepository loyaltyRepository;
     private final EmailService emailService;
     private final ApplicationEventPublisher events;
     private final BigDecimal superAdminThreshold;
 
+    // BP-PAY-02: default khop policy (5.000.000 VND ~ don lon thuong can SUPER_ADMIN duyet) va trung
+    // y nghia voi gia tri trong application.yml. Neu key bi xoa, default nay van la mot nguong HOP LY
+    // (khong tut ve 0 lam moi refund can SUPER_ADMIN, cung khong nhay len 10tr lam mat hieu luc gate).
+    // application.yml.app.refund.super-admin-threshold la nguon su that duy nhat; default chi la fallback an toan.
     public RefundService(BookingRepository bookingRepository, BookingService bookingService,
                          PaymentRepository paymentRepository, RefundRepository refundRepository,
+                         LoyaltyTransactionRepository loyaltyRepository,
                          EmailService emailService, ApplicationEventPublisher events,
-                         @Value("${app.refund.super-admin-threshold:10000000}") BigDecimal superAdminThreshold) {
+                         @Value("${app.refund.super-admin-threshold:5000000}") BigDecimal superAdminThreshold) {
         this.bookingRepository = bookingRepository;
         this.bookingService = bookingService;
         this.paymentRepository = paymentRepository;
         this.refundRepository = refundRepository;
+        this.loyaltyRepository = loyaltyRepository;
         this.emailService = emailService;
         this.events = events;
         this.superAdminThreshold = superAdminThreshold;
@@ -92,10 +102,15 @@ public class RefundService {
         p.setStatus(PaymentStatus.REFUNDED);
         paymentRepository.save(p);
 
-        // 3) Hoan tra ton kho DIRECT (neu co) roi huy don.
+        // 3) Hoan tra ton kho DIRECT (no-op) + tra ton kho ve PROVIDER (ve provider + KS CHANNEL) roi huy don. (INT-01)
         bookingService.restoreDirectInventory(b);
+        bookingService.releaseProviderInventory(b);
         b.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(b);
+
+        // 3b) BP-LOY-02: dao nguoc diem da TICH cho don nay (1 lan, idempotent).
+        //     Tranh nong: book -> confirm (cong N diem) -> refund van giu diem (farming + thoi hang).
+        reverseLoyaltyPoints(b);
 
         // 4) Audit qua event - ghi sau khi commit + bat dong bo.
         events.publishEvent(new AuditEvent(adminUserId, "REFUND", "BOOKING", b.getId(),
@@ -104,6 +119,25 @@ public class RefundService {
 
         emailService.sendRefunded(b, r.getAmount(), LocaleContextHolder.getLocale());   // email hoan tien (phong thu)
         return r;
+    }
+
+    /**
+     * BP-LOY-02: ghi 1 giao dich bu (ADJUST, points = -earned) cho don da hoan tien.
+     * Idempotent: neu da co ADJUST cho bookingId nay thi bo qua (refund 2 lan khong tru diem 2 lan).
+     * earned lay tu tong diem EARN da ghi cho chinh don do.
+     */
+    private void reverseLoyaltyPoints(Booking b) {
+        if (b == null || b.getId() == null) return;
+        if (loyaltyRepository.existsByBookingIdAndType(b.getId(), LoyaltyTxnType.ADJUST)) return; // da dao roi
+        int earned = loyaltyRepository.sumPointsByBookingAndType(b.getId(), LoyaltyTxnType.EARN);
+        if (earned <= 0) return; // khong co diem da tich -> khong can dao
+        LoyaltyTransaction t = new LoyaltyTransaction();
+        t.setUserId(b.getUserId());
+        t.setType(LoyaltyTxnType.ADJUST);
+        t.setPoints(-earned);
+        t.setBookingId(b.getId());
+        t.setDescription("Thu hồi điểm do hoàn tiền đơn " + b.getPublicCode());
+        loyaltyRepository.save(t);
     }
 
     public List<Refund> history() {

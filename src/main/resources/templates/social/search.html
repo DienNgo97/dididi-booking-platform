@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${query != null and !#strings.isEmpty(query)} ? ('Tìm: ' + ${query} + ' - Dididi') : 'Tìm kiếm - Cộng đồng Dididi'">Tìm kiếm</title>
+    <link rel="stylesheet" href="/css/site.css"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <div th:replace="~{social/fragments :: tabs('search')}"></div>
+
+    <div class="sx-layout">
+        <div th:replace="~{social/fragments :: railLeft('search')}"></div>
+        <main class="sx-main">
+            <div class="sx-pagehead">
+                <h1>Tìm kiếm</h1>
+                <p>Tìm người dùng, bài viết và hashtag trong cộng đồng Dididi.</p>
+            </div>
+            <form class="sx-people-search" action="/community/search" method="get" role="search">
+                <svg th:replace="~{fragments/icons :: i('search','')}"></svg>
+                <input type="search" name="q" th:value="${query}" placeholder="Nhập từ khoá…" autocomplete="off" autofocus/>
+            </form>
+
+            <!-- Chưa nhập từ khoá -->
+            <div th:if="${query == null or #strings.isEmpty(query)}" class="sx-empty">
+                <span class="sx-empty-ic"><svg th:replace="~{fragments/icons :: i('search','')}"></svg></span>
+                <p>Nhập từ khoá để tìm người dùng, bài viết hoặc hashtag liên quan.</p>
+            </div>
+
+            <!-- Có từ khoá -->
+            <div th:unless="${query == null or #strings.isEmpty(query)}">
+                <div th:if="${#lists.isEmpty(people) and #lists.isEmpty(posts) and #lists.isEmpty(tags)}" class="sx-empty">
+                    <span class="sx-empty-ic"><svg th:replace="~{fragments/icons :: i('search','')}"></svg></span>
+                    <p>Không tìm thấy kết quả cho “<b th:text="${query}">từ khoá</b>”. Thử từ khoá khác nhé.</p>
+                </div>
+
+                <!-- Hashtag -->
+                <section th:unless="${#lists.isEmpty(tags)}" class="sx-search-sec">
+                    <h2>Hashtag</h2>
+                    <div class="sx-tagchips">
+                        <a th:each="t : ${tags}" th:href="@{'/community/tag/' + ${t.tag}}" class="sx-tagchip">
+                            <span class="sx-tagchip-tag" th:text="'#' + ${t.tag}">#tag</span>
+                            <span class="sx-tagchip-n" th:text="${t.postCount} + ' bài'">0 bài</span>
+                        </a>
+                    </div>
+                </section>
+
+                <!-- Người dùng -->
+                <section th:unless="${#lists.isEmpty(people)}" class="sx-search-sec">
+                    <h2>Người dùng</h2>
+                    <div class="sx-userlist">
+                        <div th:each="card : ${people}" class="sx-usercard">
+                            <a th:href="${card.actor.profileUrl}" class="sx-ava" aria-hidden="true">
+                                <img th:if="${card.actor.avatarUrl}" th:src="${card.actor.avatarUrl}" alt=""/>
+                                <span th:unless="${card.actor.avatarUrl}" class="sx-ava-ph"
+                                      th:text="${#strings.toUpperCase(#strings.substring(card.actor.name,0,1))}">D</span>
+                            </a>
+                            <a th:href="${card.actor.profileUrl}" class="sx-user-meta">
+                                <span class="sx-name" th:text="${card.actor.name}">Tên</span>
+                                <span class="sx-handle" th:text="'@' + ${card.actor.handle}">@handle</span>
+                                <span class="sx-user-bio" th:if="${card.bio}" th:text="${card.bio}">bio</span>
+                            </a>
+                            <div class="sx-user-actions" th:unless="${card.self}">
+                                <button class="btn sx-follow"
+                                        th:classappend="${card.followState == 'ACTIVE'} ? 'is-following' : ''"
+                                        th:attr="data-type='USER',data-id=${card.userId},data-state=${card.followState}">
+                                    <span class="sx-follow-text"
+                                          th:text="${card.followState == 'ACTIVE'} ? 'Đang theo dõi' : (${card.followState == 'PENDING'} ? 'Đã gửi yêu cầu' : 'Theo dõi')">Theo dõi</span>
+                                </button>
+                                <form th:action="@{/community/messages/start}" method="post">
+                                    <input type="hidden" name="toUserId" th:value="${card.userId}"/>
+                                    <button type="submit" class="btn ghost sx-iconlabel" title="Nhắn tin">
+                                        <svg th:replace="~{fragments/icons :: i('mail','')}"></svg></button>
+                                </form>
+                            </div>
+                            <span class="sx-user-actions sx-you" th:if="${card.self}">Đây là bạn</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Bài viết -->
+                <section th:unless="${#lists.isEmpty(posts)}" class="sx-search-sec">
+                    <h2>Bài viết</h2>
+                    <div id="sxFeed">
+                        <div th:replace="~{social/fragments :: cards(${posts})}"></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+        <div th:replace="~{social/fragments :: railRight}"></div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<div th:replace="~{social/fragments :: scripts}"></div>
+</body>
+</html>

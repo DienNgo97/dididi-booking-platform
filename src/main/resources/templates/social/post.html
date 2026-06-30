@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Bài viết - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <div th:replace="~{social/fragments :: tabs('')}"></div>
+    <div class="sx-layout">
+        <div th:replace="~{social/fragments :: railLeft('')}"></div>
+        <main class="sx-main">
+        <article class="sx-card sx-detail">
+            <header class="sx-head">
+                <a th:href="${post.actor.profileUrl}" class="sx-ava">
+                    <img th:if="${post.actor.avatarUrl}" th:src="${post.actor.avatarUrl}" alt=""/>
+                    <span th:unless="${post.actor.avatarUrl}" class="sx-ava-ph">
+                        <span th:if="${post.actor.hotel}"><svg th:replace="~{fragments/icons :: i('building','')}"></svg></span>
+                        <span th:unless="${post.actor.hotel}" th:text="${#strings.toUpperCase(#strings.substring(post.actor.name,0,1))}">D</span>
+                    </span>
+                </a>
+                <div class="sx-meta">
+                    <a th:href="${post.actor.profileUrl}" class="sx-name" th:text="${post.actor.name}">Tên</a>
+                    <div class="sx-sub">
+                        <span th:if="${post.actor.handle}" th:text="'@' + ${post.actor.handle}"></span>
+                        <span class="sx-dot" th:if="${post.actor.handle}">·</span>
+                        <span class="sx-time" th:attr="data-ts=${post.createdAtMs}">vừa xong</span>
+                    </div>
+                    <a th:if="${post.placeName}" class="sx-place" th:href="${post.hotelUrl != null} ? ${post.hotelUrl} : '#'">
+                        <svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg> <span th:text="${post.placeName}"></span>
+                    </a>
+                </div>
+                <form th:if="${post.canDelete}" th:action="@{'/community/posts/' + ${post.id} + '/delete'}" method="post" class="sx-del">
+                    <button type="submit" class="sx-iconbtn" data-confirm="Xoá bài viết này?" title="Xoá" aria-label="Xoá">
+                        <svg th:replace="~{fragments/icons :: i('x','')}"></svg>
+                    </button>
+                </form>
+            </header>
+
+            <div class="sx-media-full" th:if="${post.hasMedia()}">
+                <th:block th:each="m : ${post.media}">
+                    <video th:if="${m.video}" th:src="${m.url}" controls preload="metadata"></video>
+                    <img th:unless="${m.video}" th:src="${m.url}" alt="" loading="lazy"/>
+                </th:block>
+            </div>
+
+            <div class="sx-actions">
+                <button type="button" class="sx-like" th:classappend="${post.liked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Thích">
+                    <svg th:replace="~{fragments/icons :: i('heart', ${post.liked} ? 'ic-fill' : '')}"></svg>
+                    <span class="sx-like-count" th:text="${post.likeCount}">0</span>
+                </button>
+                <span class="sx-actbtn"><svg th:replace="~{fragments/icons :: i('message','')}"></svg> <span id="sxCommentCount" th:text="${post.commentCount}">0</span></span>
+                <button type="button" class="sx-repost" th:classappend="${post.reposted} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Đăng lại">
+                    <svg th:replace="~{fragments/icons :: i('repeat','')}"></svg>
+                    <span class="sx-repost-count" th:text="${post.repostCount}">0</span>
+                </button>
+                <span class="sx-spacer"></span>
+                <button type="button" class="sx-bookmark" th:classappend="${post.bookmarked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Lưu">
+                    <svg th:replace="~{fragments/icons :: i('bookmark', ${post.bookmarked} ? 'ic-fill' : '')}"></svg>
+                </button>
+            </div>
+
+            <div class="sx-caption" th:if="${post.caption}">
+                <a th:href="${post.actor.profileUrl}" class="sx-name" th:text="${post.actor.name}">Tên</a>
+                <span th:utext="${post.captionHtml}">caption</span>
+            </div>
+        </article>
+
+        <form class="sx-cform" id="cmForm" th:action="@{'/community/posts/' + ${post.id} + '/comments'}" method="post"
+              th:attr="data-post-id=${post.id}">
+            <input type="hidden" name="parentId" id="cmParent" value=""/>
+            <input type="text" name="content" id="cmInput" placeholder="Viết bình luận…" autocomplete="off" required/>
+            <button type="submit" class="sx-iconbtn" aria-label="Gửi"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></button>
+        </form>
+        <div id="cmReplyHint" class="sx-reply-hint" hidden>
+            Đang trả lời <b id="cmReplyTo"></b> · <a href="#" id="cmReplyCancel">huỷ</a>
+        </div>
+
+        <div class="sx-comments" id="sxComments" th:attr="data-post-id=${post.id}">
+            <p id="sxNoComments" th:if="${#lists.isEmpty(comments)}" class="muted">Chưa có bình luận. Hãy là người đầu tiên!</p>
+            <th:block th:each="c : ${comments}">
+                <div th:replace="~{social/comment-fragments :: node(${c})}"></div>
+            </th:block>
+        </div>
+        </main>
+        <div th:replace="~{social/fragments :: railRight}"></div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<div th:replace="~{social/fragments :: scripts}"></div>
+<script>
+    (function () {
+        var box = document.getElementById('sxComments');
+        var form = document.getElementById('cmForm');
+        if (!box || !form) return;
+        var input = document.getElementById('cmInput'), parent = document.getElementById('cmParent');
+        var hint = document.getElementById('cmReplyHint'), to = document.getElementById('cmReplyTo');
+        var countEl = document.getElementById('sxCommentCount'), noEl = document.getElementById('sxNoComments');
+        var postId = box.getAttribute('data-post-id');
+        var csrf = document.querySelector('meta[name=_csrf]'), csrfH = document.querySelector('meta[name=_csrf_header]');
+        function headers() {
+            var h = { 'Content-Type': 'application/x-www-form-urlencoded' };
+            if (csrf && csrf.content && csrfH && csrfH.content) h[csrfH.content] = csrf.content;
+            return h;
+        }
+        function lastId() {
+            var max = 0;
+            box.querySelectorAll('.sx-cm[data-comment-id]').forEach(function (el) {
+                var id = parseInt(el.getAttribute('data-comment-id'), 10); if (id > max) max = id;
+            });
+            return max;
+        }
+        function updateCount() {
+            if (countEl) countEl.textContent = box.querySelectorAll('.sx-cm[data-comment-id]').length;
+        }
+        function place(n) {
+            var id = n.getAttribute('data-comment-id');
+            if (box.querySelector('.sx-cm[data-comment-id="' + id + '"]')) return false; // tránh trùng
+            var pid = n.getAttribute('data-parent');
+            if (pid) {
+                var holder = box.querySelector('[data-replies-for="' + pid + '"]');
+                if (holder) { holder.appendChild(n); return true; }
+            }
+            box.appendChild(n);
+            return true;
+        }
+        function ingest(html) {
+            if (!html || !html.trim()) return false;
+            var tmp = document.createElement('div'); tmp.innerHTML = html.trim();
+            var added = false;
+            Array.prototype.slice.call(tmp.children).forEach(function (n) {
+                if (n.classList && n.classList.contains('sx-cm') && place(n)) added = true;
+            });
+            if (added) {
+                if (noEl) noEl.style.display = 'none';
+                if (window.DDSocial) window.DDSocial.init(box);
+                updateCount();
+            }
+            return added;
+        }
+        // Gửi bình luận bằng AJAX (không tải lại trang)
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var content = input.value.trim(); if (!content) return;
+            fetch('/community/posts/' + postId + '/comments-ajax', {
+                method: 'POST', headers: headers(), credentials: 'same-origin',
+                body: 'content=' + encodeURIComponent(content) + '&parentId=' + encodeURIComponent(parent.value || '')
+            }).then(function (r) { if (r.status === 401 || r.status === 403) { window.location = '/login'; return null; } return r.text(); })
+              .then(function (html) {
+                  if (html == null) return;
+                  ingest(html);
+                  input.value = ''; parent.value = ''; hint.hidden = true;
+              }).catch(function () {});
+        });
+        // Trả lời: uỷ quyền sự kiện để áp dụng cho cả node thêm động
+        box.addEventListener('click', function (e) {
+            var a = e.target.closest ? e.target.closest('.sx-reply-toggle') : null;
+            if (!a || !box.contains(a)) return;
+            e.preventDefault();
+            parent.value = a.getAttribute('data-id');
+            to.textContent = a.getAttribute('data-name') || '';
+            hint.hidden = false; input.focus();
+        });
+        var cancel = document.getElementById('cmReplyCancel');
+        if (cancel) cancel.addEventListener('click', function (e) { e.preventDefault(); parent.value = ''; hint.hidden = true; });
+        // Polling bình luận mới (giống cơ chế tin nhắn)
+        setInterval(function () {
+            if (document.hidden) return;
+            fetch('/community/posts/' + postId + '/comments/poll?afterId=' + lastId(), { credentials: 'same-origin' })
+                .then(function (r) { return r.ok ? r.text() : null; })
+                .then(function (html) { if (html) ingest(html); }).catch(function () {});
+        }, 4000);
+    })();
+</script>
+</body>
+</html>

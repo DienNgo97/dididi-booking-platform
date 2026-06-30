@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Cài đặt hồ sơ - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <div th:replace="~{social/fragments :: tabs('settings')}"></div>
+
+    <div class="sx-layout">
+        <div th:replace="~{social/fragments :: railLeft('settings')}"></div>
+        <main class="sx-main sx-formcol">
+        <div class="sx-pagehead"><h1>Cài đặt hồ sơ</h1></div>
+
+        <section class="sx-side-card">
+            <h3>Ảnh đại diện</h3>
+            <div class="sx-avatar-row">
+                <span class="sx-ava lg" id="avaPreview">
+                    <img th:if="${profile.avatarKey != null}" th:src="@{/community/avatar/u/{id}(id=${profile.userId},v=${profile.avatarKey.hashCode()})}" alt=""/>
+                    <span th:unless="${profile.avatarKey != null}" class="sx-ava-ph"
+                          th:text="${#strings.toUpperCase(#strings.substring(profile.displayName != null ? profile.displayName : profile.handle,0,1))}">D</span>
+                </span>
+                <form th:action="@{/community/settings/avatar}" method="post" enctype="multipart/form-data" class="sx-upload-form">
+                    <label class="sx-filepick">
+                        <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
+                        <span class="sx-filepick-name">Chọn ảnh…</span>
+                        <input type="file" name="file" accept="image/*" hidden required data-preview="#avaPreview"/>
+                    </label>
+                    <button type="submit" class="btn"><svg th:replace="~{fragments/icons :: i('camera','')}"></svg> Cập nhật</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="sx-side-card">
+            <h3>Ảnh bìa</h3>
+            <div class="sx-cover-preview" id="coverPreview" th:if="${profile.coverKey != null}"
+                 th:style="'background-image:url(' + @{/community/cover/u/{id}(id=${profile.userId},v=${profile.coverKey.hashCode()})} + ')'"></div>
+            <div class="sx-cover-preview" id="coverPreview" th:unless="${profile.coverKey != null}"></div>
+            <form th:action="@{/community/settings/cover}" method="post" enctype="multipart/form-data" class="sx-upload-form">
+                <label class="sx-filepick">
+                    <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
+                    <span class="sx-filepick-name">Chọn ảnh bìa…</span>
+                    <input type="file" name="file" accept="image/*" hidden required data-preview="#coverPreview"/>
+                </label>
+                <button type="submit" class="btn"><svg th:replace="~{fragments/icons :: i('camera','')}"></svg> Cập nhật ảnh bìa</button>
+            </form>
+        </section>
+
+        <section class="sx-side-card">
+            <h3>Thông tin</h3>
+            <form th:action="@{/community/settings}" method="post" class="sx-form">
+                <label>Tên hiển thị
+                    <input type="text" name="displayName" maxlength="120" th:value="${profile.displayName}"/>
+                </label>
+                <label>Giới thiệu
+                    <textarea name="bio" rows="3" maxlength="500" th:text="${profile.bio}"></textarea>
+                </label>
+                <label>Liên kết
+                    <input type="text" name="link" maxlength="200" th:value="${profile.link}" placeholder="https://…"/>
+                </label>
+                <label class="sx-check">
+                    <input type="checkbox" name="isPrivate" value="true" th:checked="${profile.private}"/>
+                    <span>Tài khoản riêng tư — người khác phải gửi yêu cầu theo dõi mới xem được bài.</span>
+                </label>
+                <div class="sx-form-actions"><button type="submit" class="btn">Lưu</button></div>
+            </form>
+        </section>
+
+        <section class="sx-side-card">
+            <h3>Tên định danh (@handle)</h3>
+            <form th:action="@{/community/settings/handle}" method="post" class="sx-inline-form">
+                <span class="sx-at">@</span>
+                <input type="text" name="handle" th:value="${profile.handle}" pattern="[a-z0-9_]{3,30}" required/>
+                <button type="submit" class="btn ghost">Đổi</button>
+            </form>
+            <p class="muted">Chỉ chữ thường, số và gạch dưới, 3–30 ký tự.</p>
+        </section>
+        </main>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<div th:replace="~{social/fragments :: scripts}"></div>
+</body>
+</html>

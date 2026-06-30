@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
@@ -19,6 +20,9 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Optional<Booking> findByPublicCode(String publicCode);
     List<Booking> findByUserIdOrderByCreatedAtDesc(Long userId);
     List<Booking> findByGroupIdOrderByCreatedAtAsc(Long groupId);
+
+    // ---- Scheduler het han thanh toan (BP-BK-04): quet don PENDING_PAYMENT tao truoc 1 moc thoi gian ----
+    List<Booking> findByStatusAndCreatedAtBefore(BookingStatus status, Instant createdBefore);
 
     // ---- Con phong theo khung gio (DIRECT): cac don dang giu phong cua 1 loai phong, giao voi [from, to] ----
     // roomTypeId chi set cho don khach san DIRECT (don PMS/flight = null) nen loc theo roomTypeId la du.

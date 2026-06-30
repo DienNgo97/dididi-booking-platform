@@ -1,8 +1,12 @@
 package com.dididi.booking.hotel.domain.entity;
 
 import com.dididi.booking.common.domain.BaseEntity;
+import com.dididi.booking.hotel.domain.enums.BedType;
+import com.dididi.booking.hotel.domain.enums.RoomView;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
@@ -33,6 +37,19 @@ public class RoomType extends BaseEntity {
     @Column(name = "total_rooms", nullable = false)
     private int totalRooms;
 
+    // ----- Thuoc tinh phong phuc vu loc & recommendation -----
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bed_type", length = 10)
+    private BedType bedType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "room_view", length = 10)
+    private RoomView roomView;
+
+    /** Dien tich phong (m2). */
+    @Column(name = "area_sqm")
+    private Integer areaSqm;
+
     public Long getHotelId() { return hotelId; }
     public void setHotelId(Long hotelId) { this.hotelId = hotelId; }
     public String getName() { return name; }
@@ -47,4 +64,11 @@ public class RoomType extends BaseEntity {
     public void setCurrency(String currency) { this.currency = currency; }
     public int getTotalRooms() { return totalRooms; }
     public void setTotalRooms(int totalRooms) { this.totalRooms = totalRooms; }
+
+    public BedType getBedType() { return bedType; }
+    public void setBedType(BedType bedType) { this.bedType = bedType; }
+    public RoomView getRoomView() { return roomView; }
+    public void setRoomView(RoomView roomView) { this.roomView = roomView; }
+    public Integer getAreaSqm() { return areaSqm; }
+    public void setAreaSqm(Integer areaSqm) { this.areaSqm = areaSqm; }
 }

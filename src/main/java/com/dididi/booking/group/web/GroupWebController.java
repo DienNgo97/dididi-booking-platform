@@ -213,13 +213,13 @@ public class GroupWebController {
             ra.addFlashAttribute("error", "Chỉ người tạo nhóm mới thanh toán cho cả nhóm");
             return "redirect:/g/" + token;
         }
+        // BP-GRP-01: chot dung tap phong PENDING tai thoi diem nay; total tinh tu chinh tap do.
+        List<Booking> chosen = groupService.beginGroupPayment(g.getId());
         Booking lead = null;
         BigDecimal total = BigDecimal.ZERO;
-        for (Booking b : groupService.members(g.getId())) {
-            if (b.getStatus() == BookingStatus.PENDING_PAYMENT) {
-                if (lead == null) lead = b;
-                if (b.getAmount() != null) total = total.add(b.getAmount());
-            }
+        for (Booking b : chosen) {
+            if (lead == null) lead = b;
+            if (b.getAmount() != null) total = total.add(b.getAmount());
         }
         if (lead == null) {
             ra.addFlashAttribute("message", "Không có phòng nào cần thanh toán");

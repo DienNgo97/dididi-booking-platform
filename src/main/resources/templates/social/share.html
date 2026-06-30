@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Gửi qua tin nhắn - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <div class="sx-single">
+        <h1>Gửi bài viết qua tin nhắn</h1>
+
+        <div class="sx-side-card dm-sharepost">
+            <span class="sx-ava sm" aria-hidden="true">
+                <img th:if="${post.actor.avatarUrl}" th:src="${post.actor.avatarUrl}" alt=""/>
+                <span th:unless="${post.actor.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(post.actor.name,0,1))}">D</span>
+            </span>
+            <div>
+                <b th:text="${post.actor.name}">Tác giả</b>
+                <div class="muted" th:text="${post.caption != null ? post.caption : 'Bài viết'}">caption</div>
+            </div>
+        </div>
+
+        <h3 style="margin:18px 0 8px">Gửi tới</h3>
+        <p th:if="${#lists.isEmpty(conversations)}" class="muted">
+            Bạn chưa có cuộc trò chuyện nào. Mở trang cá nhân của ai đó và bấm <b>Nhắn tin</b> trước nhé.</p>
+
+        <div class="dm-inbox">
+            <form th:each="c : ${conversations}" th:action="@{/community/messages/share}" method="post" class="dm-sharerow">
+                <input type="hidden" name="convId" th:value="${c.id}"/>
+                <input type="hidden" name="postId" th:value="${post.id}"/>
+                <button type="submit" class="dm-conv">
+                    <span class="sx-ava sm" aria-hidden="true">
+                        <img th:if="${c.other.avatarUrl}" th:src="${c.other.avatarUrl}" alt=""/>
+                        <span th:unless="${c.other.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(c.other.name,0,1))}">D</span>
+                    </span>
+                    <div class="dm-conv-body"><b th:text="${c.other.name}">Tên</b></div>
+                    <span class="dm-sharego">Gửi</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

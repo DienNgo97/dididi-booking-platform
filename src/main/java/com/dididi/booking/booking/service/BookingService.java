@@ -56,7 +56,8 @@ public class BookingService {
     public static final int HOLD_MINUTES = 20;                                // giu phong toi da 20' cho thanh toan
     // Chuyen sync tu flight-provider co externalId nho (1..230); chuyen demo cuc bo dung 900000+ (xem DemoDataSeeder).
     // Ve cuc bo duoc dat THANG (giong khach san DIRECT bo qua PMS), khong goi provider.
-    private static final long LOCAL_FLIGHT_EXTERNAL_ID_BASE = 900_000L;
+    // Public de controller dung chung 1 nguon su that thay vi hardcode 900000 (BP-BK-07).
+    public static final long LOCAL_FLIGHT_EXTERNAL_ID_BASE = 900_000L;
 
     private final BookingRepository bookingRepository;
     private final FlightRepository flightRepository;
@@ -87,6 +88,7 @@ public class BookingService {
         this.groupBookingRepository = groupBookingRepository;
     }
 
+    @Transactional
     public Booking createFlightBooking(Long userId, Long flightId, String passengerName,
                                        String contactEmail, int seats,
                                        String passengersText, BigDecimal extras) {
@@ -98,7 +100,7 @@ public class BookingService {
         String currency = f.getCurrency();
 
         if (isProviderFlight(f)) {
-            // Chuyen da dong bo voi flight-provider -> dat qua provider (REST + retry + circuit breaker).
+            // Chuyen da dong bo voi flight-provider -> dat qua provider (REST + circuit breaker o read; /book khong retry).
             FlightBookResult res;
             try {
                 res = flightAdapter.bookFlight(f.getExternalId(), passengerName, contactEmail, seats);
@@ -110,9 +112,13 @@ public class BookingService {
             if (res != null && res.currency() != null) currency = res.currency();
         } else {
             // Chuyen bay CUC BO (catalog demo, externalId >= 900000 hoac chua dong bo provider):
-            // dat THANG giong khach san DIRECT bo qua PMS -> khong goi provider, khong dinh circuit breaker.
-            Integer avail = f.getAvailableSeats();
-            if (avail != null && avail < seats) {
+            // dat THANG giong khach san DIRECT bo qua PMS -> khong goi provider.
+            // BP-BK-01: tru ghe NGUYEN TU bang conditional update (rowcount=1 moi cho dat) -> chong oversell.
+            if (seats < 1) {
+                throw new BusinessException("BAD_SEATS", "Số ghế phải >= 1", HttpStatus.BAD_REQUEST);
+            }
+            int updated = flightRepository.decrementSeatsIfAvailable(f.getId(), seats);
+            if (updated == 0) {
                 throw new BusinessException("FLIGHT_SOLD_OUT", "Chuyến bay không đủ ghế trống", HttpStatus.CONFLICT);
             }
             confirmation = "LCL-" + generateCode();
@@ -138,8 +144,8 @@ public class BookingService {
         return bookingRepository.save(b);
     }
 
-    /** Chuyen bay co backing o flight-provider (externalId 1..900000) -> dat qua provider; con lai dat cuc bo. */
-    private boolean isProviderFlight(Flight f) {
+    /** Chuyen bay co backing o flight-provider (externalId 1..&lt;900000) -> dat qua provider; con lai dat cuc bo. Public cho controller dung chung (BP-BK-07). */
+    public boolean isProviderFlight(Flight f) {
         return f.getExternalId() != null && f.getExternalId() < LOCAL_FLIGHT_EXTERNAL_ID_BASE;
     }
 
@@ -234,6 +240,51 @@ public class BookingService {
     }
 
     /**
+     * Tra ton kho ve PHIA PROVIDER khi huy / het han / hoan tien (INT-01, BP-BK-03).
+     * Best-effort (try/catch + log) — loi provider khong duoc lam hong luong huy/hoan tien o platform.
+     *  - FLIGHT provider (externalId &lt; 900000): goi /flights/{id}/cancel theo providerConfirmation
+     *    (ve khong chon cho), va releaseSeats theo holdRef (ve co chon cho).
+     *  - HOTEL CHANNEL (source != DIRECT) co providerReservationId: goi PMS /reservations/{id}/cancel.
+     * DIRECT hotel / ve cuc bo khong co gi de tra (con phong/ghe tinh truc tiep tu booking active).
+     *
+     * NOTE: giu nguyen chu ky public nay — RefundService/AdminBookingApiController goi cung phuong thuc.
+     */
+    public void releaseProviderInventory(Booking b) {
+        if (b == null) return;
+        if (b.getType() == BookingType.FLIGHT) {
+            // Ve co chon cho: nha ghe dang giu theo holdRef.
+            releaseFlightSeats(b);
+            // Ve provider thuong (khong chon cho): huy booking theo confirmationCode.
+            if (b.getProviderConfirmation() != null && !b.getProviderConfirmation().isBlank()
+                    && b.getTargetId() != null) {
+                flightRepository.findById(b.getTargetId()).ifPresent(f -> {
+                    if (!isProviderFlight(f)) return;   // ve cuc bo -> khong co provider de huy
+                    try {
+                        flightAdapter.cancelBooking(f.getExternalId(), b.getProviderConfirmation());
+                    } catch (Exception ex) {
+                        log.warn("Provider flight cancel failed for {}: {}", b.getPublicCode(), ex.toString());
+                    }
+                });
+            }
+            return;
+        }
+        if (b.getType() == BookingType.HOTEL && b.getProviderReservationId() != null) {
+            // Chi KS CHANNEL (qua PMS) moi co reservationId; DIRECT luon null.
+            boolean channel = b.getTargetId() == null
+                    || hotelRepository.findById(b.getTargetId())
+                        .map(h -> h.getSource() != HotelSource.DIRECT)
+                        .orElse(true);
+            if (channel) {
+                try {
+                    pmsAdapter.cancel(b.getProviderReservationId());
+                } catch (Exception ex) {
+                    log.warn("PMS reservation cancel failed for {}: {}", b.getPublicCode(), ex.toString());
+                }
+            }
+        }
+    }
+
+    /**
      * Dat phong. Re nhanh theo nguon khach san:
      *  - DIRECT  -> tru ton kho noi bo cua Dididi (khong goi PMS).
      *  - CHANNEL / cu (null) -> goi PMS adapter nhu truoc.
@@ -268,6 +319,8 @@ public class BookingService {
         b.setTargetId(h.getId());
         b.setTitle(h.getName() + (roomName != null ? " — " + roomName : ""));
         b.setProviderConfirmation(res != null ? res.confirmationCode() : null);
+        // INT-01: luu reservationId de co the goi PMS /cancel khi huy/hoan tien (truoc day bi bo, khong huy duoc).
+        b.setProviderReservationId(res != null ? res.reservationId() : null);
         b.setCheckIn(checkIn);
         b.setCheckOut(checkOut);
         b.setQuantity(rooms);
@@ -284,7 +337,8 @@ public class BookingService {
         if (rooms < 1) {
             throw new BusinessException("BAD_ROOMS", "Số phòng phải >= 1", HttpStatus.BAD_REQUEST);
         }
-        RoomType rt = roomTypeRepository.findById(roomTypeId)
+        // BP-BK-02: khoa GHI row RoomType de cac don DIRECT cung loai phong serial hoa truoc khi quet + insert -> chong oversell.
+        RoomType rt = roomTypeRepository.findByIdForUpdate(roomTypeId)
                 .orElseThrow(() -> new BusinessException("ROOM_NOT_FOUND", "Không tìm thấy loại phòng", HttpStatus.NOT_FOUND));
         if (!rt.getHotelId().equals(h.getId())) {
             throw new BusinessException("ROOM_MISMATCH", "Loại phòng không thuộc khách sạn này", HttpStatus.BAD_REQUEST);
@@ -341,7 +395,8 @@ public class BookingService {
         if (rooms < 1) {
             throw new BusinessException("BAD_ROOMS", "Số phòng phải >= 1", HttpStatus.BAD_REQUEST);
         }
-        RoomType rt = roomTypeRepository.findById(roomTypeId)
+        // BP-BK-02: khoa GHI row RoomType truoc khi quet + insert -> serial hoa cac don cung loai phong.
+        RoomType rt = roomTypeRepository.findByIdForUpdate(roomTypeId)
                 .orElseThrow(() -> new BusinessException("ROOM_NOT_FOUND", "Không tìm thấy loại phòng", HttpStatus.NOT_FOUND));
         if (!rt.getHotelId().equals(h.getId())) {
             throw new BusinessException("ROOM_MISMATCH", "Loại phòng không thuộc khách sạn này", HttpStatus.BAD_REQUEST);
@@ -392,7 +447,8 @@ public class BookingService {
         if (rooms < 1) {
             throw new BusinessException("BAD_ROOMS", "Số phòng phải >= 1", HttpStatus.BAD_REQUEST);
         }
-        RoomType rt = roomTypeRepository.findById(b.getRoomTypeId())
+        // BP-BK-02: khoa GHI row RoomType truoc khi quet + cap nhat -> serial hoa voi cac don cung loai phong.
+        RoomType rt = roomTypeRepository.findByIdForUpdate(b.getRoomTypeId())
                 .orElseThrow(() -> new BusinessException("ROOM_NOT_FOUND", "Không tìm thấy loại phòng", HttpStatus.NOT_FOUND));
 
         LocalDateTime[] iv = occupancyInterval(false, checkIn, checkOut, null, null);
@@ -423,7 +479,8 @@ public class BookingService {
         if (rooms < 1) {
             throw new BusinessException("BAD_ROOMS", "Số phòng phải >= 1", HttpStatus.BAD_REQUEST);
         }
-        RoomType rt = roomTypeRepository.findById(b.getRoomTypeId())
+        // BP-BK-02: khoa GHI row RoomType truoc khi quet + cap nhat -> serial hoa voi cac don cung loai phong.
+        RoomType rt = roomTypeRepository.findByIdForUpdate(b.getRoomTypeId())
                 .orElseThrow(() -> new BusinessException("ROOM_NOT_FOUND", "Không tìm thấy loại phòng", HttpStatus.NOT_FOUND));
 
         LocalDateTime[] iv = occupancyInterval(true, date, date, timeIn, timeOut);
@@ -534,7 +591,7 @@ public class BookingService {
         Booking b = getForUser(publicCode, userId);
         if (b.getStatus() == BookingStatus.PENDING_PAYMENT || b.getStatus() == BookingStatus.CONFIRMED) {
             restoreDirectInventory(b);
-            releaseFlightSeats(b);   // tra ghe dang giu ve flight-provider (don ve co chon cho)
+            releaseProviderInventory(b);   // tra ghe/phong ve provider (ve provider + KS CHANNEL) - INT-01/BP-BK-03
         }
         b.setStatus(BookingStatus.CANCELLED);
         return bookingRepository.save(b);
@@ -591,13 +648,22 @@ public class BookingService {
         return ref == null ? null : ref.minusHours(CANCEL_CUTOFF_HOURS);
     }
 
-    /** Con trong cua so tu huy khong (chi xet moc 48h). Khong xac dinh duoc moc -> coi nhu con (khong chan). */
+    /**
+     * Con trong cua so tu huy khong (chi xet moc 48h).
+     * BP-BK-06: FAIL CLOSED — khong xac dinh duoc moc tham chieu (thieu ngay/gio) -> coi nhu NGOAI cua so
+     * (khong cho tu huy), buoc khach lien he ho tro thay vi bo qua chinh sach 48h.
+     */
     public boolean withinCancelWindow(Booking b) {
         LocalDateTime deadline = cancelDeadline(b);
-        return deadline == null || LocalDateTime.now().isBefore(deadline);
+        return deadline != null && LocalDateTime.now().isBefore(deadline);
     }
 
     public Booking markConfirmed(Booking b) {
+        // Idempotent (BP-PAY-03): da CONFIRMED roi thi tra ve ngay, KHONG xac nhan ghe/gui email/tich diem lan 2.
+        // Cua so double-confirm (VNPay return vs IPN) khong gay gui email trung / cong diem trung.
+        if (b.getStatus() == BookingStatus.CONFIRMED) {
+            return b;
+        }
         confirmFlightSeats(b);   // xac nhan ghe voi flight-provider (don ve co chon cho)
         b.setStatus(BookingStatus.CONFIRMED);
         Booking saved = bookingRepository.save(b);
@@ -612,12 +678,16 @@ public class BookingService {
 
     /**
      * Truoc day cong tra counter ton kho khi huy/hoan tien. Hien KHONG con counter:
-     * con phong duoc tinh truc tiep tu cac don dang active (PENDING_PAYMENT/CONFIRMED) theo khung gio,
+     * con phong (DIRECT) duoc tinh truc tiep tu cac don dang active (PENDING_PAYMENT/CONFIRMED) theo khung gio,
      * nen chi can doi status sang CANCELLED/FAILED la phong tu dong duoc giai phong.
      * Giu ham (no-op) de cac noi goi cu (cancel/refund/admin) khong phai sua.
+     *
+     * BP-BK-08 / INT-01: viec TRA TON KHO VE PROVIDER (ve provider, KS CHANNEL qua PMS) KHONG con o day —
+     * da chuyen sang {@link #releaseProviderInventory(Booking)} (goi tu cancel/markPaymentExpired/refund).
+     * Ham nay chi con lo cho phan DIRECT (vốn tự giải phóng), nen giu rong.
      */
     public void restoreDirectInventory(Booking b) {
-        // no-op: xem giai thich tren.
+        // no-op cho DIRECT (con phong tinh live). Provider release: xem releaseProviderInventory(...).
     }
 
     /**
@@ -640,8 +710,9 @@ public class BookingService {
 
     /**
      * Dam bao loai phong rt con du {rooms} phong trong khung gio [start, end) (end da gom 2h don phong).
-     * Con phong = totalRooms − so phong dang bi cac don active (PENDING_PAYMENT/CONFIRMED) giu CHONG LAN
+     * Con phong = SUC CHUA − so phong dang bi cac don active (PENDING_PAYMENT/CONFIRMED) giu CHONG LAN
      * khung gio nay. Khong dung counter; tinh truc tiep tu cac booking.
+     * BP-BK-05: SUC CHUA moi dem = min(totalRooms, override.availableRooms) neu vendor co dat override dem do.
      */
     private void ensureRoomAvailable(RoomType rt, LocalDateTime start, LocalDateTime end, int rooms) {
         ensureRoomAvailable(rt, start, end, rooms, null);
@@ -668,11 +739,30 @@ public class BookingService {
         events.sort((a, c) -> a[0] != c[0] ? Long.compare(a[0], c[0]) : Long.compare(a[1], c[1]));
         long cur = 0, peak = 0;
         for (long[] e : events) { cur += e[1]; if (cur > peak) peak = cur; }
-        if (peak > rt.getTotalRooms()) {
+
+        if (peak > effectiveCapacity(rt, start.toLocalDate(), end.toLocalDate())) {
             throw new BusinessException("SOLD_OUT",
                     "Không đủ phòng trống cho khung giờ đã chọn (đã tính 2 giờ dọn phòng giữa các lượt đặt)",
                     HttpStatus.CONFLICT);
         }
+    }
+
+    /**
+     * BP-BK-05: suc chua RANG BUOC cua don = MIN qua tung dem cua min(totalRooms, override.availableRooms).
+     * Don chiem tat ca cac dem no trai qua nen dem nao bi vendor giam phong se la dem rang buoc.
+     * Dem khong co override -> dung totalRooms. Quet [from, to) (to la ngay tra phong, khong tinh dem do).
+     */
+    private int effectiveCapacity(RoomType rt, LocalDate from, LocalDate to) {
+        int cap = rt.getTotalRooms();
+        // Day-use / cung ngay: it nhat xet dem cua ngay nhan.
+        LocalDate last = to.isAfter(from) ? to.minusDays(1) : from;
+        for (LocalDate d = from; !d.isAfter(last); d = d.plusDays(1)) {
+            RoomInventory inv = roomInventoryRepository.findByRoomTypeIdAndDate(rt.getId(), d).orElse(null);
+            if (inv != null) {
+                cap = Math.min(cap, inv.getAvailableRooms());
+            }
+        }
+        return cap;
     }
 
     /** Them cap su kien (+q tai s, −q tai e) sau khi cat ve khung [clipFrom, clipTo). Bo qua neu khong giao. */
@@ -700,9 +790,11 @@ public class BookingService {
     }
 
     /** Danh dau don het han thanh toan (chuyen FAILED) -> tu dong nha phong cho khach khac. */
+    @Transactional
     public void markPaymentExpired(Booking b) {
         if (b.getStatus() == BookingStatus.PENDING_PAYMENT) {
-            releaseFlightSeats(b);   // nha ghe ngay (provider scheduler cung tu nha sau 20')
+            // Nha ton kho ben provider: ghe (ve provider) + reservation (KS CHANNEL) - BP-BK-04/INT-01.
+            releaseProviderInventory(b);
             b.setStatus(BookingStatus.FAILED);
             bookingRepository.save(b);
         }

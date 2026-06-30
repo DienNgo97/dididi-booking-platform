@@ -54,6 +54,14 @@ public class Voucher extends BaseEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    /**
+     * BP-LOY-01: chu so huu voucher (voucher doi tu diem -> gan voi nguoi doi).
+     * Null = voucher cong khai (vd voucher khuyen mai admin tao), ai cung dung duoc.
+     * Khac null = voucher rieng, chi userId nay duoc ap (xem VoucherService.apply).
+     */
+    @Column(name = "owner_user_id")
+    private Long ownerUserId;
+
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
     public String getDescription() { return description; }
@@ -76,4 +84,6 @@ public class Voucher extends BaseEntity {
     public void setValidTo(Instant validTo) { this.validTo = validTo; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public Long getOwnerUserId() { return ownerUserId; }
+    public void setOwnerUserId(Long ownerUserId) { this.ownerUserId = ownerUserId; }
 }

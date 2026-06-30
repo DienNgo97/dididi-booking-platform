@@ -58,7 +58,8 @@ public class BookingWebController {
         }
         model.addAttribute("flight", f);
         // Chuyen da dong bo flight-provider -> lay so do ghe cho khach chon (provider loi thi bo qua, dung o so luong).
-        if (f.getExternalId() != null && f.getExternalId() < 900000L) {
+        // BP-BK-07: dung helper public cua BookingService thay vi hardcode 900000 -> 1 nguon su that.
+        if (bookingService.isProviderFlight(f)) {
             try {
                 var seatMap = flightAdapter.getSeatMap(f.getExternalId());
                 model.addAttribute("seatMap", seatMap);

@@ -6,7 +6,9 @@ import com.dididi.booking.identity.service.AccountService;
 import com.dididi.booking.identity.service.OtpLoginService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.session.SessionRegistry;
@@ -44,8 +46,14 @@ public class AuthWebController {
         this.loginAuditService = loginAuditService;
     }
 
+    /** Đã đăng nhập rồi thì không cho vào lại trang auth (login/register/forgot) -> về trang chủ. */
+    private boolean loggedIn(Authentication auth) {
+        return auth != null && auth.isAuthenticated() && !(auth instanceof AnonymousAuthenticationToken);
+    }
+
     @GetMapping("/login")
-    public String login(@RequestParam(required = false) String mode, Model model) {
+    public String login(@RequestParam(required = false) String mode, Model model, Authentication auth) {
+        if (loggedIn(auth)) return "redirect:/";
         model.addAttribute("mode", mode); // "password" -> hiện form mật khẩu; mặc định: bước nhập email (OTP)
         return "auth/login";
     }
@@ -133,7 +141,8 @@ public class AuthWebController {
     // ---------------- Đăng ký ----------------
 
     @GetMapping("/register")
-    public String registerForm() {
+    public String registerForm(Authentication auth) {
+        if (loggedIn(auth)) return "redirect:/";
         return "auth/register";
     }
 
@@ -158,7 +167,8 @@ public class AuthWebController {
     // ---------------- Quên / đặt lại mật khẩu ----------------
 
     @GetMapping("/forgot-password")
-    public String forgotForm() {
+    public String forgotForm(Authentication auth) {
+        if (loggedIn(auth)) return "redirect:/";
         return "auth/forgot-password";
     }
 

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- ===== 1 node binh luan (top-level hoac reply) — dung cho SSR, them moi AJAX & polling ===== -->
+<div th:fragment="node(c)" class="sx-cm" th:classappend="${c.parentId != null} ? 'sx-cm-reply' : ''"
+     th:attr="data-comment-id=${c.id},data-parent=${c.parentId}">
+    <span class="sx-ava" th:classappend="${c.parentId != null} ? 'xs' : 'sm'">
+        <img th:if="${c.author.avatarUrl}" th:src="${c.author.avatarUrl}" alt=""/>
+        <span th:unless="${c.author.avatarUrl}" class="sx-ava-ph"
+              th:text="${#strings.toUpperCase(#strings.substring(c.author.name,0,1))}">D</span>
+    </span>
+    <div class="sx-cm-body">
+        <div class="sx-cm-bubble">
+            <a th:href="${c.author.profileUrl}" class="sx-name" th:text="${c.author.name}">Tên</a>
+            <span th:text="${c.content}">nội dung</span>
+        </div>
+        <div class="sx-cm-meta">
+            <button type="button" class="sx-clike" th:classappend="${c.liked} ? 'is-on' : ''"
+                    th:attr="data-comment-id=${c.id}" aria-label="Thích">
+                <svg th:replace="~{fragments/icons :: i('heart', ${c.liked} ? 'ic-fill' : '')}"></svg>
+                <span class="sx-clike-count" th:text="${c.likeCount > 0 ? c.likeCount : ''}"></span>
+            </button>
+            <span class="sx-time" th:attr="data-ts=${c.createdAtMs}"></span>
+            <a th:if="${c.parentId == null}" href="#" class="sx-reply-toggle"
+               th:attr="data-id=${c.id},data-name=${c.author.handle != null ? '@' + c.author.handle : c.author.name}">Trả lời</a>
+            <form th:if="${c.canDelete}" th:action="@{'/community/comments/' + ${c.id} + '/delete'}" method="post" style="display:inline">
+                <input type="hidden" name="postId" th:value="${c.postId}"/>
+                <button type="submit" class="sx-linklike" data-confirm="Xoá bình luận này?">Xoá</button>
+            </form>
+        </div>
+        <div th:if="${c.parentId == null}" class="sx-cm-replies" th:attr="data-replies-for=${c.id}">
+            <th:block th:if="${c.replies != null}" th:each="r : ${c.replies}">
+                <div th:replace="~{social/comment-fragments :: node(${r})}"></div>
+            </th:block>
+        </div>
+    </div>
+</div>
+
+<!-- ===== lo node moi (polling) ===== -->
+<th:block th:fragment="batch">
+    <th:block th:each="c : ${comments}">
+        <div th:replace="~{social/comment-fragments :: node(${c})}"></div>
+    </th:block>
+</th:block>
+
+</body>
+</html>

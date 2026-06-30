@@ -17,8 +17,8 @@
         <div>
             <div style="font-weight:800;color:var(--navy);font-size:17px" th:text="${roomTypeName != null ? roomTypeName : roomName}">Phòng</div>
             <div class="muted" style="font-size:13px">
-                🏨 <span th:text="${hotelName}">Khách sạn</span>
-                <span th:if="${roomCapacity != null}"> · 👤 <span th:text="#{bulk.maxPerRoom(${roomCapacity})}">tối đa 2 khách/phòng</span></span>
+                <svg th:replace="~{fragments/icons :: i('building','')}"></svg> <span th:text="${hotelName}">Khách sạn</span>
+                <span th:if="${roomCapacity != null}"> · <svg th:replace="~{fragments/icons :: i('user','')}"></svg> <span th:text="#{bulk.maxPerRoom(${roomCapacity})}">tối đa 2 khách/phòng</span></span>
             </div>
         </div>
         <div style="text-align:right" th:if="${roomPrice != null}">
@@ -39,8 +39,8 @@
 
             <div class="muted" style="font-size:13px;margin-bottom:6px" th:text="#{bulk.bookingType}">Hình thức đặt</div>
             <div class="stay-pills" style="margin-bottom:14px">
-                <button type="button" class="stay-pill is-active" data-stay="overnight" th:text="#{bulk.overnightPill}">🌙 Theo ngày (qua đêm)</button>
-                <button type="button" class="stay-pill" data-stay="day" th:text="#{bulk.dayPill}">⏱ Theo giờ (trong ngày)</button>
+                <button type="button" class="stay-pill is-active" data-stay="overnight"><svg th:replace="~{fragments/icons :: i('moon','')}"></svg> <span th:text="#{bulk.overnightPill}">Theo ngày (qua đêm)</span></button>
+                <button type="button" class="stay-pill" data-stay="day"><svg th:replace="~{fragments/icons :: i('clock','')}"></svg> <span th:text="#{bulk.dayPill}">Theo giờ (trong ngày)</span></button>
             </div>
 
             <div style="overflow-x:auto">

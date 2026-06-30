@@ -12,6 +12,9 @@ import com.dididi.booking.integration.repository.ExternalDataSourceRepository;
 import com.dididi.booking.integration.repository.SyncLogRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,29 +37,38 @@ public class SyncJobOrchestrator {
     private final ExternalDataSourceRepository sourceRepository;
     private final FlightRepository flightRepository;
     private final HotelRepository hotelRepository;
+    private final CacheManager cacheManager;
+    // Tu inject proxy chinh minh (BP-INT-01): goi syncFlights()/syncHotels() qua proxy de @Transactional co hieu luc.
+    private final ObjectProvider<SyncJobOrchestrator> selfProvider;
 
     public SyncJobOrchestrator(FlightDataSource flightDataSource,
                                HotelInventorySource hotelInventorySource,
                                SyncLogRepository syncLogRepository,
                                ExternalDataSourceRepository sourceRepository,
                                FlightRepository flightRepository,
-                               HotelRepository hotelRepository) {
+                               HotelRepository hotelRepository,
+                               CacheManager cacheManager,
+                               ObjectProvider<SyncJobOrchestrator> selfProvider) {
         this.flightDataSource = flightDataSource;
         this.hotelInventorySource = hotelInventorySource;
         this.syncLogRepository = syncLogRepository;
         this.sourceRepository = sourceRepository;
         this.flightRepository = flightRepository;
         this.hotelRepository = hotelRepository;
+        this.cacheManager = cacheManager;
+        this.selfProvider = selfProvider;
     }
 
     public void syncAll() {
-        int flights = runSource("FLIGHT_PROVIDER", this::syncFlights);
-        int hotels = runSource("HOTEL_PMS", this::syncHotels);
+        // Goi qua proxy (self) de @Transactional tren syncFlights/syncHotels duoc weave (BP-INT-01).
+        SyncJobOrchestrator self = selfProvider.getObject();
+        int flights = runSource("FLIGHT_PROVIDER", self::syncFlights);
+        int hotels = runSource("HOTEL_PMS", self::syncHotels);
         log.info("Inventory sync finished: synced {} flights, {} hotels", flights, hotels);
     }
 
     @Transactional
-    protected int syncFlights() {
+    public int syncFlights() {
         List<FlightItem> items = flightDataSource.fetchFlights();
         for (FlightItem it : items) {
             Flight f = flightRepository.findByExternalId(it.id()).orElseGet(Flight::new);
@@ -73,24 +85,42 @@ public class SyncJobOrchestrator {
             f.setAircraftType(it.aircraftType());
             flightRepository.save(f);
         }
+        // Sync co the doi gia/lich chuyen bay -> bo cache catalog ve (BP-CACHE-01).
+        evictCaches("flightSearch", "flightById");
         return items.size();
     }
 
     @Transactional
-    protected int syncHotels() {
+    public int syncHotels() {
         List<HotelItem> items = hotelInventorySource.fetchHotels();
         for (HotelItem it : items) {
             Hotel h = hotelRepository.findByExternalId(it.id()).orElseGet(Hotel::new);
+            boolean isNew = (h.getId() == null);
             h.setExternalId(it.id());
             h.setName(it.name());
             h.setCity(it.city());
             h.setAddress(it.address());
             h.setDescription(it.description());
             h.setStarRating(it.starRating());
-            h.setActive(true);
+            // BP-SYNC-02: chi bat active khi lan dau them khach san. Voi khach san da ton tai,
+            // GIU NGUYEN co active do admin dat (khong hoi sinh khach san admin da tat).
+            if (isNew) {
+                h.setActive(true);
+            }
             hotelRepository.save(h);
         }
+        // Sync co the doi thong tin khach san -> bo cache hotel (BP-CACHE-01).
+        evictCaches("hotelsByCity", "hotelById");
         return items.size();
+    }
+
+    /** Xoa toan bo entry cua cac cache theo ten (best-effort; cache co the chua dang ky). */
+    private void evictCaches(String... names) {
+        if (cacheManager == null) return;
+        for (String name : names) {
+            Cache cache = cacheManager.getCache(name);
+            if (cache != null) cache.clear();
+        }
     }
 
     private int runSource(String code, Supplier<Integer> task) {

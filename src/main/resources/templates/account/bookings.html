@@ -13,7 +13,7 @@
     <!-- Tab: Don ca nhan / Don nhom -->
     <div style="display:flex;gap:8px;margin:8px 0 16px">
         <a class="btn" href="/account/bookings" th:text="#{account.personalBookings}">Đơn cá nhân</a>
-        <a class="btn ghost" href="/account/groups" th:text="#{account.groupBookings}">👥 Đơn nhóm</a>
+        <a class="btn ghost" href="/account/groups"><svg th:replace="~{fragments/icons :: i('users','')}"></svg> <span th:text="#{account.groupBookings}">Đơn nhóm</span></a>
     </div>
 
     <!-- Bo loc theo loai + trang thai -->
@@ -23,9 +23,9 @@
             <a class="btn" th:classappend="${filterType == null} ? '' : 'ghost'"
                th:href="@{/account/bookings(status=${filterStatus})}" th:text="#{account.all}">Tất cả</a>
             <a class="btn" th:classappend="${filterType == 'HOTEL'} ? '' : 'ghost'"
-               th:href="@{/account/bookings(type='HOTEL', status=${filterStatus})}" th:text="#{account.typeHotel}">🏨 Khách sạn</a>
+               th:href="@{/account/bookings(type='HOTEL', status=${filterStatus})}"><svg th:replace="~{fragments/icons :: i('building','')}"></svg> <span th:text="#{account.typeHotel}">Khách sạn</span></a>
             <a class="btn" th:classappend="${filterType == 'FLIGHT'} ? '' : 'ghost'"
-               th:href="@{/account/bookings(type='FLIGHT', status=${filterStatus})}" th:text="#{account.typeFlight}">✈️ Vé máy bay</a>
+               th:href="@{/account/bookings(type='FLIGHT', status=${filterStatus})}"><svg th:replace="~{fragments/icons :: i('plane','')}"></svg> <span th:text="#{account.typeFlight}">Vé máy bay</span></a>
         </div>
         <div class="muted" style="font-size:13px;margin-bottom:4px" th:text="#{bulk.statusCol}">Trạng thái</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -52,10 +52,10 @@
             <div class="muted" th:text="${b.title}"></div>
             <div style="margin-top:6px">
                 <span class="st" th:classappend="'st-' + ${#strings.toLowerCase(b.status.name())}" th:switch="${b.status.name()}">
-                    <span th:case="'PENDING_PAYMENT'">● <span th:text="#{booking.status.pending}">Chờ thanh toán</span></span>
-                    <span th:case="'CONFIRMED'">● <span th:text="#{booking.status.confirmed}">Đã xác nhận</span></span>
-                    <span th:case="'CANCELLED'">● <span th:text="#{booking.status.cancelled}">Đã huỷ</span></span>
-                    <span th:case="'FAILED'">● <span th:text="#{account.stFailed}">Thất bại</span></span>
+                    <span th:case="'PENDING_PAYMENT'"><svg th:replace="~{fragments/icons :: i('circle','ic-fill')}"></svg> <span th:text="#{booking.status.pending}">Chờ thanh toán</span></span>
+                    <span th:case="'CONFIRMED'"><svg th:replace="~{fragments/icons :: i('circle','ic-fill')}"></svg> <span th:text="#{booking.status.confirmed}">Đã xác nhận</span></span>
+                    <span th:case="'CANCELLED'"><svg th:replace="~{fragments/icons :: i('circle','ic-fill')}"></svg> <span th:text="#{booking.status.cancelled}">Đã huỷ</span></span>
+                    <span th:case="'FAILED'"><svg th:replace="~{fragments/icons :: i('circle','ic-fill')}"></svg> <span th:text="#{account.stFailed}">Thất bại</span></span>
                     <span th:case="*" th:text="${b.status}"></span>
                 </span></div>
             <a th:if="${b.status.name() == 'PENDING_PAYMENT'}" th:href="@{'/payment/' + ${b.publicCode}}"

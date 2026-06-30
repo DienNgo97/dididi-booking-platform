@@ -2,6 +2,7 @@ package com.dididi.booking.web;
 
 import com.dididi.booking.identity.domain.entity.User;
 import com.dididi.booking.identity.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -16,8 +17,18 @@ public class GlobalNavAdvice {
 
     private final UserRepository userRepository;
 
+    /** API key Google Maps (web/browser key). Để trong application-local.yml, KHÔNG commit. */
+    @Value("${app.maps.api-key:}")
+    private String mapsApiKey;
+
     public GlobalNavAdvice(UserRepository userRepository) {
         this.userRepository = userRepository;
+    }
+
+    /** Đưa API key ra mọi trang SSR để nhúng Google Maps. */
+    @ModelAttribute("mapsApiKey")
+    public String mapsApiKey() {
+        return mapsApiKey;
     }
 
     @ModelAttribute("navFullName")

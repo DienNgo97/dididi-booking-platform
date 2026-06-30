@@ -53,9 +53,11 @@ public class PmsApiAdapter implements HotelInventorySource {
         return arr == null ? List.of() : Arrays.asList(arr);
     }
 
-    /** Dat phong qua hotel-pms. */
-    @Retry(name = "hotelPms")
-    @CircuitBreaker(name = "hotelPms")
+    /**
+     * Dat phong qua hotel-pms.
+     * KHONG @Retry/@CircuitBreaker (BP-INT-03): /reserve khong idempotent — retry sau timeout/5xx
+     * co the tao 2-3 reservation that + tru kho nhieu lan, de lai reservation mo coi. Loi de tang cho caller.
+     */
     public ReserveResult reserve(Long hotelExternalId, Long roomTypeId, String guestName,
                                  LocalDate checkIn, LocalDate checkOut, int rooms) {
         log.debug("Reserving hotel {} roomType {} {}..{} x{}", hotelExternalId, roomTypeId, checkIn, checkOut, rooms);
@@ -68,5 +70,17 @@ public class PmsApiAdapter implements HotelInventorySource {
                         "rooms", rooms))
                 .retrieve()
                 .body(ReserveResult.class);
+    }
+
+    /**
+     * Huy 1 reservation ben hotel-pms theo reservationId (INT-01):
+     * POST /reservations/{id}/cancel -> provider tra phong ve kho.
+     * Dung khi huy/hoan tien don khach san CHANNEL (source != DIRECT).
+     */
+    public void cancel(Long reservationId) {
+        client.post()
+                .uri("/reservations/{id}/cancel", reservationId)
+                .retrieve()
+                .toBodilessEntity();
     }
 }

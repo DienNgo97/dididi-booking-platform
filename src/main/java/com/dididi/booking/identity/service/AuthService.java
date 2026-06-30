@@ -76,8 +76,15 @@ public class AuthService {
                 user.getEmail(), user.getRole().name());
     }
 
-    /** Thu hồi refresh token (logout). */
-    public void logout(String refreshToken) {
+    /**
+     * Thu hồi refresh token (logout) VÀ vô hiệu hoá mọi access token (JWT) đã cấp trước thời điểm này
+     * cho cùng user (SEC-04). userId được xác định từ bearer token (nếu có), ngược lại suy từ refresh token.
+     */
+    public void logout(String refreshToken, Long bearerUserId) {
+        Long userId = bearerUserId != null ? bearerUserId : refreshTokenService.userIdOf(refreshToken);
         refreshTokenService.revoke(refreshToken);
+        if (userId != null) {
+            refreshTokenService.invalidateAccessTokensBefore(userId);
+        }
     }
 }

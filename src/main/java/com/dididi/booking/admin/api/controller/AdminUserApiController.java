@@ -94,16 +94,28 @@ public class AdminUserApiController {
         return ApiResponse.ok(AdminUserDto.from(u), "Đã tạo tài khoản");
     }
 
-    @Operation(summary = "Đổi trạng thái user (ACTIVE/INACTIVE/LOCKED) - có audit")
+    @Operation(summary = "Đổi trạng thái user (ACTIVE/INACTIVE/LOCKED) - có audit. "
+            + "Đổi trạng thái ADMIN/SUPER_ADMIN/VENDOR cần SUPER_ADMIN; không thể tự nhắm mình.")
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<AdminUserDto>> changeStatus(@PathVariable Long id,
                                                                   @RequestParam UserStatus status,
                                                                   Authentication auth) {
         return userRepository.findById(id)
                 .map(u -> {
+                    // SEC-05: cam tu nham minh (tranh tu khoa/mo khoa quyen).
+                    Long actorId = Long.valueOf(auth.getName());
+                    if (actorId.equals(u.getId())) {
+                        throw new BusinessException("SELF_TARGET",
+                                "Không thể đổi trạng thái của chính mình", HttpStatus.BAD_REQUEST);
+                    }
+                    // SEC-05: doi trang thai user co quyen (ADMIN/SUPER_ADMIN/VENDOR) -> chi SUPER_ADMIN.
+                    Role targetRole = u.getRole();
+                    if (targetRole == Role.ADMIN || targetRole == Role.SUPER_ADMIN || targetRole == Role.VENDOR) {
+                        RoleUtils.requireSuperAdmin(auth);
+                    }
                     u.setStatus(status);
                     userRepository.save(u);
-                    events.publishEvent(new AuditEvent(Long.valueOf(auth.getName()),
+                    events.publishEvent(new AuditEvent(actorId,
                             "CHANGE_USER_STATUS", "USER", id, "status=" + status));
                     return ResponseEntity.ok(ApiResponse.ok(AdminUserDto.from(u), "Status updated"));
                 })

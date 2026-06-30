@@ -28,7 +28,7 @@
         <div>
             <h3 style="margin:0"><a th:href="@{'/hotels/' + ${h.id}(tripCity=${suggestion.city()},tripAirport=${suggestion.destinationAirport()})}" th:text="${h.name}"></a></h3>
             <div class="muted"><span th:text="${h.city}"></span>
-                <span class="stars" th:if="${h.starRating != null}" th:text="${h.starRating + '★'}"></span></div>
+                <span class="stars" th:if="${h.starRating != null}"><span th:text="${h.starRating}"></span><svg th:replace="~{fragments/icons :: i('star','ic-fill')}"></svg></span></div>
         </div>
         <a class="btn" th:href="@{'/hotels/' + ${h.id}(tripCity=${suggestion.city()},tripAirport=${suggestion.destinationAirport()})}" th:text="#{trip.viewRooms}">Xem phòng</a>
     </div>

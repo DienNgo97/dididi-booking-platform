@@ -16,9 +16,10 @@ public class RateLimitConfig {
 
     @Bean
     public FilterRegistrationBean<RateLimitingFilter> rateLimitingFilter(
-            @Value("${app.rate-limit.auth.requests-per-minute:10}") int requestsPerMinute) {
+            @Value("${app.rate-limit.auth.requests-per-minute:10}") int requestsPerMinute,
+            @Value("${app.rate-limit.trust-forwarded-for:false}") boolean trustForwardedFor) {
         FilterRegistrationBean<RateLimitingFilter> reg = new FilterRegistrationBean<>();
-        reg.setFilter(new RateLimitingFilter(requestsPerMinute));
+        reg.setFilter(new RateLimitingFilter(requestsPerMinute, trustForwardedFor));
         reg.addUrlPatterns("/api/auth/*");
         reg.setOrder(Ordered.HIGHEST_PRECEDENCE);
         reg.setName("rateLimitingFilter");

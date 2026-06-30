@@ -22,4 +22,11 @@ public interface HotelRepository extends JpaRepository<Hotel, Long> {
 
     // ---- Phase 7 (vendor / DIRECT) ----
     Optional<Hotel> findByVendorId(Long vendorId);
+
+    // ---- Google Maps / geo (Nhom 2) ----
+    /** Khach san co toa do trong khung nhin ban do (bounding box). */
+    List<Hotel> findByActiveTrueAndLatBetweenAndLngBetween(double minLat, double maxLat, double minLng, double maxLng);
+
+    /** Tat ca khach san dang hoat dong da co toa do (de ve marker). */
+    List<Hotel> findByActiveTrueAndLatIsNotNullAndLngIsNotNull();
 }
