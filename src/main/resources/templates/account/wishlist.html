@@ -24,7 +24,7 @@
                 <input type="hidden" name="hotelId" th:value="${h.id}"/>
                 <input type="hidden" name="back" value="/account/wishlist"/>
                 <button class="btn ghost" type="submit" style="color:#c0392b;border-color:#c0392b"
-                        th:text="'♥ ' + #{wishlist.remove}">♥ Bỏ lưu</button>
+                        ><svg th:replace="~{fragments/icons :: i('heart','ic-fill')}"></svg> <span th:text="#{wishlist.remove}">Bỏ lưu</span></button>
             </form>
         </div>
     </div>

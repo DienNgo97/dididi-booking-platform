@@ -42,6 +42,21 @@ public class User extends BaseEntity {
     @Column(name = "company_id")
     private Long companyId;
 
+    /** So dien thoai da xac thuc OTP chua. */
+    @Column(name = "phone_verified", columnDefinition = "TINYINT(1) NOT NULL DEFAULT 0")
+    private boolean phoneVerified = false;
+
+    /** Tai khoan da lien ket dang nhap Google chua. */
+    @Column(name = "google_linked", columnDefinition = "TINYINT(1) NOT NULL DEFAULT 0")
+    private boolean googleLinked = false;
+
+    /**
+     * User da co mat khau dung de dang nhap form chua.
+     * = false cho user tao qua Google (mat khau ngau nhien). DEFAULT 1 de moi user cu deu coi nhu da co.
+     */
+    @Column(name = "password_set", columnDefinition = "TINYINT(1) NOT NULL DEFAULT 1")
+    private boolean passwordSet = true;
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
@@ -65,4 +80,13 @@ public class User extends BaseEntity {
 
     public Long getCompanyId() { return companyId; }
     public void setCompanyId(Long companyId) { this.companyId = companyId; }
+
+    public boolean isPhoneVerified() { return phoneVerified; }
+    public void setPhoneVerified(boolean phoneVerified) { this.phoneVerified = phoneVerified; }
+
+    public boolean isGoogleLinked() { return googleLinked; }
+    public void setGoogleLinked(boolean googleLinked) { this.googleLinked = googleLinked; }
+
+    public boolean isPasswordSet() { return passwordSet; }
+    public void setPasswordSet(boolean passwordSet) { this.passwordSet = passwordSet; }
 }

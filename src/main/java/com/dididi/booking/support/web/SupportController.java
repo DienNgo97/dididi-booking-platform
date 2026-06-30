@@ -47,6 +47,9 @@ public class SupportController {
         return supportService.answer(q, cid, userIdOrNull(auth), booking);
     }
 
+    /** Do dai toi da noi dung 1 tin nhan client gui (clamp them o tang controller cho khach an danh). */
+    private static final int MAX_LOG_LEN = 2000;
+
     @PostMapping("/support/log")
     @ResponseBody
     public Map<String, Object> logMessage(@RequestParam(required = false) String cid,
@@ -55,8 +58,20 @@ public class SupportController {
                                           @RequestParam(required = false) String booking,
                                           @RequestParam(defaultValue = "false") boolean escalated,
                                           Authentication auth) {
-        supportService.logMessage(cid, parseRole(role), content, userIdOrNull(auth), booking, escalated);
+        Long userId = userIdOrNull(auth);
+        boolean anonymous = userId == null;
+        // SEC-09: endpoint nay CSRF-exempt + permitAll -> khach an danh khong duoc gia danh AGENT/SYSTEM/BOT,
+        // khong duoc danh dau escalated, va noi dung bi clamp. Da dang nhap moi giu role yeu cau.
+        SupportRole effectiveRole = anonymous ? SupportRole.USER : parseRole(role);
+        boolean effectiveEscalated = !anonymous && escalated;
+        String safeContent = clampContent(content);
+        supportService.logMessage(cid, effectiveRole, safeContent, userId, booking, effectiveEscalated);
         return Map.of("ok", true);
+    }
+
+    private static String clampContent(String s) {
+        if (s == null) return "";
+        return s.length() > MAX_LOG_LEN ? s.substring(0, MAX_LOG_LEN) : s;
     }
 
     /** Lấy userId nếu đã đăng nhập; khách vãng lai -> null. Không bao giờ ném lỗi. */

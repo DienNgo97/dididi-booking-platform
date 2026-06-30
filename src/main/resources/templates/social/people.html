@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Mọi người - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <div th:replace="~{social/fragments :: tabs('people')}"></div>
+
+    <div class="sx-layout">
+        <div th:replace="~{social/fragments :: railLeft('people')}"></div>
+        <main class="sx-main">
+        <div class="sx-pagehead">
+            <h1>Mọi người</h1>
+            <p>Tìm và kết nối với cộng đồng du lịch Dididi.</p>
+        </div>
+        <form class="sx-people-search" method="get" action="/community/people" role="search">
+            <svg th:replace="~{fragments/icons :: i('search','')}"></svg>
+            <input id="sxPeopleSearch" type="search" name="q" th:value="${query}"
+                   placeholder="Tìm theo tên hoặc @handle…" autocomplete="off"/>
+        </form>
+
+        <p class="sx-people-hint" id="sxPeopleHint"
+           th:text="${query != null and !#strings.isEmpty(query)} ? 'Kết quả cho “' + ${query} + '”' : 'Gợi ý kết nối cho bạn'">Gợi ý kết nối cho bạn</p>
+
+        <div id="sxPeopleResults">
+            <!-- ===== fragment danh sach nguoi dung (dung cho ca SSR & live-search) ===== -->
+            <div th:fragment="results">
+                <div th:if="${#lists.isEmpty(people)}" class="sx-empty">
+                    <svg th:replace="~{fragments/icons :: i('users','')}"></svg>
+                    <p>Không tìm thấy ai phù hợp. Thử từ khoá khác nhé.</p>
+                </div>
+                <div class="sx-userlist" th:unless="${#lists.isEmpty(people)}">
+                    <div th:each="card : ${people}" class="sx-usercard">
+                        <a th:href="${card.actor.profileUrl}" class="sx-ava" aria-hidden="true">
+                            <img th:if="${card.actor.avatarUrl}" th:src="${card.actor.avatarUrl}" alt=""/>
+                            <span th:unless="${card.actor.avatarUrl}" class="sx-ava-ph"
+                                  th:text="${#strings.toUpperCase(#strings.substring(card.actor.name,0,1))}">D</span>
+                        </a>
+                        <a th:href="${card.actor.profileUrl}" class="sx-user-meta">
+                            <span class="sx-name" th:text="${card.actor.name}">Tên</span>
+                            <span class="sx-handle" th:text="'@' + ${card.actor.handle}">@handle</span>
+                            <span class="sx-user-bio" th:if="${card.bio}" th:text="${card.bio}">bio</span>
+                        </a>
+                        <div class="sx-user-actions" th:unless="${card.self}">
+                            <button class="btn sx-follow"
+                                    th:classappend="${card.followState == 'ACTIVE'} ? 'is-following' : ''"
+                                    th:attr="data-type='USER',data-id=${card.userId},data-state=${card.followState}">
+                                <span class="sx-follow-text"
+                                      th:text="${card.followState == 'ACTIVE'} ? 'Đang theo dõi' : (${card.followState == 'PENDING'} ? 'Đã gửi yêu cầu' : 'Theo dõi')">Theo dõi</span>
+                            </button>
+                            <form th:action="@{/community/messages/start}" method="post">
+                                <input type="hidden" name="toUserId" th:value="${card.userId}"/>
+                                <button type="submit" class="btn ghost sx-iconlabel" title="Nhắn tin">
+                                    <svg th:replace="~{fragments/icons :: i('mail','')}"></svg></button>
+                            </form>
+                        </div>
+                        <span class="sx-user-actions sx-you" th:if="${card.self}">Đây là bạn</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </main>
+        <div th:replace="~{social/fragments :: railRight}"></div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<div th:replace="~{social/fragments :: scripts}"></div>
+<script>
+    (function () {
+        var input = document.getElementById('sxPeopleSearch');
+        var box = document.getElementById('sxPeopleResults');
+        var hint = document.getElementById('sxPeopleHint');
+        if (!input || !box) return;
+        var timer = null, lastQ = input.value;
+        var form = input.closest('form');
+        if (form) form.addEventListener('submit', function (e) { e.preventDefault(); run(input.value); });
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () { run(input.value); }, 280);
+        });
+        function run(q) {
+            if (q === lastQ) return;
+            lastQ = q;
+            if (hint) hint.textContent = q && q.trim() ? 'Kết quả cho “' + q.trim() + '”' : 'Gợi ý kết nối cho bạn';
+            fetch('/community/people/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+                .then(function (r) { return r.text(); })
+                .then(function (html) {
+                    box.innerHTML = html;
+                    if (window.DDSocial) window.DDSocial.init(box);
+                }).catch(function () {});
+        }
+    })();
+</script>
+</body>
+</html>

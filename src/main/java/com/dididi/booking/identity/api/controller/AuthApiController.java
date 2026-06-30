@@ -46,10 +46,16 @@ public class AuthApiController {
         return ApiResponse.ok(authService.refresh(request.refreshToken()), "Token refreshed");
     }
 
-    @Operation(summary = "Đăng xuất - thu hồi refresh token")
+    @Operation(summary = "Đăng xuất - thu hồi refresh token + vô hiệu access token đã cấp")
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@Valid @RequestBody RefreshRequest request) {
-        authService.logout(request.refreshToken());
+    public ApiResponse<Void> logout(@Valid @RequestBody RefreshRequest request, Authentication authentication) {
+        Long bearerUserId = null;
+        if (authentication != null && authentication.getName() != null) {
+            try {
+                bearerUserId = Long.valueOf(authentication.getName()); // principal = userId (JwtAuthenticationFilter)
+            } catch (NumberFormatException ignore) { /* khong co bearer hop le -> dua vao refresh token */ }
+        }
+        authService.logout(request.refreshToken(), bearerUserId);
         return ApiResponse.ok(null, "Đã đăng xuất");
     }
 

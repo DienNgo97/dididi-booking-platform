@@ -49,11 +49,9 @@
             <div th:if="${seatMap != null}">
                 <label class="muted" th:text="#{booking.chooseSeat}">Chọn chỗ ngồi (giữ chỗ 20 phút sau khi đặt) — mỗi ghế tương ứng 1 hành khách</label>
                 <div class="muted" th:if="${preselectSeat != null}"
-                     style="font-size:12.5px;background:#e7f5ee;border:1px solid #cce8da;border-radius:8px;padding:8px 10px;margin:6px 0 8px"
-                     th:utext="${preselectClass == 'BUSINESS'} ? #{booking.preselectNoteBiz} : #{booking.preselectNoteEco}">
-                    ✓ Đã tự chọn sẵn 1 ghế hạng <b>Phổ thông</b>
-                    theo lựa chọn tìm kiếm của bạn — có thể đổi ghế khác trên sơ đồ.
-                </div>
+                     style="font-size:12.5px;background:#e7f5ee;border:1px solid #cce8da;border-radius:8px;padding:8px 10px;margin:6px 0 8px">
+                    <svg th:replace="~{fragments/icons :: i('check','ic-brand')}"></svg> <span th:utext="${preselectClass == 'BUSINESS'} ? #{booking.preselectNoteBiz} : #{booking.preselectNoteEco}">Đã tự chọn sẵn 1 ghế hạng <b>Phổ thông</b>
+                    theo lựa chọn tìm kiếm của bạn — có thể đổi ghế khác trên sơ đồ.</span></div>
                 <div class="legend">
                     <span><i class="sw biz"></i> <span th:text="#{search.business}">Thương gia</span></span>
                     <span><i class="sw eco"></i> <span th:text="#{search.economy}">Phổ thông</span></span>
@@ -102,14 +100,14 @@
         <input class="pax-name" name="paxName" placeholder="VD: NGUYEN VAN A" th:attr="placeholder=#{booking.paxNamePlaceholder}" required/>
         <div class="pax-row">
             <div>
-                <label th:text="#{booking.mealLabel}">🍽 Suất ăn</label>
+                <label><svg th:replace="~{fragments/icons :: i('utensils','')}"></svg> <span th:text="#{booking.mealLabel}">Suất ăn</span></label>
                 <select class="pax-meal" name="paxMeal">
                     <option th:each="m : ${meals}" th:value="${m.code}" th:attr="data-price=${m.price}"
                             th:text="${m.label} + (${m.price > 0} ? ' (+' + ${#numbers.formatInteger(m.price,1,'COMMA')} + 'đ)' : ' · ' + #{booking.free})">Suất ăn</option>
                 </select>
             </div>
             <div>
-                <label th:text="#{booking.bagLabel}">🧳 Hành lý ký gửi</label>
+                <label><svg th:replace="~{fragments/icons :: i('luggage','')}"></svg> <span th:text="#{booking.bagLabel}">Hành lý ký gửi</span></label>
                 <select class="pax-bag" name="paxBag">
                     <option th:each="bg : ${bags}" th:value="${bg.code}" th:attr="data-price=${bg.price}"
                             th:text="${bg.label + (bg.price > 0 ? ' (+' + #numbers.formatInteger(bg.price,1,'COMMA') + 'đ)' : '')}">Hành lý</option>

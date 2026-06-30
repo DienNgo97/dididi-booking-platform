@@ -21,8 +21,8 @@
     <div class="list-item" th:each="b : ${bookings}">
         <div>
             <h3 style="margin:0 0 2px">
-                <span th:if="${b.type.name() == 'FLIGHT'}" th:text="#{trip.flightTicket}">✈️ Vé máy bay</span>
-                <span th:if="${b.type.name() == 'HOTEL'}" th:text="#{trip.hotelLabel}">🏨 Khách sạn</span>
+                <span th:if="${b.type.name() == 'FLIGHT'}"><svg th:replace="~{fragments/icons :: i('plane','')}"></svg> <span th:text="#{trip.flightTicket}">Vé máy bay</span></span>
+                <span th:if="${b.type.name() == 'HOTEL'}"><svg th:replace="~{fragments/icons :: i('building','')}"></svg> <span th:text="#{trip.hotelLabel}">Khách sạn</span></span>
                 <span class="muted" style="font-weight:400" th:text="${b.title}"></span>
             </h3>
             <div class="muted" style="font-size:13px">
@@ -42,7 +42,7 @@
             <a th:if="${b.status.name() == 'PENDING_PAYMENT'}" class="btn"
                th:href="@{'/payment/' + ${b.publicCode}}" th:text="#{trip.pay}">Thanh toán</a>
             <span th:if="${b.status.name() == 'CONFIRMED'}" class="badge"
-                  style="color:#0e7a44;font-weight:600" th:text="#{trip.paid}">✓ Đã thanh toán</span>
+                  style="color:#0e7a44;font-weight:600"><svg th:replace="~{fragments/icons :: i('check','ic-brand')}"></svg> <span th:text="#{trip.paid}">Đã thanh toán</span></span>
             <span th:if="${b.status.name() != 'PENDING_PAYMENT' and b.status.name() != 'CONFIRMED'}"
                   class="muted" th:text="${b.status}"></span>
         </div>

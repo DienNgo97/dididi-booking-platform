@@ -55,12 +55,29 @@ public class StorageService {
 
     /** Upload 1 file anh, tra ve object key. */
     public String upload(MultipartFile file, String folder) {
+        return upload(file, folder, java.util.Set.of("image/"));
+    }
+
+    /**
+     * Upload 1 file voi danh sach tien to content-type cho phep (vd "image/", "video/").
+     * Dung cho mang xa hoi (anh + video). Tra ve object key.
+     */
+    public String upload(MultipartFile file, String folder, java.util.Set<String> allowedPrefixes) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException("EMPTY_FILE", "File rỗng", HttpStatus.BAD_REQUEST);
         }
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new BusinessException("NOT_IMAGE", "Chỉ chấp nhận file ảnh (image/*)", HttpStatus.BAD_REQUEST);
+        boolean ok = contentType != null
+                && allowedPrefixes.stream().anyMatch(contentType::startsWith);
+        if (!ok) {
+            throw new BusinessException("MEDIA_NOT_ALLOWED",
+                    "Định dạng tệp không được hỗ trợ", HttpStatus.BAD_REQUEST);
+        }
+        // Chan cac dinh dang co the chua script (SVG/HTML/XML) -> tranh stored XSS khi serve lai.
+        String ctLower = contentType.toLowerCase();
+        if (ctLower.contains("svg") || ctLower.contains("xml") || ctLower.contains("html") || ctLower.contains("script")) {
+            throw new BusinessException("MEDIA_NOT_ALLOWED",
+                    "Định dạng tệp không được hỗ trợ (SVG/HTML bị chặn vì lý do bảo mật)", HttpStatus.BAD_REQUEST);
         }
         ensureBucket();
         String key = folder + "/" + UUID.randomUUID() + extOf(file.getOriginalFilename());
@@ -72,7 +89,7 @@ public class StorageService {
                     .build());
         } catch (Exception e) {
             throw new BusinessException("UPLOAD_FAILED",
-                    "Tải ảnh lên thất bại (" + e.getMessage() + ")", HttpStatus.BAD_GATEWAY);
+                    "Tải tệp lên thất bại (" + e.getMessage() + ")", HttpStatus.BAD_GATEWAY);
         }
         return key;
     }
@@ -112,5 +129,18 @@ public class StorageService {
     }
 
     public record StoredObject(byte[] bytes, String contentType) {
+        /**
+         * Content-type AN TOAN de tra ve client. Khong tin content-type goc (do nguoi dung
+         * kiem soat khi upload) -> chi cho phep danh sach trang anh/video; con lai tra octet-stream
+         * (trinh duyet se tai ve, khong render/thuc thi) de chong stored XSS qua content-type.
+         */
+        public String safeContentType() {
+            String ct = contentType == null ? "" : contentType.toLowerCase().trim();
+            return switch (ct) {
+                case "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp", "image/avif",
+                        "video/mp4", "video/webm", "video/ogg", "video/quicktime" -> ct;
+                default -> "application/octet-stream";
+            };
+        }
     }
 }

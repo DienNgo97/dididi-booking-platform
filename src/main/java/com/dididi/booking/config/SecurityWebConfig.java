@@ -39,8 +39,15 @@ public class SecurityWebConfig {
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/payment/vnpay-return", "/payment/vnpay-ipn").permitAll()
                         .requestMatchers(HttpMethod.GET, "/g/**").permitAll()   // xem bang dieu khien nhom qua link moi
+                        // Cong dong: khach vang lai XEM duoc (GET cac trang doc); tuong tac (POST) + trang ca nhan van can dang nhap.
+                        .requestMatchers(HttpMethod.GET,
+                                "/community", "/community/explore", "/community/people", "/community/people/search",
+                                "/community/search", "/community/p/**", "/community/u/**", "/community/hotel/**",
+                                "/community/tag/**", "/community/more/explore", "/community/more/user/**",
+                                "/community/more/hotel/**", "/community/more/tag/**",
+                                "/community/media/**", "/community/avatar/**", "/community/cover/**").permitAll()
                         .requestMatchers("/account/**", "/booking/**", "/payment/**", "/checkout/**",
-                                "/company-invite/**", "/groups/**", "/g/**").authenticated()
+                                "/company-invite/**", "/groups/**", "/g/**", "/community/**").authenticated()
                         .anyRequest().permitAll()
                 )
                 .formLogin(f -> f

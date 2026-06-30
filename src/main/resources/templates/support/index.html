@@ -10,7 +10,7 @@
 <div class="wrap" style="max-width:920px">
 
     <div class="support-hero">
-        <h1 th:text="#{support.heroTitle}">Trung tâm hỗ trợ Dididi 🌿</h1>
+        <h1 th:text="#{support.heroTitle}">Trung tâm hỗ trợ Dididi <svg th:replace="~{fragments/icons :: i('leaf','ic-brand')}"></svg></h1>
         <p th:text="#{support.heroIntro}">Trợ lý ảo trả lời ngay các câu hỏi thường gặp. Cần người thật? Bấm “Gặp tổng đài viên” bất cứ lúc nào.</p>
     </div>
 
@@ -37,7 +37,7 @@
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px">
-        <button type="button" class="btn" onclick="DididiSupport.open()" th:text="#{support.chatBtn}">💬 Chat với trợ lý ảo</button>
+        <button type="button" class="btn" onclick="DididiSupport.open()"><svg th:replace="~{fragments/icons :: i('message','')}"></svg> <span th:text="#{support.chatBtn}">Chat với trợ lý ảo</span></button>
         <a class="btn ghost" href="/account/bookings" th:text="#{support.viewBookings}">Xem đơn của tôi</a>
     </div>
 

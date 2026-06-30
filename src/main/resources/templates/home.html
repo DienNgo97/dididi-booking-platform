@@ -7,11 +7,33 @@
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
-<div class="hero" style="padding-bottom:96px">
-    <div style="max-width:980px;margin:0 auto">
-        <h1 th:text="#{home.heroTitle}">Đặt phòng & vé máy bay cùng Dididi</h1>
+<div class="hero hero-cine hero-kb">
+    <div class="hero-slides" id="heroSlides">
+        <div class="hero-slide on" style="background-image:url('/img/hero/hero1.jpg')"></div>
+        <div class="hero-slide" style="background-image:url('/img/hero/hero2.jpg')"></div>
+        <div class="hero-slide" style="background-image:url('/img/hero/hero3.jpg')"></div>
+        <div class="hero-slide" style="background-image:url('/img/hero/hero4.jpg')"></div>
+    </div>
+    <div class="hero-tint"></div>
+    <div class="hero-grade"></div>
+    <div class="hero-grain"></div>
+    <div class="hero-vignette"></div>
+    <div class="hero-leak"></div>
+
+    <div class="hero-chip hc1"><div class="big">4.8<svg th:replace="~{fragments/icons :: i('star','ic-fill ic-amber')}"></svg></div><div class="sm" th:text="#{home.statRating}">Điểm đánh giá</div></div>
+    <div class="hero-chip hc2"><div class="big">500+</div><div class="sm" th:text="#{home.statHotels}">Khách sạn</div></div>
+    <div class="hero-chip hc3"><div class="big">12K+</div><div class="sm" th:text="#{home.statBookings}">Lượt đặt</div></div>
+    <div class="hero-chip hc4"><div class="big">30+</div><div class="sm" th:text="#{home.statCities}">Thành phố</div></div>
+
+    <div class="hero-inner">
+        <span class="hero-eyebrow"><svg th:replace="~{fragments/icons :: i('sparkles','ic-brand')}"></svg> <span th:text="#{home.heroEyebrow}">Nền tảng du lịch #1 cho chuyến đi của bạn</span></span>
+        <h1><span th:text="#{home.heroLead}">Khám phá</span>
+            <span class="rotator"><span class="word" id="heroRot">Sa Pa</span></span><br/>
+            <span th:text="#{home.heroTail}">theo cách của bạn</span></h1>
         <p th:text="#{home.heroSubtitle}">Chọn điểm đến, để chúng tôi lo phần còn lại.</p>
     </div>
+    <div class="hero-dots" id="heroDots"></div>
+    <div class="hero-progress"><i id="heroBar"></i></div>
 </div>
 <div style="margin-top:-72px;padding:0 16px;position:relative;z-index:5">
     <div th:replace="~{fragments/search :: widget('hotel')}"></div>
@@ -31,7 +53,7 @@
         <div class="card" th:each="h : ${featured}">
             <h3><a th:href="@{'/hotels/' + ${h.id}}" th:text="${h.name}">Hotel</a></h3>
             <div class="muted"><span th:text="${h.city}"></span> ·
-                <span class="stars" th:if="${h.starRating != null}" th:text="${h.starRating + '★'}"></span></div>
+                <span class="stars" th:if="${h.starRating != null}"><span th:text="${h.starRating}"></span><svg th:replace="~{fragments/icons :: i('star','ic-fill')}"></svg></span></div>
             <p class="muted" th:text="${h.description}"></p>
         </div>
         <p class="muted" th:if="${#lists.isEmpty(featured)}" th:text="#{home.empty}">Chưa có khách sạn.</p>
@@ -41,36 +63,36 @@
     <h2 th:text="#{home.whyTitle}">Vì sao chọn Dididi?</h2>
     <div class="feats">
         <div class="feat">
-            <div class="ic">⚡</div>
+            <div class="ic"><svg th:replace="~{fragments/icons :: i('bolt','')}"></svg></div>
             <h4 th:text="#{home.feat1Title}">Xác nhận tức thì</h4>
             <p th:text="#{home.feat1Desc}">Đặt phòng &amp; vé được xác nhận ngay, không phải chờ đợi.</p>
         </div>
         <div class="feat">
-            <div class="ic">🔒</div>
+            <div class="ic"><svg th:replace="~{fragments/icons :: i('lock','')}"></svg></div>
             <h4 th:text="#{home.feat2Title}">Thanh toán an toàn</h4>
             <p th:text="#{home.feat2Desc}">Qua cổng VNPay, mã hoá bảo mật, không lưu số thẻ đầy đủ.</p>
         </div>
         <div class="feat">
-            <div class="ic">💬</div>
+            <div class="ic"><svg th:replace="~{fragments/icons :: i('message','')}"></svg></div>
             <h4 th:text="#{home.feat3Title}">Hỗ trợ tận tâm</h4>
             <p th:text="#{home.feat3Desc}">Trợ lý ảo trả lời ngay, có thể gặp tổng đài viên khi cần.</p>
         </div>
     </div>
 </div>
 <div class="wrap" th:if="${!#lists.isEmpty(topRated)}">
-    <h2 style="display:flex;align-items:center;gap:8px;margin-bottom:2px" th:text="#{home.topRated}">⭐ Top 10 khách sạn được đánh giá cao nhất</h2>
+    <h2 style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><svg th:replace="~{fragments/icons :: i('star','ic-fill')}"></svg> <span th:text="#{home.topRated}">Top 10 khách sạn được đánh giá cao nhất</span></h2>
     <p class="muted" style="margin-top:0" th:text="#{home.topRatedSub}">Xếp theo điểm trung bình cộng từ đánh giá của khách.</p>
     <div class="th-grid">
         <a class="th-card" th:each="h,it : ${topRated}" th:href="@{'/hotels/' + ${h.id}}">
             <div class="th-img">
                 <img th:if="${topCovers.get(h.id) != null}" th:src="${topCovers.get(h.id)}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
-                <div class="th-ph" th:if="${topCovers.get(h.id) == null}">🏨</div>
+                <div class="th-ph" th:if="${topCovers.get(h.id) == null}"><svg th:replace="~{fragments/icons :: i('building','')}"></svg></div>
                 <span class="th-rank" th:text="'#' + ${it.index + 1}">#1</span>
-                <span class="th-score">★ <span th:text="${#numbers.formatDecimal(topRatings.get(h.id),1,1)}">4.8</span></span>
+                <span class="th-score"><svg th:replace="~{fragments/icons :: i('star','ic-fill ic-amber')}"></svg> <span th:text="${#numbers.formatDecimal(topRatings.get(h.id),1,1)}">4.8</span></span>
             </div>
             <div class="th-body">
                 <div class="th-name" th:text="${h.name}">Hotel</div>
-                <div class="th-city">📍 <span th:text="${h.city}">City</span></div>
+                <div class="th-city"><svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg> <span th:text="${h.city}">City</span></div>
                 <div class="th-price" th:if="${h.minPrice != null}"><span th:text="${#numbers.formatInteger(h.minPrice,1,'COMMA')}">0</span>đ <small th:text="#{home.perNight}">/ đêm</small></div>
             </div>
         </a>

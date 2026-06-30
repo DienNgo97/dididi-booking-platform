@@ -46,8 +46,13 @@ public class InvoiceService {
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
 
+    /**
+     * BP-INV-01: thue suat VAT doc duoi dang CHUOI roi parse sang BigDecimal (vd "0.10", "0.085").
+     * Dung BigDecimal lam mau so (1 + rate) tranh sai so double khi rate khac 10%; phan tram in cung
+     * suy ra tu BigDecimal nay (khong hardcode 10).
+     */
     @Value("${app.invoice.vat-rate:0.10}")
-    private double vatRate;
+    private String vatRateStr;
     @Value("${app.invoice.seller.name:Công ty TNHH Dididi}")
     private String sellerName;
     @Value("${app.invoice.seller.tax-code:0312345678}")
@@ -144,10 +149,16 @@ public class InvoiceService {
             int numRooms = rooms.size();
             BigDecimal share = numRooms > 0
                     ? total.divide(BigDecimal.valueOf(numRooms), 0, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+            // BP-INV-02: largest-remainder — phong cuoi nhan phan du (total - share*(n-1)) de tong = total chinh xac.
+            BigDecimal lastShare = numRooms > 0
+                    ? total.subtract(share.multiply(BigDecimal.valueOf(numRooms - 1L))) : BigDecimal.ZERO;
 
             int i = 1;
+            int idx = 0;
             for (Booking r : rooms) {
                 BigDecimal amt = r.getAmount() == null ? BigDecimal.ZERO : r.getAmount();
+                BigDecimal roomShare = (idx == numRooms - 1) ? lastShare : share;   // phong cuoi gom phan du
+                idx++;
                 User booker = r.getUserId() != null ? userRepository.findById(r.getUserId()).orElse(null) : null;
                 String bookerName = booker != null ? nz(booker.getFullName()) : ("#" + r.getUserId());
                 User payer = r.getPaidByUserId() != null ? userRepository.findById(r.getPaidByUserId()).orElse(null) : null;
@@ -162,7 +173,7 @@ public class InvoiceService {
 
                 if (r.getUserId() != null) {
                     names.putIfAbsent(r.getUserId(), bookerName);
-                    bear.merge(r.getUserId(), g.isSplitEven() ? share : amt, BigDecimal::add);
+                    bear.merge(r.getUserId(), g.isSplitEven() ? roomShare : amt, BigDecimal::add);
                 }
                 if (r.getPaidByUserId() != null) {
                     names.putIfAbsent(r.getPaidByUserId(), payerName);
@@ -292,9 +303,12 @@ public class InvoiceService {
             doc.add(table);
             doc.add(spacer(8));
 
-            BigDecimal preTax = total.divide(BigDecimal.valueOf(1 + vatRate), 0, RoundingMode.HALF_UP);
-            BigDecimal vat = total.subtract(preTax);
-            int pct = (int) Math.round(vatRate * 100);
+            // BP-INV-01: chia bang BigDecimal (1 + rate) -> preTax + vat == total chinh xac; pct suy tu BigDecimal.
+            BigDecimal rate = vatRate();
+            BigDecimal[] split = vatSplit(total, rate);   // [preTax, vat]
+            BigDecimal preTax = split[0];
+            BigDecimal vat = split[1];
+            String pct = vatPercentLabel(rate);
             doc.add(totalLine("Cộng tiền hàng (chưa VAT): ", vnd.format(preTax) + " đ", f, fBold));
             doc.add(totalLine("Thuế GTGT (" + pct + "%): ", vnd.format(vat) + " đ", f, fBold));
             doc.add(totalLine("Tổng tiền thanh toán: ", vnd.format(total) + " đ", fBold, fBold));
@@ -324,6 +338,31 @@ public class InvoiceService {
     private BaseFont baseFont(String classpath) throws Exception {
         byte[] bytes = new ClassPathResource(classpath).getInputStream().readAllBytes();
         return BaseFont.createFont(classpath, BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, bytes, null);
+    }
+
+    /** BP-INV-01: thue suat VAT duoi dang BigDecimal (parse tu chuoi cau hinh, fallback 0.10 neu sai dinh dang). */
+    private BigDecimal vatRate() {
+        try {
+            return new BigDecimal(vatRateStr.trim());
+        } catch (Exception ex) {
+            return new BigDecimal("0.10");
+        }
+    }
+
+    /**
+     * BP-INV-01: tach tong (da bao gom VAT) thanh [preTax, vat] dung BigDecimal.
+     * preTax = round(total / (1 + rate)); vat = total - preTax -> dam bao preTax + vat == total CHINH XAC.
+     * Package-visible de unit test (InvoiceVatTest).
+     */
+    public static BigDecimal[] vatSplit(BigDecimal total, BigDecimal rate) {
+        BigDecimal preTax = total.divide(BigDecimal.ONE.add(rate), 0, RoundingMode.HALF_UP);
+        BigDecimal vat = total.subtract(preTax);
+        return new BigDecimal[]{preTax, vat};
+    }
+
+    /** BP-INV-01: nhan phan tram in tu rate (vd 0.10 -> "10", 0.085 -> "8.5"). */
+    public static String vatPercentLabel(BigDecimal rate) {
+        return rate.multiply(BigDecimal.valueOf(100)).stripTrailingZeros().toPlainString();
     }
 
     private static String nz(String s) { return s == null ? "" : s; }

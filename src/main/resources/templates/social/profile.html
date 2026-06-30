@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${profile.displayName} + ' (@' + ${profile.handle} + ') - Dididi'">Trang cá nhân</title>
+    <link rel="stylesheet" href="/css/site.css"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <div th:replace="~{social/fragments :: tabs('')}"></div>
+    <div class="sx-layout">
+        <div th:replace="~{social/fragments :: railLeft('')}"></div>
+        <main class="sx-main">
+        <section class="sx-prof">
+            <div class="sx-cover" th:if="${profile.coverUrl == null}"></div>
+            <div class="sx-cover" th:if="${profile.coverUrl != null}" th:style="'background-image:url(' + ${profile.coverUrl} + ')'"></div>
+            <a th:if="${profile.owner}" href="/community/settings" class="sx-cover-edit" title="Đổi ảnh bìa">
+                <svg th:replace="~{fragments/icons :: i('camera','')}"></svg> Đổi ảnh bìa</a>
+            <div class="sx-phead">
+                <span class="sx-ava lg">
+                    <img th:if="${profile.avatarUrl}" th:src="${profile.avatarUrl}" alt=""/>
+                    <span th:unless="${profile.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(profile.displayName != null ? profile.displayName : profile.handle,0,1))}">D</span>
+                </span>
+                <div class="sx-pmeta">
+                    <h1>
+                        <span th:text="${profile.displayName != null ? profile.displayName : profile.handle}">Tên</span>
+                        <span th:if="${profile.privateAccount}"><svg th:replace="~{fragments/icons :: i('lock','')}"></svg></span>
+                    </h1>
+                    <div class="sx-handle" th:text="'@' + ${profile.handle}">@handle</div>
+                    <p class="sx-bio" th:if="${profile.bio}" th:text="${profile.bio}">bio</p>
+                    <a class="sx-link" th:if="${profile.link}" th:href="${profile.link}" th:text="${profile.link}" target="_blank" rel="noopener"></a>
+                    <div class="sx-stats">
+                        <span><b th:text="${profile.postsCount}">0</b> bài</span>
+                        <span><b th:attr="data-followers='USER:' + ${profile.userId}" th:text="${profile.followersCount}">0</b> người theo dõi</span>
+                        <span><b th:text="${profile.followingCount}">0</b> đang theo dõi</span>
+                    </div>
+                </div>
+                <div class="sx-pactions">
+                    <a th:if="${profile.owner}" href="/community/settings" class="btn ghost">Chỉnh sửa hồ sơ</a>
+                    <button th:unless="${profile.owner}" class="btn sx-follow"
+                            th:classappend="${profile.followState == 'ACTIVE'} ? 'is-following' : ''"
+                            th:attr="data-type='USER',data-id=${profile.userId},data-state=${profile.followState}">
+                        <span class="sx-follow-text"
+                              th:text="${profile.followState == 'ACTIVE'} ? 'Đang theo dõi' : (${profile.followState == 'PENDING'} ? 'Đã gửi yêu cầu' : 'Theo dõi')">Theo dõi</span>
+                    </button>
+                    <form th:unless="${profile.owner}" th:action="@{/community/messages/start}" method="post" style="display:inline">
+                        <input type="hidden" name="toUserId" th:value="${profile.userId}"/>
+                        <button type="submit" class="btn ghost"><svg th:replace="~{fragments/icons :: i('mail','')}"></svg> Nhắn tin</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <div th:if="${profile.canViewPosts}">
+            <div th:if="${posts == null or #lists.isEmpty(posts)}" class="sx-empty">
+                <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
+                <p>Chưa có bài viết nào.</p>
+            </div>
+            <div id="sxFeed">
+                <div th:replace="~{social/fragments :: cards(${posts})}"></div>
+            </div>
+            <div th:replace="~{social/fragments :: more}"></div>
+        </div>
+        <div th:unless="${profile.canViewPosts}" class="sx-locked">
+            <svg th:replace="~{fragments/icons :: i('lock','')}"></svg>
+            <p>Đây là tài khoản riêng tư. Hãy theo dõi để xem các bài viết.</p>
+        </div>
+        </main>
+        <div th:replace="~{social/fragments :: railRight}"></div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<div th:replace="~{social/fragments :: scripts}"></div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package com.dididi.booking.config;
 
 import com.dididi.booking.identity.web.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -47,6 +48,7 @@ public class SecurityApiConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/hotels/**", "/api/v1/flights/**", "/api/v1/master/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/reviews/**").permitAll()
+                        // media MXH: KHONG permitAll nua — yeu cau dang nhap + kiem tra canView trong controller
                         .requestMatchers(HttpMethod.POST, "/api/v1/trip-planner/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers("/api/vendor/**").hasAnyRole("VENDOR", "ADMIN", "SUPER_ADMIN")
@@ -55,10 +57,18 @@ public class SecurityApiConfig {
         return http.build();
     }
 
+    /**
+     * SEC-06: CORS origins externalize qua app.cors.allowed-origins (CSV), mac dinh http://localhost:4200.
+     * Prod set bien moi truong / yaml cho domain that thay vi sua code. allowCredentials=true nen KHONG
+     * dung "*" — luon liet ke origin cu the.
+     */
+    @Value("${app.cors.allowed-origins:http://localhost:4200}")
+    private List<String> allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(List.of("http://localhost:4200")); // Angular dev
+        cfg.setAllowedOrigins(allowedOrigins);
         cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true);

@@ -144,6 +144,7 @@ public class LoyaltyService {
         v.setDiscountValue(value);
         v.setUsageLimit(1);
         v.setPerUserLimit(1);
+        v.setOwnerUserId(userId);   // BP-LOY-01: voucher doi-diem gan voi nguoi doi, nguoi khac khong dung duoc.
         v.setValidTo(Instant.now().plus(90, ChronoUnit.DAYS));
         v.setActive(true);
         voucherRepository.save(v);

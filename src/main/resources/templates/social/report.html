@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Báo cáo nội dung - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <div class="sx-single">
+        <h1>Báo cáo nội dung</h1>
+        <p class="muted">Báo cáo của bạn được ẩn danh với người đăng và giúp đội ngũ giữ Cộng đồng an toàn.</p>
+        <form class="sx-compose" th:action="@{/community/report}" method="post">
+            <input type="hidden" name="type" th:value="${targetType}"/>
+            <input type="hidden" name="id" th:value="${targetId}"/>
+            <label>Lý do báo cáo
+                <select name="reason">
+                    <option value="SPAM">Spam / quảng cáo</option>
+                    <option value="HARASSMENT">Quấy rối / xúc phạm</option>
+                    <option value="NUDITY">Ảnh khoả thân / nhạy cảm</option>
+                    <option value="VIOLENCE">Bạo lực</option>
+                    <option value="MISINFO">Thông tin sai lệch</option>
+                    <option value="OTHER">Khác</option>
+                </select>
+            </label>
+            <label>Mô tả thêm (tuỳ chọn)
+                <textarea name="note" rows="3" maxlength="500" placeholder="Cho biết thêm chi tiết…"></textarea>
+            </label>
+            <div class="sx-form-actions">
+                <a href="/community" class="btn ghost">Huỷ</a>
+                <button type="submit" class="btn">Gửi báo cáo</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

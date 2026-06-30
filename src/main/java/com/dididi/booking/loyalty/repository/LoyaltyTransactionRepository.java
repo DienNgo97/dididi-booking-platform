@@ -15,6 +15,11 @@ public interface LoyaltyTransactionRepository extends JpaRepository<LoyaltyTrans
 
     boolean existsByBookingIdAndType(Long bookingId, LoyaltyTxnType type);
 
+    /** BP-LOY-02: tong diem da TICH (EARN) cho 1 don — dung de dao nguoc khi refund. */
+    @Query("select coalesce(sum(t.points),0) from LoyaltyTransaction t "
+            + "where t.bookingId = :bookingId and t.type = :type")
+    int sumPointsByBookingAndType(@Param("bookingId") Long bookingId, @Param("type") LoyaltyTxnType type);
+
     @Query("select coalesce(sum(t.points),0) from LoyaltyTransaction t where t.userId = :userId")
     int balance(@Param("userId") Long userId);
 

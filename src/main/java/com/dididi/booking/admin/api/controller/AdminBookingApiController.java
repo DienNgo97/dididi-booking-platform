@@ -86,6 +86,7 @@ public class AdminBookingApiController {
                     if (b.getStatus() == BookingStatus.PENDING_PAYMENT
                             || b.getStatus() == BookingStatus.CONFIRMED) {
                         bookingService.restoreDirectInventory(b);
+                        bookingService.releaseProviderInventory(b);   // INT-01: tra ghe/phong ve provider
                     }
                     b.setStatus(BookingStatus.CANCELLED);
                     bookingRepository.save(b);

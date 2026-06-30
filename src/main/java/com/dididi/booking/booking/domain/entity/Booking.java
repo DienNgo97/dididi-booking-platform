@@ -31,6 +31,10 @@ public class Booking extends BaseEntity {
     @Column(name = "provider_confirmation", length = 50)
     private String providerConfirmation;
 
+    /** ID reservation ben PMS (hotel CHANNEL) -> de goi /cancel khi huy/hoan tien (INT-01). null voi DIRECT/flight. */
+    @Column(name = "provider_reservation_id")
+    private Long providerReservationId;
+
     /** Ma ghe da chon (vd "12A,12B") cho don ve co so do ghe; null neu dat theo so luong. */
     @Column(name = "seat_codes", length = 120)
     private String seatCodes;
@@ -133,6 +137,8 @@ public class Booking extends BaseEntity {
     public void setTitle(String title) { this.title = title; }
     public String getProviderConfirmation() { return providerConfirmation; }
     public void setProviderConfirmation(String providerConfirmation) { this.providerConfirmation = providerConfirmation; }
+    public Long getProviderReservationId() { return providerReservationId; }
+    public void setProviderReservationId(Long providerReservationId) { this.providerReservationId = providerReservationId; }
     public String getSeatCodes() { return seatCodes; }
     public void setSeatCodes(String seatCodes) { this.seatCodes = seatCodes; }
     public String getPassengers() { return passengers; }

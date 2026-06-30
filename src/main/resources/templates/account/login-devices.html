@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{profile.devicesTitle}">Thiết bị đăng nhập - Dididi</title>
+    <link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:640px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <p><a href="/account/profile" th:text="#{profile.back}">← Hồ sơ của tôi</a></p>
+    <h1 th:text="#{profile.devicesTitle}">Thiết bị đăng nhập</h1>
+
+    <div class="card">
+        <p class="muted" th:text="#{profile.devicesDesc}">Các phiên đăng nhập web đang hoạt động trên tài khoản của bạn.</p>
+        <table class="tbl">
+            <thead>
+            <tr><th th:text="#{profile.device}">Phiên</th><th th:text="#{profile.lastActive}">Hoạt động gần nhất</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="s : ${sessions}">
+                <td>
+                    <span th:if="${s.current()}" class="ok" th:text="#{profile.thisDevice}">Thiết bị này</span>
+                    <span th:unless="${s.current()}" th:text="#{profile.otherDevice}">Thiết bị khác</span>
+                </td>
+                <td class="muted" th:text="${s.lastRequest()}">--</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(sessions)}">
+                <td colspan="2" class="muted" th:text="#{profile.noSession}">Không có phiên nào.</td>
+            </tr>
+            </tbody>
+        </table>
+
+        <form th:action="@{/account/profile/devices/logout-others}" method="post" style="margin-top:14px">
+            <button class="btn" type="submit" th:attr="data-confirm=#{profile.logoutOthersAsk}"
+                    th:text="#{profile.logoutOthers}">Đăng xuất khỏi thiết bị khác</button>
+        </form>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

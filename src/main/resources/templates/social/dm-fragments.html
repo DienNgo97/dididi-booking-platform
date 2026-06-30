@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- ===== 1 bong bong tin nhan ===== -->
+<div th:fragment="message(m)" class="dm-msg" th:classappend="${m.mine} ? 'mine' : ''" th:attr="data-id=${m.id}">
+    <span th:unless="${m.mine}" class="sx-ava xs" aria-hidden="true">
+        <img th:if="${m.sender.avatarUrl}" th:src="${m.sender.avatarUrl}" alt=""/>
+        <span th:unless="${m.sender.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(m.sender.name,0,1))}">D</span>
+    </span>
+    <div class="dm-bubble">
+        <span th:if="${m.type == 'TEXT'}" th:text="${m.content}">nội dung</span>
+
+        <a th:if="${m.image}" th:href="${m.mediaUrl}" target="_blank" rel="noopener" class="dm-imglink">
+            <img th:src="${m.mediaUrl}" class="dm-img" alt="ảnh"/>
+        </a>
+
+        <th:block th:if="${m.postShare}">
+            <span th:if="${m.content}" th:text="${m.content}" class="dm-share-text">kèm lời nhắn</span>
+            <a th:if="${m.sharedPost != null}" th:href="${m.sharedPost.detailUrl}" class="dm-share">
+                <span class="dm-share-actor" th:text="${m.sharedPost.actor.name}">Tác giả</span>
+                <span class="dm-share-cap" th:text="${m.sharedPost.caption != null ? m.sharedPost.caption : 'Xem bài viết'}">caption</span>
+                <span class="dm-share-go">Xem bài →</span>
+            </a>
+            <span th:if="${m.sharedPost == null}" class="dm-share-text">[Bài viết không còn]</span>
+        </th:block>
+    </div>
+</div>
+
+<!-- ===== nhieu tin (poll/render) ===== -->
+<th:block th:fragment="messages">
+    <th:block th:each="m : ${messages}">
+        <div th:replace="~{social/dm-fragments :: message(${m})}"></div>
+    </th:block>
+</th:block>
+
+</body>
+</html>

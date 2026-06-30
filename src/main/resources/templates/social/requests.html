@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Yêu cầu theo dõi - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <div class="sx-single">
+        <h1>Yêu cầu theo dõi</h1>
+        <p th:if="${#lists.isEmpty(requests)}" class="muted">Hiện không có yêu cầu nào.</p>
+
+        <div class="sx-req" th:each="r : ${requests}">
+            <a th:href="${r.actor.profileUrl}" class="sx-ava sm">
+                <img th:if="${r.actor.avatarUrl}" th:src="${r.actor.avatarUrl}" alt=""/>
+                <span th:unless="${r.actor.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(r.actor.name,0,1))}">D</span>
+            </a>
+            <div class="sx-req-meta">
+                <a th:href="${r.actor.profileUrl}" class="sx-name" th:text="${r.actor.name}">Tên</a>
+                <small th:if="${r.actor.handle}" th:text="'@' + ${r.actor.handle}">@handle</small>
+            </div>
+            <div class="sx-req-actions">
+                <form th:action="@{'/community/requests/' + ${r.followId} + '/accept'}" method="post" style="display:inline">
+                    <button type="submit" class="btn">Chấp nhận</button>
+                </form>
+                <form th:action="@{'/community/requests/' + ${r.followId} + '/reject'}" method="post" style="display:inline">
+                    <button type="submit" class="btn ghost">Từ chối</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

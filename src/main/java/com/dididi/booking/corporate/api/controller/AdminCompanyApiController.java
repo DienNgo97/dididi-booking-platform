@@ -1,6 +1,7 @@
 package com.dididi.booking.corporate.api.controller;
 
 import com.dididi.booking.common.dto.ApiResponse;
+import com.dididi.booking.common.security.RoleUtils;
 import com.dididi.booking.corporate.api.dto.CompanyBookingDto;
 import com.dididi.booking.corporate.api.dto.CompanyDto;
 import com.dididi.booking.corporate.api.dto.CompanyEmployeeDto;
@@ -42,21 +43,26 @@ public class AdminCompanyApiController {
         return ApiResponse.ok(CompanyDto.from(companyService.get(id)));
     }
 
-    @Operation(summary = "Tạo công ty")
+    @Operation(summary = "Tạo công ty (SUPER_ADMIN)")
     @PostMapping
-    public ApiResponse<CompanyDto> create(@RequestBody CompanyUpsertRequest req) {
+    public ApiResponse<CompanyDto> create(@RequestBody CompanyUpsertRequest req, Authentication auth) {
+        RoleUtils.requireSuperAdmin(auth);   // SEC-02: tao cong ty + dat han muc tong = anh huong ngan sach
         return ApiResponse.ok(CompanyDto.from(companyService.create(req)), "Đã tạo công ty");
     }
 
-    @Operation(summary = "Cập nhật công ty (tên, mã, hạn mức tổng, email, trạng thái)")
+    @Operation(summary = "Cập nhật công ty (tên, mã, hạn mức tổng, email, trạng thái) — SUPER_ADMIN")
     @PutMapping("/{id}")
-    public ApiResponse<CompanyDto> update(@PathVariable Long id, @RequestBody CompanyUpsertRequest req) {
+    public ApiResponse<CompanyDto> update(@PathVariable Long id, @RequestBody CompanyUpsertRequest req,
+                                          Authentication auth) {
+        RoleUtils.requireSuperAdmin(auth);   // SEC-02: cap nhat han muc tong = anh huong ngan sach
         return ApiResponse.ok(CompanyDto.from(companyService.update(id, req)), "Đã cập nhật");
     }
 
-    @Operation(summary = "Nạp thêm hạn mức (cộng vào hạn mức tổng)")
+    @Operation(summary = "Nạp thêm hạn mức (cộng vào hạn mức tổng) — SUPER_ADMIN")
     @PostMapping("/{id}/topup")
-    public ApiResponse<CompanyDto> topUp(@PathVariable Long id, @RequestParam BigDecimal amount) {
+    public ApiResponse<CompanyDto> topUp(@PathVariable Long id, @RequestParam BigDecimal amount,
+                                         Authentication auth) {
+        RoleUtils.requireSuperAdmin(auth);   // SEC-02: nap ngan sach tieu duoc -> chi SUPER_ADMIN
         return ApiResponse.ok(CompanyDto.from(companyService.topUp(id, amount)), "Đã nạp thêm hạn mức");
     }
 
@@ -66,9 +72,10 @@ public class AdminCompanyApiController {
         return ApiResponse.ok(companyService.listEmployees(id).stream().map(CompanyEmployeeDto::from).toList());
     }
 
-    @Operation(summary = "Gán nhân viên (userId) vào công ty")
+    @Operation(summary = "Gán nhân viên (userId) vào công ty — SUPER_ADMIN")
     @PostMapping("/{id}/employees/{userId}")
-    public ApiResponse<Void> assign(@PathVariable Long id, @PathVariable Long userId) {
+    public ApiResponse<Void> assign(@PathVariable Long id, @PathVariable Long userId, Authentication auth) {
+        RoleUtils.requireSuperAdmin(auth);   // SEC-02: gan nhan vien -> cho phep ho tieu ngan sach cong ty
         companyService.assignEmployee(id, userId);
         return ApiResponse.ok(null, "Đã gán nhân viên");
     }

@@ -13,21 +13,21 @@
     <!-- Tab: Don ca nhan / Don nhom -->
     <div style="display:flex;gap:8px;margin:8px 0 16px">
         <a class="btn ghost" href="/account/bookings" th:text="#{group.personalBookings}">Đơn cá nhân</a>
-        <a class="btn" href="/account/groups" th:text="#{group.groupBookings}">👥 Đơn nhóm</a>
+        <a class="btn" href="/account/groups"><svg th:replace="~{fragments/icons :: i('users','')}"></svg> <span th:text="#{group.groupBookings}">Đơn nhóm</span></a>
     </div>
 
     <p class="muted" th:unless="${hasAny}" th:utext="#{group.noGroups}">
         Bạn chưa có nhóm đặt phòng nào. Mở một khách sạn rồi bấm
-        <b>"👥 Tạo nhóm — mời bạn bè, chia tiền"</b> để bắt đầu.
+        <b>"<svg th:replace="~{fragments/icons :: i('users','')}"></svg> Tạo nhóm — mời bạn bè, chia tiền"</b> để bắt đầu.
     </p>
 
     <div th:if="${hasAny}">
         <!-- Tab phu: Dang len ke hoach / Da ket thuc (dong bo UX voi don ca nhan) -->
         <div style="display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap">
             <a class="btn" th:classappend="${activeTab == 'planning'} ? '' : 'ghost'"
-               th:href="@{/account/groups(status='planning')}"><span th:text="#{group.planning}">📝 Đang lên kế hoạch</span> (<span th:text="${planningCount}">0</span>)</a>
+               th:href="@{/account/groups(status='planning')}"><span><svg th:replace="~{fragments/icons :: i('file','')}"></svg> <span th:text="#{group.planning}">Đang lên kế hoạch</span></span> (<span th:text="${planningCount}">0</span>)</a>
             <a class="btn" th:classappend="${activeTab == 'ended'} ? '' : 'ghost'"
-               th:href="@{/account/groups(status='ended')}"><span th:text="#{group.ended}">✅ Đã kết thúc</span> (<span th:text="${endedCount}">0</span>)</a>
+               th:href="@{/account/groups(status='ended')}"><span><svg th:replace="~{fragments/icons :: i('circle-check','ic-brand')}"></svg> <span th:text="#{group.ended}">Đã kết thúc</span></span> (<span th:text="${endedCount}">0</span>)</a>
         </div>
 
         <p class="muted" th:if="${#lists.isEmpty(groups)}" style="font-size:13px">
@@ -45,8 +45,8 @@
                         <span th:unless="${g.organizer()}" th:text="#{group.joined}">· Đã tham gia</span>
                     </span>
                 </h3>
-                <div class="muted">🏨 <span th:text="${g.hotelName()}"></span>
-                    <span th:if="${g.checkIn() != null}"> · 📅 <span th:text="${g.checkIn()}"></span> → <span th:text="${g.checkOut()}"></span></span>
+                <div class="muted"><svg th:replace="~{fragments/icons :: i('building','')}"></svg> <span th:text="${g.hotelName()}"></span>
+                    <span th:if="${g.checkIn() != null}"> · <svg th:replace="~{fragments/icons :: i('calendar','')}"></svg> <span th:text="${g.checkIn()}"></span> → <span th:text="${g.checkOut()}"></span></span>
                 </div>
                 <div class="muted" style="font-size:13px">
                     <span th:text="#{group.members}">Thành viên:</span> <b th:text="${g.memberCount()}">0</b> · <span th:text="#{group.paidLabel}">Đã trả:</span> <b th:text="${g.paidCount()}">0</b>/<span th:text="${g.memberCount()}">0</span>
@@ -55,7 +55,7 @@
             <div style="text-align:right">
                 <a class="btn" th:href="@{'/g/' + ${g.token()}}" th:text="#{group.openGroup}">Mở nhóm →</a>
                 <a th:if="${g.ended() and g.organizer()}" class="btn ghost" th:href="@{'/g/' + ${g.token()} + '/invoice'}" target="_blank"
-                   style="margin-top:6px;display:inline-block" th:text="#{group.invoice}">🧾 Hoá đơn</a>
+                   style="margin-top:6px;display:inline-block"><svg th:replace="~{fragments/icons :: i('receipt','')}"></svg> <span th:text="#{group.invoice}">Hoá đơn</span></a>
             </div>
         </div>
         </div>

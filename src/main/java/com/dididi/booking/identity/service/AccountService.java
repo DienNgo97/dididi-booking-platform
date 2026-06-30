@@ -21,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -38,6 +41,9 @@ public class AccountService {
 
     public static final String PASSWORD_RULE_MSG =
             "Mật khẩu phải tối thiểu 8 ký tự, gồm ít nhất 1 chữ in hoa, 1 chữ thường, 1 số và 1 ký tự đặc biệt";
+
+    /** Thông tin 1 phiên đăng nhập web (cho trang quản lý thiết bị). */
+    public record WebSessionInfo(String sessionId, Instant lastRequest, boolean current) {}
 
     private final UserRepository userRepository;
     private final UserTokenRepository tokenRepository;
@@ -154,6 +160,107 @@ public class AccountService {
         return true;
     }
 
+    // ---------------- Hồ sơ: đổi mật khẩu khi đang đăng nhập ----------------
+
+    /**
+     * Đổi mật khẩu cho user ĐANG đăng nhập.
+     * - Nếu user đã có mật khẩu (passwordSet) thì phải nhập đúng mật khẩu hiện tại.
+     * - Mật khẩu mới phải đủ mạnh và khác mật khẩu gần nhất.
+     * - Sau khi đổi: giữ phiên hiện tại, đăng xuất các thiết bị KHÁC + thu hồi token API.
+     */
+    @Transactional
+    public void changePassword(Long userId, String currentRaw, String newRaw, String currentSessionId) {
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException("NO_USER", "Không tìm thấy người dùng", HttpStatus.UNAUTHORIZED));
+        if (u.isPasswordSet()) {
+            if (currentRaw == null || !passwordEncoder.matches(currentRaw, u.getPasswordHash())) {
+                throw new BusinessException("WRONG_PASSWORD", "Mật khẩu hiện tại không đúng", HttpStatus.BAD_REQUEST);
+            }
+        }
+        if (!isStrong(newRaw)) {
+            throw new BusinessException("WEAK_PASSWORD", PASSWORD_RULE_MSG, HttpStatus.BAD_REQUEST);
+        }
+        if (passwordEncoder.matches(newRaw, u.getPasswordHash())) {
+            throw new BusinessException("PASSWORD_REUSED",
+                    "Mật khẩu mới không được trùng với mật khẩu gần nhất", HttpStatus.BAD_REQUEST);
+        }
+        u.setPasswordHash(passwordEncoder.encode(newRaw));
+        u.setPasswordSet(true);
+        userRepository.save(u);
+
+        expireOtherWebSessions(u.getEmail(), currentSessionId);
+        refreshTokenService.revokeAllForUser(u.getId());
+        refreshTokenService.invalidateAccessTokensBefore(u.getId());
+    }
+
+    // ---------------- Hồ sơ: quản lý thiết bị đăng nhập ----------------
+
+    /** Danh sách phiên web đang hoạt động của user (đánh dấu phiên hiện tại). */
+    public List<WebSessionInfo> listWebSessions(String email, String currentSessionId) {
+        List<WebSessionInfo> out = new ArrayList<>();
+        if (email == null) return out;
+        for (Object principal : sessionRegistry.getAllPrincipals()) {
+            String username = principalName(principal);
+            if (!email.equals(username)) continue;
+            for (SessionInformation si : sessionRegistry.getAllSessions(principal, false)) {
+                Instant last = si.getLastRequest() != null ? si.getLastRequest().toInstant() : null;
+                out.add(new WebSessionInfo(si.getSessionId(), last, si.getSessionId().equals(currentSessionId)));
+            }
+        }
+        out.sort(Comparator.comparing(WebSessionInfo::lastRequest, Comparator.nullsLast(Comparator.reverseOrder())));
+        return out;
+    }
+
+    /** Đăng xuất khỏi mọi thiết bị KHÁC (giữ phiên hiện tại) + thu hồi token API (mobile). Trả về số phiên web đã hủy. */
+    @Transactional
+    public int logoutOtherDevices(Long userId, String email, String currentSessionId) {
+        int n = expireOtherWebSessions(email, currentSessionId);
+        refreshTokenService.revokeAllForUser(userId);
+        refreshTokenService.invalidateAccessTokensBefore(userId);
+        return n;
+    }
+
+    // ---------------- Hồ sơ: xoá tài khoản (soft delete) ----------------
+
+    /**
+     * Khách tự xoá tài khoản: chuyển sang CLOSED + soft delete, giải phóng email,
+     * đăng xuất mọi thiết bị + thu hồi token. Nếu user có mật khẩu thì phải xác nhận đúng.
+     */
+    @Transactional
+    public void closeAccount(Long userId, String rawPassword) {
+        User u = userRepository.findById(userId).orElse(null);
+        if (u == null) return;
+        if (u.isPasswordSet()) {
+            if (rawPassword == null || !passwordEncoder.matches(rawPassword, u.getPasswordHash())) {
+                throw new BusinessException("WRONG_PASSWORD", "Mật khẩu không đúng", HttpStatus.BAD_REQUEST);
+            }
+        }
+        String oldEmail = u.getEmail();
+        u.setStatus(UserStatus.CLOSED);
+        u.setDeletedAt(Instant.now());
+        u.setGoogleLinked(false);
+        // Giải phóng email để có thể đăng ký lại + chặn đăng nhập bằng email cũ.
+        String freed = "del_" + u.getId() + "_" + oldEmail;
+        if (freed.length() > 150) freed = freed.substring(0, 150);
+        u.setEmail(freed);
+        userRepository.save(u);
+
+        refreshTokenService.revokeAllForUser(u.getId());
+        refreshTokenService.invalidateAccessTokensBefore(u.getId());
+        expireWebSessions(oldEmail);
+    }
+
+    // ---------------- Hồ sơ: gửi lại email kích hoạt ----------------
+
+    /** Gửi lại email kích hoạt nếu tài khoản còn INACTIVE. */
+    @Transactional
+    public void resendVerification(Long userId) {
+        User u = userRepository.findById(userId).orElse(null);
+        if (u == null || u.getStatus() != UserStatus.INACTIVE) return;
+        String token = issue(u.getId(), TokenPurpose.VERIFY_EMAIL, Duration.ofHours(verifyTtlHours));
+        emailService.sendVerification(u.getEmail(), baseUrl + "/verify?token=" + token, LocaleContextHolder.getLocale());
+    }
+
     // ---------------- helpers ----------------
 
     /** Đăng xuất khỏi mọi thiết bị/trình duyệt (refresh token + access token JWT + session web). */
@@ -166,13 +273,38 @@ public class AccountService {
     private void expireWebSessions(String email) {
         if (email == null) return;
         for (Object principal : sessionRegistry.getAllPrincipals()) {
-            String username = (principal instanceof UserDetails ud) ? ud.getUsername() : String.valueOf(principal);
+            String username = principalName(principal);
             if (email.equals(username)) {
                 for (SessionInformation si : sessionRegistry.getAllSessions(principal, false)) {
                     si.expireNow();
                 }
             }
         }
+    }
+
+    /** Hết hạn mọi phiên web của user TRỪ phiên hiện tại. Trả về số phiên đã hủy. */
+    private int expireOtherWebSessions(String email, String currentSessionId) {
+        int n = 0;
+        if (email == null) return 0;
+        for (Object principal : sessionRegistry.getAllPrincipals()) {
+            String username = principalName(principal);
+            if (!email.equals(username)) continue;
+            for (SessionInformation si : sessionRegistry.getAllSessions(principal, false)) {
+                if (!si.getSessionId().equals(currentSessionId)) { si.expireNow(); n++; }
+            }
+        }
+        return n;
+    }
+
+    /**
+     * Tên định danh (email) của principal trong SessionRegistry.
+     * Form-login -> UserDetails.getUsername(); đăng nhập Google -> OAuth2User.getName() (nameAttributeKey="email").
+     */
+    private static String principalName(Object principal) {
+        if (principal instanceof UserDetails ud) return ud.getUsername();
+        if (principal instanceof org.springframework.security.oauth2.core.user.OAuth2User ou) return ou.getName();
+        if (principal instanceof java.security.Principal p) return p.getName();
+        return String.valueOf(principal);
     }
 
     private UserToken validToken(String token, TokenPurpose purpose) {

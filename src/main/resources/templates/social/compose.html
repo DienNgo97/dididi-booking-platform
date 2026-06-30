@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Đăng bài - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <div th:replace="~{social/fragments :: tabs('')}"></div>
+
+    <div class="sx-layout">
+        <div th:replace="~{social/fragments :: railLeft('')}"></div>
+        <main class="sx-main sx-formcol">
+            <div class="sx-pagehead">
+                <h1>Đăng bài</h1>
+                <p>Chia sẻ một khoảnh khắc, một chuyến đi hay một địa điểm bạn yêu thích.</p>
+            </div>
+            <form class="sx-compose sx-card" th:action="@{/community/posts}" method="post" enctype="multipart/form-data">
+                <textarea name="caption" rows="4" placeholder="Bạn đang ở đâu? Chia sẻ trải nghiệm chuyến đi…  Dùng #hashtag và @tên để gắn thẻ."></textarea>
+
+                <label class="sx-filepick sx-file">
+                    <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
+                    <span class="sx-filepick-name">Thêm ảnh / video</span>
+                    <input type="file" name="files" multiple accept="image/*,video/*" hidden/>
+                </label>
+
+                <div class="sx-form-row">
+                    <label>Đăng dưới danh nghĩa
+                        <select name="postAs">
+                            <option value="self">Cá nhân</option>
+                            <option th:each="h : ${postAsHotels}" th:value="'hotel:' + ${h.id}" th:text="${h.name}"></option>
+                        </select>
+                    </label>
+                    <label>Quyền xem
+                        <select name="visibility">
+                            <option value="PUBLIC">Công khai</option>
+                            <option value="FOLLOWERS">Người theo dõi</option>
+                            <option value="PRIVATE">Chỉ mình tôi</option>
+                        </select>
+                    </label>
+                </div>
+
+                <label>Gắn khách sạn (tuỳ chọn)
+                    <input type="text" name="hotelKeyword" list="hotelList" autocomplete="off"
+                           placeholder="Gõ tên khách sạn để chọn gợi ý, VD: Pearl Resort"/>
+                    <datalist id="hotelList">
+                        <option th:each="h : ${tagHotels}" th:value="${h.name}" th:text="${h.city}"></option>
+                    </datalist>
+                </label>
+                <label class="sx-check"><input type="checkbox" name="checkin" value="true"/> <span>Check-in tại đây — hiển thị vị trí khách sạn trên bài.</span></label>
+
+                <div class="sx-form-actions">
+                    <a href="/community" class="btn ghost">Huỷ</a>
+                    <button type="submit" class="btn">Đăng bài</button>
+                </div>
+            </form>
+        </main>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<div th:replace="~{social/fragments :: scripts}"></div>
+</body>
+</html>

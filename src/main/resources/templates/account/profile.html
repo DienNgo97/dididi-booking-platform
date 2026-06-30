@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{profile.title}">Hồ sơ của tôi - Dididi</title>
+    <link rel="stylesheet" href="/css/site.css"/>
+    <style>
+        .pf-card{margin-top:16px}
+        .pf-row{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:14px 0;border-top:1px solid #eef1f6}
+        .pf-row:first-of-type{border-top:0}
+        .pf-l{display:flex;gap:10px;flex:1;min-width:0}
+        .pf-ic{font-size:18px;line-height:1.4}
+        .pf-t{font-weight:600}
+        .pf-v{color:#6b7280;font-size:14px;margin-top:2px;word-break:break-word}
+        .pf-act{flex:0 0 auto}
+        .pf-form{margin-top:10px}
+        .pf-form input{display:block;width:100%;max-width:320px;padding:9px 10px;border:1px solid #d3d9e4;border-radius:8px;margin:6px 0}
+        details.pf>summary{list-style:none;cursor:pointer;display:inline-block}
+        details.pf>summary::-webkit-details-marker{display:none}
+        .pf-danger-link{display:block;text-align:center;margin:22px 0;color:#c0392b;font-weight:700;cursor:pointer}
+    </style>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:640px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <h1 th:text="#{profile.heading}">Hồ sơ của tôi</h1>
+
+    <!-- ============ Bảo mật tài khoản ============ -->
+    <div class="card pf-card">
+        <h3 style="margin-top:0" th:text="#{profile.security}">Bảo mật tài khoản</h3>
+
+        <!-- Email -->
+        <div class="pf-row">
+            <div class="pf-l">
+                <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('mail','')}"></svg></span>
+                <div>
+                    <div class="pf-t">
+                        <span th:text="#{profile.email}">Địa chỉ email đã liên kết</span>
+                        <span th:if="${emailVerified}" class="ok"><svg th:replace="~{fragments/icons :: i('check','ic-brand')}"></svg> <span th:text="#{profile.verified}">Đã xác thực</span></span>
+                        <span th:unless="${emailVerified}" class="danger"><svg th:replace="~{fragments/icons :: i('alert','ic-danger')}"></svg> <span th:text="#{profile.unverified}">Chưa xác thực</span></span>
+                    </div>
+                    <div class="pf-v" th:text="${user.email}">email</div>
+                </div>
+            </div>
+            <div class="pf-act" th:unless="${emailVerified}">
+                <form th:action="@{/account/profile/email/resend}" method="post">
+                    <button class="btn ghost" type="submit" th:text="#{profile.resend}">Gửi lại</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Số điện thoại -->
+        <div class="pf-row">
+            <div class="pf-l">
+                <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('phone-mobile','')}"></svg></span>
+                <div style="flex:1;min-width:0">
+                    <div class="pf-t">
+                        <span th:text="#{profile.phone}">Số điện thoại đã liên kết</span>
+                        <span th:if="${user.phoneVerified}" class="ok"><svg th:replace="~{fragments/icons :: i('check','ic-brand')}"></svg> <span th:text="#{profile.verified}">Đã xác thực</span></span>
+                        <span th:unless="${user.phoneVerified}" class="danger"><svg th:replace="~{fragments/icons :: i('alert','ic-danger')}"></svg> <span th:text="#{profile.unverified}">Chưa xác thực</span></span>
+                    </div>
+                    <div class="pf-v" th:text="${user.phone != null} ? ${user.phone} : #{profile.phoneNone}">—</div>
+
+                    <details class="pf">
+                        <summary class="btn ghost" style="margin-top:8px"
+                                 th:text="${user.phone == null} ? #{profile.addPhone} : #{profile.changePhone}">Thêm số điện thoại</summary>
+                        <form class="pf-form" th:action="@{/account/profile/phone/send}" method="post">
+                            <input type="tel" name="phone" th:value="${user.phone}" placeholder="0961xxxxxx" required/>
+                            <button class="btn" type="submit" th:text="#{profile.sendOtp}">Gửi mã OTP</button>
+                        </form>
+                    </details>
+
+                    <details class="pf" th:if="${user.phone != null and !user.phoneVerified}" open>
+                        <summary class="btn" style="margin-top:8px" th:text="#{profile.enterOtp}">Nhập mã OTP</summary>
+                        <form class="pf-form" th:action="@{/account/profile/phone/confirm}" method="post">
+                            <p class="pf-v" th:text="#{profile.otpHint}">Mã OTP đã gửi tới email của bạn (demo).</p>
+                            <input type="text" name="code" inputmode="numeric" maxlength="6" placeholder="123456" required/>
+                            <button class="btn" type="submit" th:text="#{profile.verifyBtn}">Xác thực</button>
+                        </form>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mật khẩu -->
+        <div class="pf-row">
+            <div class="pf-l">
+                <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('lock','')}"></svg></span>
+                <div style="flex:1;min-width:0">
+                    <div class="pf-t" th:text="#{profile.password}">Mật khẩu</div>
+                    <div class="pf-v">••••••••••</div>
+                    <details class="pf">
+                        <summary class="btn ghost" style="margin-top:8px" th:text="#{profile.changePassword}">Đổi mật khẩu</summary>
+                        <form class="pf-form" th:action="@{/account/profile/password}" method="post">
+                            <input th:if="${user.passwordSet}" type="password" name="currentPassword"
+                                   th:placeholder="#{profile.currentPassword}" required/>
+                            <input type="password" name="newPassword" th:placeholder="#{profile.newPassword}" required/>
+                            <input type="password" name="confirmPassword" th:placeholder="#{profile.confirmPassword}" required/>
+                            <p class="pf-v" th:text="#{profile.passwordRule}">Tối thiểu 8 ký tự, gồm hoa/thường/số/ký tự đặc biệt.</p>
+                            <button class="btn" type="submit" th:text="#{profile.save}">Lưu</button>
+                        </form>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <!-- Khóa đăng nhập / thiết bị -->
+        <div class="pf-row">
+            <div class="pf-l">
+                <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('key','')}"></svg></span>
+                <div>
+                    <div class="pf-t" th:text="#{profile.loginKey}">Khóa đăng nhập</div>
+                    <div class="pf-v" th:text="#{profile.loginKeyDesc}">Đăng nhập bằng thiết bị đáng tin cậy</div>
+                </div>
+            </div>
+            <div class="pf-act"><a class="btn ghost" href="/account/profile/devices" th:text="#{profile.manage}">Quản lý</a></div>
+        </div>
+    </div>
+
+    <!-- ============ Liên kết tài khoản ============ -->
+    <div class="card pf-card">
+        <h3 style="margin-top:0">
+            <span th:text="#{profile.linking}">Liên kết tài khoản</span>
+            <span class="chip"><svg th:replace="~{fragments/icons :: i('thumb-up','')}"></svg> <span th:text="#{profile.easyLogin}">Dễ dàng đăng nhập</span></span>
+        </h3>
+        <p class="pf-v" th:text="#{profile.linkingDesc}">Liên kết tài khoản bên thứ ba để đăng nhập nhanh hơn.</p>
+        <div class="pf-row">
+            <div class="pf-l">
+                <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('circle','ic-fill ic-brand')}"></svg></span>
+                <div>
+                    <div class="pf-t">Google</div>
+                    <div th:if="${user.googleLinked}" class="pf-v ok" th:text="#{profile.linked}">Đã liên kết</div>
+                </div>
+            </div>
+            <div class="pf-act">
+                <a th:unless="${user.googleLinked}" class="btn" href="/oauth2/authorization/google" th:text="#{profile.link}">Liên kết</a>
+                <form th:if="${user.googleLinked}" th:action="@{/account/profile/google/unlink}" method="post">
+                    <button class="btn ghost" type="submit" th:attr="data-confirm=#{profile.unlinkConfirm}"
+                            th:text="#{profile.unlink}">Gỡ liên kết</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ Thông tin cá nhân ============ -->
+    <div class="card pf-card">
+        <h3 style="margin-top:0" th:text="#{profile.personal}">Thông tin cá nhân</h3>
+        <div class="pf-row">
+            <div class="pf-l">
+                <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('user','')}"></svg></span>
+                <div style="flex:1;min-width:0">
+                    <div class="pf-t" th:text="#{profile.displayName}">Tên hiển thị</div>
+                    <div class="pf-v" th:text="${user.fullName != null} ? ${user.fullName} : '—'">—</div>
+                    <details class="pf">
+                        <summary class="btn ghost" style="margin-top:8px" th:text="#{profile.edit}">Sửa</summary>
+                        <form class="pf-form" th:action="@{/account/profile/name}" method="post">
+                            <input type="text" name="fullName" th:value="${user.fullName}" maxlength="120" required/>
+                            <button class="btn" type="submit" th:text="#{profile.save}">Lưu</button>
+                        </form>
+                    </details>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ Xóa tài khoản ============ -->
+    <details class="pf" style="margin:18px 0">
+        <summary class="pf-danger-link" th:text="#{profile.delete}">Xóa bỏ tài khoản của tôi</summary>
+        <div class="card" style="border:1px solid #f0c4c0">
+            <p class="danger" th:text="#{profile.deleteWarn}">Thao tác này sẽ vô hiệu hoá tài khoản của bạn và không thể đăng nhập lại.</p>
+            <form th:action="@{/account/profile/close}" method="post">
+                <input th:if="${user.passwordSet}" type="password" name="password"
+                       th:placeholder="#{profile.confirmPasswordDelete}" required
+                       style="display:block;width:100%;max-width:320px;padding:9px 10px;border:1px solid #d3d9e4;border-radius:8px;margin:6px 0"/>
+                <button class="btn" type="submit" style="background:#c0392b;border-color:#c0392b"
+                        th:attr="data-confirm=#{profile.deleteConfirmAsk}" th:text="#{profile.deleteConfirm}">Xoá tài khoản</button>
+            </form>
+        </div>
+    </details>
+
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

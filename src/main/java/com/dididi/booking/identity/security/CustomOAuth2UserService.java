@@ -55,11 +55,19 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             u.setPasswordHash(passwordEncoder.encode("OAUTH2_" + UUID.randomUUID()));
             u.setRole(Role.CUSTOMER);
             u.setStatus(UserStatus.ACTIVE);
+            u.setGoogleLinked(true);   // tao qua Google -> da lien ket san
+            u.setPasswordSet(false);   // chua co mat khau form de dang nhap
             user = userRepository.save(u);
         }
 
-        if (user.getStatus() == UserStatus.LOCKED) {
+        if (user.getStatus() == UserStatus.LOCKED || user.getStatus() == UserStatus.CLOSED) {
             throw new OAuth2AuthenticationException(new OAuth2Error("account_locked"), "Tài khoản đã bị khoá");
+        }
+
+        // Danh dau da lien ket Google cho tai khoan da ton tai dang nhap Google lan dau.
+        if (!isNew && !user.isGoogleLinked()) {
+            user.setGoogleLinked(true);
+            user = userRepository.save(user);
         }
 
         // Copy attributes + danh dau tai khoan vua tao (de success handler hien thong bao dang ky).

@@ -55,6 +55,14 @@ public class GroupBooking extends BaseEntity {
     @Column(name = "ended_at")
     private LocalDateTime endedAt;
 
+    /**
+     * BP-GRP-01: tap hop ID booking ĐÃ CHOT khi mo giao dich "tra ca nhom" (CSV "1,2,3").
+     * Luc return chi confirm dung cac booking nay (khong phai "moi don con PENDING") ->
+     * phong them sau khi bam tra nhom KHONG duoc confirm mien phi. Reset sau khi confirm xong.
+     */
+    @Column(name = "pay_group_booking_ids", length = 2000)
+    private String payGroupBookingIds;
+
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }
 
@@ -91,4 +99,7 @@ public class GroupBooking extends BaseEntity {
     public LocalDateTime getEndedAt() { return endedAt; }
     public void setEndedAt(LocalDateTime endedAt) { this.endedAt = endedAt; }
     public boolean isEnded() { return endedAt != null; }
+
+    public String getPayGroupBookingIds() { return payGroupBookingIds; }
+    public void setPayGroupBookingIds(String payGroupBookingIds) { this.payGroupBookingIds = payGroupBookingIds; }
 }

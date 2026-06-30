@@ -7,9 +7,14 @@ import com.dididi.booking.booking.repository.BookingRepository;
 import com.dididi.booking.corporate.domain.entity.Company;
 import com.dididi.booking.corporate.repository.CompanyRepository;
 import com.dididi.booking.flight.repository.FlightRepository;
+import com.dididi.booking.hotel.domain.CityGeo;
+import com.dididi.booking.hotel.domain.HotelSupport;
 import com.dididi.booking.hotel.domain.entity.Hotel;
 import com.dididi.booking.hotel.domain.entity.RoomType;
+import com.dididi.booking.hotel.domain.enums.Amenity;
 import com.dididi.booking.hotel.domain.enums.HotelSource;
+import com.dididi.booking.hotel.domain.enums.HotelTag;
+import com.dididi.booking.hotel.domain.enums.PropertyType;
 import com.dididi.booking.hotel.repository.HotelRepository;
 import com.dididi.booking.hotel.repository.RoomTypeRepository;
 import com.dididi.booking.identity.domain.entity.User;
@@ -30,8 +35,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Seed DỮ LIỆU DEMO khối lượng lớn cho môi trường dev/demo.
@@ -78,6 +85,7 @@ public class DemoDataSeeder implements CommandLineRunner {
     private static final String[] CITY = {"TP.HCM","Hà Nội","Đà Nẵng","Nha Trang","Huế","Phú Quốc","Đà Lạt","Hội An","Vũng Tàu","Hạ Long","Cần Thơ","Sa Pa"};
     private static final String[] HPRE = {"Saigon","Hanoi","Bay","Riverside","Sunrise","Golden","Royal","Ocean","Central","Grand","Lotus","Pearl","Emerald","Hoa Sen","Bình Minh"};
     private static final String[] HSUF = {"Hotel","Resort","Boutique Hotel","Inn","Suites","Hotel & Spa","Beach Resort","Residence"};
+    private static final String[] STREETS = {"Trần Phú","Lê Lợi","Nguyễn Huệ","Hùng Vương","Bạch Đằng","Võ Nguyên Giáp","Hai Bà Trưng","Lý Thường Kiệt","Phan Chu Trinh","Nguyễn Thị Minh Khai","Trần Hưng Đạo","Lê Duẩn"};
     // room type template: name, capacity, base price, total rooms
     private static final Object[][] RTPL = {
         {"Standard", 2, 600000, 20},
@@ -138,16 +146,38 @@ public class DemoDataSeeder implements CommandLineRunner {
             User vendor = userRepository.save(newUser(String.format("vendor%03d@dididi.local", v), "Vendor@123",
                     "Vendor " + person(), Role.VENDOR, null));
             String city = CITY[rnd.nextInt(CITY.length)];
-            String hotelName = HPRE[rnd.nextInt(HPRE.length)] + " " + HSUF[rnd.nextInt(HSUF.length)] + " " + v;
+            String suffix = HSUF[rnd.nextInt(HSUF.length)];
+            String hotelName = HPRE[rnd.nextInt(HPRE.length)] + " " + suffix + " " + v;
+            int star = 3 + rnd.nextInt(3); // 3..5
             Hotel h = new Hotel();
             h.setName(hotelName);
             h.setCity(city);
-            h.setAddress((10 + rnd.nextInt(200)) + " Đường " + (1 + rnd.nextInt(40)) + ", " + city);
+            // dia chi tach nho (Nhom 1)
+            String house = String.valueOf(10 + rnd.nextInt(280));
+            String street = STREETS[rnd.nextInt(STREETS.length)];
+            String ward = "Phường " + (1 + rnd.nextInt(15));
+            String district = "Quận " + (1 + rnd.nextInt(12));
+            h.setHouseNumber(house);
+            h.setStreet(street);
+            h.setWard(ward);
+            h.setDistrict(district);
+            h.setProvince(city);
+            h.setAddress(HotelSupport.composeAddress(house, street, ward, district, city, city));
+            // toa do tu trung tam thanh pho + jitter ~±2km (Nhom 2)
+            CityGeo.Geo geo = CityGeo.lookup(city);
+            if (geo != null) {
+                h.setLat(round6(geo.lat() + (rnd.nextDouble() - 0.5) * 0.04));
+                h.setLng(round6(geo.lng() + (rnd.nextDouble() - 0.5) * 0.04));
+                h.setRegion(geo.region());
+            }
             h.setDescription("Khách sạn do vendor tự quản trên Dididi tại " + city + ".");
-            h.setStarRating(3 + rnd.nextInt(3)); // 3..5
+            h.setStarRating(star);
             h.setActive(true);
             h.setSource(HotelSource.DIRECT);
             h.setVendorId(vendor.getId());
+            h.setPropertyType(propertyTypeOf(suffix));
+            h.setAmenities(randomAmenities(star));
+            h.setTags(tagsFor(city, star, h.getAmenities()));
             hotelRepository.save(h);
 
             int numTypes = 3 + rnd.nextInt(2); // 3 hoặc 4 hạng phòng
@@ -215,6 +245,40 @@ public class DemoDataSeeder implements CommandLineRunner {
 
     private String person() {
         return LAST[rnd.nextInt(LAST.length)] + " " + FIRST[rnd.nextInt(FIRST.length)] + " " + FIRST[rnd.nextInt(FIRST.length)];
+    }
+
+    private static double round6(double v) { return Math.round(v * 1_000_000d) / 1_000_000d; }
+
+    private static PropertyType propertyTypeOf(String suffix) {
+        String s = suffix.toLowerCase();
+        if (s.contains("resort")) return PropertyType.RESORT;
+        if (s.contains("residence") || s.contains("suites")) return PropertyType.APARTMENT;
+        if (s.contains("inn")) return PropertyType.GUESTHOUSE;
+        if (s.contains("boutique")) return PropertyType.HOMESTAY;
+        return PropertyType.HOTEL;
+    }
+
+    private Set<Amenity> randomAmenities(int star) {
+        Set<Amenity> s = new LinkedHashSet<>();
+        s.add(Amenity.WIFI); s.add(Amenity.AC); s.add(Amenity.RECEPTION_24H); s.add(Amenity.PARKING);
+        Amenity[] pool = Amenity.values();
+        int extra = 4 + rnd.nextInt(6);
+        for (int i = 0; i < extra; i++) s.add(pool[rnd.nextInt(pool.length)]);
+        if (star >= 4) { s.add(Amenity.BREAKFAST); s.add(Amenity.POOL); }
+        if (star >= 5) { s.add(Amenity.SPA); s.add(Amenity.GYM); s.add(Amenity.RESTAURANT); }
+        return s;
+    }
+
+    private Set<HotelTag> tagsFor(String city, int star, Set<Amenity> ams) {
+        Set<HotelTag> t = new LinkedHashSet<>();
+        boolean beach = city.matches(".*(Nha Trang|Đà Nẵng|Phú Quốc|Vũng Tàu|Hạ Long|Hội An).*");
+        if (beach) { t.add(HotelTag.SEA_VIEW); if (rnd.nextBoolean()) t.add(HotelTag.BEACHFRONT); }
+        if (city.contains("HCM") || city.contains("Hà Nội")) t.add(HotelTag.CITY_CENTER);
+        if (star >= 5) t.add(HotelTag.LUXURY); else if (star == 3) t.add(HotelTag.BUDGET);
+        if (ams.contains(Amenity.FAMILY_ROOM) || rnd.nextInt(3) == 0) t.add(HotelTag.FAMILY_FRIENDLY);
+        if (ams.contains(Amenity.AIRPORT_SHUTTLE)) t.add(HotelTag.NEAR_AIRPORT);
+        if (ams.contains(Amenity.SPA)) t.add(HotelTag.ROMANTIC);
+        return t;
     }
 
     private User newUser(String email, String pw, String fullName, Role role, Long companyId) {

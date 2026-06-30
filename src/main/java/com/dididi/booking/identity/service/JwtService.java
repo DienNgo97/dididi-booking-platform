@@ -17,20 +17,35 @@ import java.util.UUID;
 
 /**
  * Sinh va xac thuc JWT (HS256). Cau hinh o app.jwt.* trong application.yml.
- * Co default secret de context test khong vo khi thieu config; PROD bat buoc override bang ENV.
+ * SEC-03: KHONG con default secret. Thieu/qua ngan (<32 byte) -> fail-fast khi khoi dong
+ * (constructor nem IllegalStateException) de tranh ky bang khoa cong khai/yeu o moi truong that.
  */
 @Service
 public class JwtService {
+
+    /** HS256 yeu cau khoa toi thieu 256-bit = 32 byte. */
+    private static final int MIN_SECRET_BYTES = 32;
 
     private final SecretKey key;
     private final long accessTokenMinutes;
     private final String issuer;
 
     public JwtService(
-            @Value("${app.jwt.secret:dev-fallback-secret-please-override-in-prod-min-32-bytes!!}") String secret,
+            @Value("${app.jwt.secret:}") String secret,
             @Value("${app.jwt.access-token-minutes:60}") long accessTokenMinutes,
             @Value("${app.jwt.issuer:dididi-booking-platform}") String issuer) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "app.jwt.secret chua duoc cau hinh. Hay dat bien moi truong JWT_SECRET "
+                            + "(it nhat " + MIN_SECRET_BYTES + " byte) truoc khi khoi dong.");
+        }
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < MIN_SECRET_BYTES) {
+            throw new IllegalStateException(
+                    "app.jwt.secret qua ngan (" + secretBytes.length + " byte); HS256 yeu cau toi thieu "
+                            + MIN_SECRET_BYTES + " byte.");
+        }
+        this.key = Keys.hmacShaKeyFor(secretBytes);
         this.accessTokenMinutes = accessTokenMinutes;
         this.issuer = issuer;
     }

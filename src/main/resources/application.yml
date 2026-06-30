@@ -1,8 +1,8 @@
 spring:
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 30MB
+      max-file-size: 80MB          # cho phep video ngan (Cong dong); anh van bi chan 8MB tai service
+      max-request-size: 300MB
   application:
     name: dididi-booking-platform
   profiles:
@@ -78,6 +78,10 @@ management:
       show-details: when-authorized
 
 app:
+  # ---- Google Maps (Nhom 2). De API key (browser key) trong application-local.yml, KHONG commit. ----
+  #   app.maps.api-key: AIza...    hoac bien moi truong GOOGLE_MAPS_API_KEY
+  maps:
+    api-key: ${GOOGLE_MAPS_API_KEY:}
   jwt:
     # Dev secret - PROD lay tu ENV (xem application-prod.yml). Toi thieu 32 bytes cho HS256.
     secret: ${JWT_SECRET:dev-secret-change-me-please-use-a-long-random-string-min-32-bytes}
@@ -109,13 +113,22 @@ app:
   # ---- Caching @Cacheable (Dot1 #4). TTL cho API doc hotel/flight tren Redis. Khong khai -> mac dinh 10 phut. ----
   cache:
     ttl-minutes: 10
+  # ---- CORS (SEC-06). Origin cho Angular/Flutter goi /api/**. CSV nhieu origin. Prod set domain that.
+  #      allowCredentials=true nen KHONG dung "*" — liet ke origin cu the. ----
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200}
   # ---- Rate limit (Dot1 #4). Gioi han /api/auth/* theo IP (token bucket). Khong khai -> mac dinh 10 req/phut. ----
+  #      trust-forwarded-for=false: lay IP tu getRemoteAddr() (chong gia mao X-Forwarded-For). Chi bat khi
+  #      chay sau proxy/LB tin cay (SEC-07). ----
   rate-limit:
     auth:
       requests-per-minute: 10
-  # ---- Refund (Dot2 Super Admin). Hoan tien > nguong nay can SuperAdmin duyet (<= nguong: Admin duyet). ----
+    trust-forwarded-for: ${APP_RATE_LIMIT_TRUST_XFF:false}
+  # ---- Refund (Dot2 Super Admin). Hoan tien >= nguong nay (VND) can SuperAdmin duyet (< nguong: Admin duyet). ----
+  #      Day la NGUON SU THAT DUY NHAT cho nguong. Default trong code (5_000_000) khop policy va chi la
+  #      fallback an toan neu key bi xoa (khong lat ngam ve 0 hay 10tr). ----
   refund:
-    super-admin-threshold: 100000
+    super-admin-threshold: 5000000
   # ---- Tro ly CSKH (Dot3). Hybrid: tri thuc noi bo (KB) truoc, LLM sau NEU co api-key. ----
   # De api-key trong (mac dinh) -> CHI dung KB, chay offline, khong goi mang. Co key -> cau hoi la moi nho LLM.
   support:

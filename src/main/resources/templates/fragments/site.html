@@ -3,46 +3,59 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 <div th:fragment="nav">
+    <svg th:replace="~{fragments/icons :: sprite}"></svg>
     <div class="nav">
         <a class="brand" href="/"><span class="wordmark">Dididi</span><span th:replace="~{fragments/site :: walkmark}"></span></a>
-        <a href="/hotels" th:text="#{nav.hotels}">Khách sạn</a>
-        <a href="/flights" th:text="#{nav.flights}">Chuyến bay</a>
-        <a href="/trip-planner" th:text="#{nav.trip}">Trip Planner</a>
+        <a href="/hotels"><svg th:replace="~{fragments/icons :: i('building','')}"></svg> <span th:text="#{nav.hotels}">Khách sạn</span></a>
+        <a href="/flights"><svg th:replace="~{fragments/icons :: i('plane','')}"></svg> <span th:text="#{nav.flights}">Chuyến bay</span></a>
+        <a href="/trip-planner"><svg th:replace="~{fragments/icons :: i('route','')}"></svg> <span th:text="#{nav.trip}">Trip Planner</span></a>
+        <a href="/community"><svg th:replace="~{fragments/icons :: i('compass','')}"></svg> <span th:text="#{nav.community}">Cộng đồng</span></a>
         <span class="sp"></span>
-        <span sec:authorize="isAuthenticated()" class="dd">
+        <span sec:authorize="isAuthenticated()" class="dd dd-acc">
             <button class="dd-btn" type="button">
-                <span aria-hidden="true">👤</span>
+                <span class="dd-ava" aria-hidden="true"
+                      th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${#strings.toUpperCase(#strings.substring(navFullName,0,1))} : 'D'">D</span>
                 <b th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${navFullName} : #{nav.account}">Tài khoản</b>
-                <span class="dd-caret">▾</span>
+                <span class="dd-caret"><svg th:replace="~{fragments/icons :: i('chevron-down','')}"></svg></span>
             </button>
             <div class="dd-menu">
-                <a href="/account/bookings" th:text="#{nav.myBookings}">Đơn của tôi</a>
-                <a href="/account/wishlist" th:text="#{nav.wishlist}">Yêu thích</a>
-                <a href="/account/points" th:text="#{nav.points}">Điểm thưởng</a>
+                <div class="dd-head">
+                    <span class="dd-ava lg" aria-hidden="true"
+                          th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${#strings.toUpperCase(#strings.substring(navFullName,0,1))} : 'D'">D</span>
+                    <div class="dd-id">
+                        <b th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${navFullName} : #{nav.account}">Tài khoản</b>
+                        <small th:text="#{nav.memberSub}">Thành viên Dididi</small>
+                    </div>
+                </div>
+                <a href="/account/profile"><span class="dd-ic" aria-hidden="true"><svg th:replace="~{fragments/icons :: i('user','')}"></svg></span><span th:text="#{nav.profile}">Hồ sơ của tôi</span></a>
+                <a href="/account/bookings"><span class="dd-ic" aria-hidden="true"><svg th:replace="~{fragments/icons :: i('receipt','')}"></svg></span><span th:text="#{nav.myBookings}">Đơn của tôi</span></a>
+                <a href="/account/wishlist"><span class="dd-ic" aria-hidden="true"><svg th:replace="~{fragments/icons :: i('heart','')}"></svg></span><span th:text="#{nav.wishlist}">Yêu thích</span></a>
+                <a href="/account/points"><span class="dd-ic" aria-hidden="true"><svg th:replace="~{fragments/icons :: i('gift','')}"></svg></span><span th:text="#{nav.points}">Điểm thưởng</span></a>
                 <div class="dd-sep"></div>
                 <form th:action="@{/logout}" method="post">
-                    <button class="dd-logout" type="submit" th:text="#{nav.logout}">Đăng xuất</button>
+                    <button class="dd-logout" type="submit"><span class="dd-ic" aria-hidden="true"><svg th:replace="~{fragments/icons :: i('logout','')}"></svg></span><span th:text="#{nav.logout}">Đăng xuất</span></button>
                 </form>
             </div>
         </span>
-        <span sec:authorize="!isAuthenticated()">
-            <a href="/vendor-register" th:text="#{nav.sell}">Bán phòng</a> ·
-            <a href="/login" th:text="#{nav.login}">Đăng nhập</a> ·
-            <a class="btn" href="/register" style="padding:6px 12px" th:text="#{nav.register}">Đăng ký</a>
+        <span sec:authorize="!isAuthenticated()" class="nav-guest">
+            <a href="/vendor-register" th:text="#{nav.sell}">Bán phòng</a>
+            <a href="/login" th:text="#{nav.login}">Đăng nhập</a>
+            <a class="btn nav-cta" href="/register" th:text="#{nav.register}">Đăng ký</a>
         </span>
         <span class="dd lang-dd" th:title="#{nav.language}">
             <button class="dd-btn" type="button">
+                <svg th:replace="~{fragments/icons :: i('globe','')}"></svg>
                 <span th:switch="${#locale.language}">
-                    <span th:case="'en'">🇬🇧 EN</span>
-                    <span th:case="'zh'">🇨🇳 中文</span>
-                    <span th:case="*">🇻🇳 VI</span>
+                    <span th:case="'en'">EN</span>
+                    <span th:case="'zh'">中文</span>
+                    <span th:case="*">VI</span>
                 </span>
-                <span class="dd-caret">▾</span>
+                <span class="dd-caret"><svg th:replace="~{fragments/icons :: i('chevron-down','')}"></svg></span>
             </button>
             <div class="dd-menu">
-                <a href="?lang=vi">🇻🇳 Tiếng Việt</a>
-                <a href="?lang=en">🇬🇧 English</a>
-                <a href="?lang=zh">🇨🇳 中文</a>
+                <a href="?lang=vi">Tiếng Việt</a>
+                <a href="?lang=en">English</a>
+                <a href="?lang=zh">中文</a>
             </div>
         </span>
     </div>
@@ -59,7 +72,7 @@
         prefillPost: /*[[#{chat.prefillPost}]]*/ ' nhưng đã trong vòng 48 giờ',
         botUnknown: /*[[#{chat.botUnknown}]]*/ 'Xin lỗi, mình chưa rõ câu hỏi.',
         botBusy: /*[[#{chat.botBusy}]]*/ 'Xin lỗi, hệ thống đang bận.',
-        agentBtn: /*[[#{chat.agentBtn}]]*/ '📞 Gặp tổng đài viên',
+        agentBtn: /*[[#{chat.agentBtn}]]*/ ' Gặp tổng đài viên',
         reqAgent: /*[[#{chat.reqAgent}]]*/ 'Khách yêu cầu gặp tổng đài viên',
         connecting: /*[[#{chat.connecting}]]*/ 'Đang kết nối tổng đài viên…',
         agentGreet: /*[[#{chat.agentGreet}]]*/ 'Dạ em chào anh/chị',
@@ -170,7 +183,7 @@
             <div class="dds-head">
                 <div class="dds-ttl"><span class="dds-dot"></span> <span th:text="#{support.assistantName}">Trợ lý Dididi</span></div>
                 <a class="dds-full" href="/support" th:attr="title=#{support.openFull}" title="Mở trang hỗ trợ">⤢</a>
-                <button type="button" class="dds-x" th:attr="aria-label=#{support.close}" aria-label="Đóng" onclick="DididiSupport.close()">✕</button>
+                <button type="button" class="dds-x" th:attr="aria-label=#{support.close}" aria-label="Đóng" onclick="DididiSupport.close()"><svg th:replace="~{fragments/icons :: i('x','ic-danger')}"></svg></button>
             </div>
             <div class="dds-body" id="dd-support-body"></div>
             <div class="dds-quick" id="dd-support-quick">
@@ -288,7 +301,7 @@
       function open(code){
         var w=E().wrap, p=E().panel; if(!p) return;
         p.hidden=false; if(w) w.classList.add('open');
-        if(!greeted){ greeted=true; bubble('bot',(window.DD_T&&DD_T.greeting)||'Chào bạn 👋 Mình là trợ lý của Dididi. Mình giúp được về huỷ đơn, hoàn tiền, đổi lịch, thanh toán, điểm thưởng… Bạn cần hỗ trợ gì ạ?'); }
+        if(!greeted){ greeted=true; bubble('bot',(window.DD_T&&DD_T.greeting)||'Chào bạn  Mình là trợ lý của Dididi. Mình giúp được về huỷ đơn, hoàn tiền, đổi lịch, thanh toán, điểm thưởng… Bạn cần hỗ trợ gì ạ?'); }
         if(code){ ctxBooking=code; bubble('system',((window.DD_T&&DD_T.ctxPrefix)||'Bạn đang hỏi về đơn')+' '+code); if(E().input) E().input.value=((window.DD_T&&DD_T.prefillPre)||'Tôi muốn huỷ đơn')+' '+code+' '+((window.DD_T&&DD_T.prefillPost)||'nhưng đã trong vòng 48 giờ'); }
         if(E().input) E().input.focus();
       }
@@ -307,7 +320,7 @@
       function agentButton(){
         var b=E().body; if(!b || b.querySelector('.dds-agentbtn')) return;
         var wrap=document.createElement('div'); wrap.className='dds-msg dds-bot';
-        var btn=document.createElement('button'); btn.type='button'; btn.className='dds-agentbtn'; btn.textContent=(window.DD_T&&DD_T.agentBtn)||'📞 Gặp tổng đài viên';
+        var btn=document.createElement('button'); btn.type='button'; btn.className='dds-agentbtn'; btn.textContent=(window.DD_T&&DD_T.agentBtn)||' Gặp tổng đài viên';
         btn.addEventListener('click', connectAgent); wrap.appendChild(btn); b.appendChild(wrap); scroll();
       }
       function connectAgent(){
@@ -323,7 +336,7 @@
           var n=norm(text), ans;
           if(n.indexOf('huy')>=0||n.indexOf('cancel')>=0){ ans=(window.DD_T&&DD_T.agentCancel)||'Em đã ghi nhận yêu cầu huỷ của mình. Do đơn đã trong vòng 48 giờ nên em sẽ kiểm tra điều kiện hoàn và phản hồi qua email sớm nhất ạ.'; }
           else if(n.indexOf('hoan')>=0||n.indexOf('tien')>=0){ ans=(window.DD_T&&DD_T.agentRefund)||'Về hoàn tiền, em sẽ tạo phiếu xử lý và cập nhật trạng thái ngay trong chi tiết đơn của mình ạ.'; }
-          else if(n.indexOf('cam on')>=0||n.indexOf('thank')>=0){ ans=(window.DD_T&&DD_T.agentThanks)||'Dạ không có gì ạ, chúc anh/chị một ngày tốt lành! 🌿'; }
+          else if(n.indexOf('cam on')>=0||n.indexOf('thank')>=0){ ans=(window.DD_T&&DD_T.agentThanks)||'Dạ không có gì ạ, chúc anh/chị một ngày tốt lành! '; }
           else { ans=(window.DD_T&&DD_T.agentDefault)||'Dạ em đã ghi nhận thông tin và sẽ hỗ trợ, phản hồi mình sớm nhất ạ. Mình còn cần giúp gì thêm không ạ?'; }
           bubble('agent', ans); logMsg('AGENT', ans);
         }, 1100);
