@@ -54,7 +54,7 @@ public class BulkBookingService {
                 String d = at(dayDates, idx), ti = at(timeIns, idx), to = at(timeOuts, idx);
                 LocalDate date; LocalTime tin, tout;
                 try { date = LocalDate.parse(d.trim()); tin = LocalTime.parse(ti.trim()); tout = LocalTime.parse(to.trim()); }
-                catch (Exception e) { continue; }
+                catch (Exception e) { results.add(new BulkLineResult(idx + 1, guest, null, "SKIPPED", "Ngày/giờ không hợp lệ — bỏ qua dòng")); continue; }
                 no++;
                 try {
                     b = bookingService.createDayUseHotelBooking(userId, hotelId, roomTypeId, roomName, guest, date, tin, tout, rooms);
@@ -65,7 +65,7 @@ public class BulkBookingService {
                 String ci = at(checkIns, idx), co = at(checkOuts, idx);
                 LocalDate cin, cout;
                 try { cin = LocalDate.parse(ci.trim()); cout = LocalDate.parse(co.trim()); }
-                catch (Exception e) { continue; }
+                catch (Exception e) { results.add(new BulkLineResult(idx + 1, guest, null, "SKIPPED", "Ngày không hợp lệ — bỏ qua dòng")); continue; }
                 no++;
                 try {
                     b = bookingService.createHotelBooking(userId, hotelId, roomTypeId, roomName, guest, cin, cout, rooms);

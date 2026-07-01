@@ -51,11 +51,15 @@ public class LoyaltyService {
     @Value("${app.loyalty.min-redeem:1000}")
     private int minRedeem;
 
+    private final com.dididi.booking.notification.service.UserNotificationService userNotificationService;
+
     public LoyaltyService(LoyaltyTransactionRepository repository, VoucherRepository voucherRepository,
-                          BookingRepository bookingRepository) {
+                          BookingRepository bookingRepository,
+                          com.dididi.booking.notification.service.UserNotificationService userNotificationService) {
         this.repository = repository;
         this.voucherRepository = voucherRepository;
         this.bookingRepository = bookingRepository;
+        this.userNotificationService = userNotificationService;
     }
 
     /** Tich diem cho 1 don da xac nhan (idempotent theo bookingId). Goi tu BookingService.markConfirmed. */
@@ -72,6 +76,13 @@ public class LoyaltyService {
         t.setBookingId(b.getId());
         t.setDescription("Tích điểm đơn " + b.getPublicCode());
         repository.save(t);
+        try {
+            userNotificationService.create(b.getUserId(),
+                    com.dididi.booking.notification.domain.UserNotificationType.LOYALTY_EARNED,
+                    "Cộng điểm thưởng",
+                    "Bạn nhận +" + points + " điểm từ đơn " + b.getPublicCode() + ".",
+                    "/account/points", b.getId());
+        } catch (Exception ignored) { }
     }
 
     public int balance(Long userId) {

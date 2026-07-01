@@ -49,6 +49,9 @@ class LoyaltyRefundReversalTest {
     @Mock LoyaltyTransactionRepository loyaltyRepository;
     @Mock EmailService emailService;
     @Mock ApplicationEventPublisher events;
+    @Mock com.dididi.booking.notification.service.UserNotificationService userNotificationService;
+    @Mock com.dididi.booking.corporate.service.CompanyService companyService;
+    @Mock com.dididi.booking.voucher.service.VoucherService voucherService;
 
     @Captor ArgumentCaptor<LoyaltyTransaction> txnCaptor;
 
@@ -57,7 +60,7 @@ class LoyaltyRefundReversalTest {
     @BeforeEach
     void setUp() {
         service = new RefundService(bookingRepository, bookingService, paymentRepository, refundRepository,
-                loyaltyRepository, emailService, events, new BigDecimal("5000000"));
+                loyaltyRepository, emailService, events, userNotificationService, companyService, voucherService, new BigDecimal("5000000"));
         when(refundRepository.save(any(Refund.class))).thenAnswer(inv -> inv.getArgument(0));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(inv -> inv.getArgument(0));
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));

@@ -9,6 +9,7 @@ import com.dididi.booking.corporate.service.CorporateBookingService;
 import com.dididi.booking.group.service.GroupBookingService;
 import com.dididi.booking.payment.domain.entity.Payment;
 import com.dididi.booking.payment.domain.enums.PaymentStatus;
+import com.dididi.booking.payment.repository.PaymentAttemptRepository;
 import com.dididi.booking.payment.service.PaymentService;
 import com.dididi.booking.payment.vnpay.VnPayService;
 import com.dididi.booking.payment.web.PaymentWebController;
@@ -55,13 +56,14 @@ class VnPayReturnAmountCheckTest {
     @Mock CorporateBookingService corporateBookingService;
     @Mock VoucherService voucherService;
     @Mock GroupBookingService groupService;
+    @Mock PaymentAttemptRepository paymentAttemptRepository;
 
     PaymentWebController controller;
 
     @BeforeEach
     void setUp() {
         controller = new PaymentWebController(bookingService, bookingRepository, paymentService, vnPayService,
-                currentUser, companyService, corporateBookingService, voucherService, groupService);
+                currentUser, companyService, corporateBookingService, voucherService, groupService, paymentAttemptRepository);
     }
 
     private Map<String, String> baseParams(String txnRef, long vnpAmount) {

@@ -82,7 +82,17 @@ public class HotelBulkSeeder implements CommandLineRunner {
     public void run(String... args) {
         if (!enabled) return;
         if (hotelRepository.findByExternalId(EXT_BASE + 1).isPresent()) {
-            log.info("[HotelBulkSeeder] Đã seed 300 KS trước đó (externalId {} tồn tại) -> bỏ qua.", EXT_BASE + 1);
+            // Đã seed trước đó -> KHÔNG tạo lại. Nhưng tự sửa các KS seed cũ bị đánh nhầm source=CHANNEL
+            // (khiến detail() đi tìm phòng ở hotel-pms 8082, không có -> không đặt được) về DIRECT.
+            int fixed = 0;
+            for (Hotel h : hotelRepository.findByActiveTrue()) {
+                if (h.getExternalId() != null && h.getExternalId() >= EXT_BASE && h.getSource() != HotelSource.DIRECT) {
+                    h.setSource(HotelSource.DIRECT);
+                    hotelRepository.save(h);
+                    fixed++;
+                }
+            }
+            log.info("[HotelBulkSeeder] Đã seed 300 KS trước đó -> bỏ qua tạo mới. Sửa {} KS sang DIRECT để đặt phòng được.", fixed);
             return;
         }
         log.info("[HotelBulkSeeder] Bắt đầu seed 300 khách sạn (địa chỉ chuẩn VN sau sáp nhập 2025)...");
@@ -130,7 +140,10 @@ public class HotelBulkSeeder implements CommandLineRunner {
         h.setStarRating(star);
         h.setDescription(descFor(loc, star));
         h.setActive(true);
-        h.setSource(HotelSource.CHANNEL);
+        // DIRECT: loại phòng được seed thẳng vào DB nội bộ (giống DemoDataSeeder) nên trang chi tiết
+        // đọc phòng từ roomTypeRepository và ĐẶT PHÒNG ĐƯỢC. (CHANNEL sẽ đi tìm phòng ở hotel-pms 8082
+        // -> không có dữ liệu 800xxx -> "Chưa lấy được loại phòng" -> không đặt được.)
+        h.setSource(HotelSource.DIRECT);
         h.setCurrency("VND");
         h.setPropertyType(propertyTypeOf(suffix));
         Set<Amenity> ams = randomAmenities(star);

@@ -4,6 +4,7 @@ import com.dididi.booking.audit.event.AuditEvent;
 import com.dididi.booking.identity.repository.UserRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent;
 import org.springframework.security.authentication.event.InteractiveAuthenticationSuccessEvent;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -46,6 +47,18 @@ public class LoginAuditService {
         }
         String method = (auth.getPrincipal() instanceof OAuth2User) ? "Google" : "mat khau";
         recordByEmail(auth.getName(), method);   // getName() = email (ca form login lan OAuth2)
+    }
+
+    /** Ghi audit moi lan dang nhap THAT BAI (sai mat khau, tai khoan khoa...) -> phuc vu dieu tra brute-force. */
+    @EventListener
+    public void onLoginFailure(AbstractAuthenticationFailureEvent event) {
+        Authentication auth = event.getAuthentication();
+        String email = (auth == null) ? null : auth.getName();
+        Long userId = (email == null || email.isBlank()) ? null
+                : userRepository.findByEmail(email).map(u -> u.getId()).orElse(null);
+        String ex = event.getException() == null ? "?" : event.getException().getClass().getSimpleName();
+        events.publishEvent(new AuditEvent(userId, "LOGIN_FAILED", "USER", userId,
+                "Dang nhap that bai" + (email != null ? " (" + email + ")" : "") + ": " + ex));
     }
 
     /** Ghi audit theo email (tu tra ra userId). Bo qua neu khong tim thay user. */

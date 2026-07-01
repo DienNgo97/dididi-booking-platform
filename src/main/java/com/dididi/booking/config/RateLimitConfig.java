@@ -20,7 +20,8 @@ public class RateLimitConfig {
             @Value("${app.rate-limit.trust-forwarded-for:false}") boolean trustForwardedFor) {
         FilterRegistrationBean<RateLimitingFilter> reg = new FilterRegistrationBean<>();
         reg.setFilter(new RateLimitingFilter(requestsPerMinute, trustForwardedFor));
-        reg.addUrlPatterns("/api/auth/*");
+        // Chong brute-force CA API ln WEB (form login Thymeleaf) — truoc day bo sot /login, /register web.
+        reg.addUrlPatterns("/api/auth/*", "/login", "/register", "/forgot-password");
         reg.setOrder(Ordered.HIGHEST_PRECEDENCE);
         reg.setName("rateLimitingFilter");
         return reg;

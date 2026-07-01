@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Thông báo - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <div class="notif-page">
+        <div class="notif-top">
+            <h1>Thông báo</h1>
+            <form th:action="@{/notifications/read}" method="post" th:unless="${#lists.isEmpty(items)}">
+                <button class="btn ghost" type="submit">Đánh dấu đã đọc</button>
+            </form>
+        </div>
+
+        <div class="notif-empty" th:if="${#lists.isEmpty(items)}">
+            <svg class="ic"><use href="#ic-bell"></use></svg>
+            <p>Chưa có thông báo nào</p>
+        </div>
+
+        <div class="notif-list" th:unless="${#lists.isEmpty(items)}">
+            <a th:each="n : ${items}" class="notif-row" th:classappend="${n.read} ? '' : 'is-unread'"
+               th:href="${n.url != null} ? ${n.url} : '/notifications'">
+                <span class="notif-ic"><svg class="ic"><use th:attr="href='#' + ${n.icon}"></use></svg></span>
+                <span class="notif-tx">
+                    <b th:text="${n.title}">Tiêu đề</b>
+                    <span th:text="${n.text}">Nội dung</span>
+                    <small class="notif-time" th:attr="data-ts=${n.createdAtMs}"></small>
+                </span>
+                <span class="notif-dot" th:unless="${n.read}"></span>
+            </a>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<script>
+(function(){
+    function rel(ms){
+        if(!ms) return '';
+        var s=Math.floor((Date.now()-ms)/1000);
+        if(s<60) return 'vừa xong';
+        var m=Math.floor(s/60); if(m<60) return m+' phút trước';
+        var h=Math.floor(m/60); if(h<24) return h+' giờ trước';
+        var d=Math.floor(h/24); if(d<30) return d+' ngày trước';
+        return new Date(ms).toLocaleDateString('vi-VN');
+    }
+    document.querySelectorAll('.notif-time').forEach(function(el){
+        el.textContent=rel(parseInt(el.getAttribute('data-ts')||'0',10));
+    });
+})();
+</script>
+</body>
+</html>

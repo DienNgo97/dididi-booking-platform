@@ -12,5 +12,7 @@ public interface VoucherRedemptionRepository extends JpaRepository<VoucherRedemp
 
     boolean existsByVoucherCodeAndUserId(String voucherCode, Long userId);
 
+    Optional<VoucherRedemption> findByVoucherCodeAndUserId(String voucherCode, Long userId);
+
     Optional<VoucherRedemption> findByBookingId(Long bookingId);
 }

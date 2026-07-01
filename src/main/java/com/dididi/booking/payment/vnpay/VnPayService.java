@@ -41,6 +41,12 @@ public class VnPayService {
      * @param clientIp IP nguoi dat
      */
     public String createPaymentUrl(Booking booking, String txnRef, String clientIp) {
+        // vnp_CurrCode luon "VND" + amount x100 -> CHAN don khac VND (tranh thu sai so tien nhu the la VND).
+        if (booking.getCurrency() != null && !"VND".equalsIgnoreCase(booking.getCurrency())) {
+            throw new com.dididi.booking.common.exception.BusinessException("UNSUPPORTED_CURRENCY",
+                    "VNPay chỉ hỗ trợ VND (đơn đang là " + booking.getCurrency() + ")",
+                    org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
         return createPaymentUrl(booking.getAmount(), txnRef,
                 "Thanh toan don hang " + booking.getPublicCode(), clientIp);
     }

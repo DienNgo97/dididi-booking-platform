@@ -40,6 +40,7 @@ class BookingServiceCancelWindowTest {
     @Mock EmailService emailService;
     @Mock LoyaltyService loyaltyService;
     @Mock GroupBookingRepository groupBookingRepository;
+    @Mock com.dididi.booking.notification.service.UserNotificationService userNotificationService;
 
     BookingService service;
 
@@ -47,7 +48,7 @@ class BookingServiceCancelWindowTest {
     void setUp() {
         service = new BookingService(bookingRepository, flightRepository, hotelRepository, flightAdapter,
                 pmsAdapter, roomTypeRepository, roomInventoryRepository, emailService, loyaltyService,
-                groupBookingRepository);
+                groupBookingRepository, userNotificationService);
     }
 
     @Test

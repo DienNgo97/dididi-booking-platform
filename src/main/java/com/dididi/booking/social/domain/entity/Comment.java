@@ -8,8 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.SQLRestriction;
 
 /** Binh luan cua 1 bai. parentId != null = tra loi (reply 1 cap). */
+@SQLRestriction("deleted_at IS NULL")
 @Entity
 @Table(name = "social_comments", indexes = {
         @Index(name = "idx_comment_post", columnList = "post_id,id"),

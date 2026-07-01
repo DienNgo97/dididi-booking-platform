@@ -70,12 +70,15 @@ public class BookingService {
     private final GroupBookingRepository groupBookingRepository;
     private final com.dididi.booking.loyalty.service.LoyaltyService loyaltyService;
 
+    private final com.dididi.booking.notification.service.UserNotificationService userNotificationService;
+
     public BookingService(BookingRepository bookingRepository, FlightRepository flightRepository,
                           HotelRepository hotelRepository, MockFlightProviderAdapter flightAdapter,
                           PmsApiAdapter pmsAdapter, RoomTypeRepository roomTypeRepository,
                           RoomInventoryRepository roomInventoryRepository, EmailService emailService,
                           com.dididi.booking.loyalty.service.LoyaltyService loyaltyService,
-                          GroupBookingRepository groupBookingRepository) {
+                          GroupBookingRepository groupBookingRepository,
+                          com.dididi.booking.notification.service.UserNotificationService userNotificationService) {
         this.bookingRepository = bookingRepository;
         this.flightRepository = flightRepository;
         this.hotelRepository = hotelRepository;
@@ -86,6 +89,7 @@ public class BookingService {
         this.emailService = emailService;
         this.loyaltyService = loyaltyService;
         this.groupBookingRepository = groupBookingRepository;
+        this.userNotificationService = userNotificationService;
     }
 
     @Transactional
@@ -254,15 +258,21 @@ public class BookingService {
         if (b.getType() == BookingType.FLIGHT) {
             // Ve co chon cho: nha ghe dang giu theo holdRef.
             releaseFlightSeats(b);
-            // Ve provider thuong (khong chon cho): huy booking theo confirmationCode.
-            if (b.getProviderConfirmation() != null && !b.getProviderConfirmation().isBlank()
-                    && b.getTargetId() != null) {
+            if (b.getTargetId() != null) {
                 flightRepository.findById(b.getTargetId()).ifPresent(f -> {
-                    if (!isProviderFlight(f)) return;   // ve cuc bo -> khong co provider de huy
-                    try {
-                        flightAdapter.cancelBooking(f.getExternalId(), b.getProviderConfirmation());
-                    } catch (Exception ex) {
-                        log.warn("Provider flight cancel failed for {}: {}", b.getPublicCode(), ex.toString());
+                    if (isProviderFlight(f)) {
+                        // Ve provider thuong (khong chon cho): huy booking theo confirmationCode.
+                        if (b.getProviderConfirmation() != null && !b.getProviderConfirmation().isBlank()) {
+                            try {
+                                flightAdapter.cancelBooking(f.getExternalId(), b.getProviderConfirmation());
+                            } catch (Exception ex) {
+                                log.warn("Provider flight cancel failed for {}: {}", b.getPublicCode(), ex.toString());
+                            }
+                        }
+                    } else if (b.getQuantity() > 0) {
+                        // BP-BK-09: ve CUC BO da tru ghe NGUYEN TU luc dat -> PHAI cong ghe lai khi huy/het han/hoan tien.
+                        // Truoc day thieu buoc nay nen ghe ro ri vinh vien (chuyen bay dan "het cho ao").
+                        flightRepository.incrementSeats(f.getId(), b.getQuantity());
                     }
                 });
             }
@@ -627,7 +637,15 @@ public class BookingService {
         b.setCancelStatus(CancelStatus.REQUESTED);
         b.setCancelReason(reason.trim());
         b.setCancelAdminNote(null);   // xoa ghi chu tu choi cu neu gui lai
-        return bookingRepository.save(b);
+        Booking saved = bookingRepository.save(b);
+        try {
+            userNotificationService.create(saved.getUserId(),
+                    com.dididi.booking.notification.domain.UserNotificationType.BOOKING_CANCEL_REQUESTED,
+                    "Đã gửi yêu cầu huỷ",
+                    "Yêu cầu huỷ đơn " + safe(saved.getPublicCode()) + " đang chờ duyệt.",
+                    "/account/bookings", saved.getId());
+        } catch (Exception ignored) { }
+        return saved;
     }
 
     // ===== Chinh sach huy 48h (Nhom 1+2) =====
@@ -664,6 +682,12 @@ public class BookingService {
         if (b.getStatus() == BookingStatus.CONFIRMED) {
             return b;
         }
+        // BP-PAY-04: CHI cho phep xac nhan tu PENDING_PAYMENT. Chan "hoi sinh" don da CANCELLED/FAILED
+        // (vd POST /api/v1/bookings/{code}/pay tren don da huy) -> tranh xac nhan lai + oversell phong DIRECT.
+        if (b.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            throw new com.dididi.booking.common.exception.BusinessException("INVALID_BOOKING_STATE",
+                    "Đơn ở trạng thái " + b.getStatus() + " không thể xác nhận", org.springframework.http.HttpStatus.CONFLICT);
+        }
         confirmFlightSeats(b);   // xac nhan ghe voi flight-provider (don ve co chon cho)
         b.setStatus(BookingStatus.CONFIRMED);
         Booking saved = bookingRepository.save(b);
@@ -673,6 +697,13 @@ public class BookingService {
         } catch (Exception ex) {
             log.warn("Loyalty earn failed for booking {}: {}", saved.getPublicCode(), ex.toString());
         }
+        try {
+            userNotificationService.create(saved.getUserId(),
+                    com.dididi.booking.notification.domain.UserNotificationType.BOOKING_CONFIRMED,
+                    "Đặt chỗ thành công",
+                    "Đơn " + safe(saved.getPublicCode()) + " đã được thanh toán và xác nhận.",
+                    "/account/bookings", saved.getId());
+        } catch (Exception ignored) { }
         return saved;
     }
 
@@ -797,6 +828,13 @@ public class BookingService {
             releaseProviderInventory(b);
             b.setStatus(BookingStatus.FAILED);
             bookingRepository.save(b);
+            try {
+                userNotificationService.create(b.getUserId(),
+                        com.dididi.booking.notification.domain.UserNotificationType.PAYMENT_EXPIRED,
+                        "Đơn hết hạn thanh toán",
+                        "Đơn " + safe(b.getPublicCode()) + " đã bị huỷ do quá hạn thanh toán.",
+                        "/account/bookings", b.getId());
+            } catch (Exception ignored) { }
         }
     }
 

@@ -61,7 +61,7 @@ public class CorporateBookingService {
         }
 
         // Duoi nguong -> tru han muc (vuot -> BUDGET_EXCEEDED, rollback) + xac nhan ngay.
-        companyService.charge(companyId, b.getAmount());
+        companyService.charge(companyId, b.getAmount(), b.getId());
         paymentService.payByCompany(b);
         b.setCompanyId(companyId);
         bookingService.markConfirmed(b);

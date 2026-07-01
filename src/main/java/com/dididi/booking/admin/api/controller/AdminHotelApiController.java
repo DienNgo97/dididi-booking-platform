@@ -1,5 +1,6 @@
 package com.dididi.booking.admin.api.controller;
 
+import com.dididi.booking.audit.event.AuditEvent;
 import com.dididi.booking.common.dto.ApiResponse;
 import com.dididi.booking.hotel.api.dto.HotelApiDto;
 import com.dididi.booking.hotel.api.dto.HotelUpsertRequest;
@@ -14,7 +15,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,9 +28,15 @@ import java.util.List;
 public class AdminHotelApiController {
 
     private final HotelRepository hotelRepository;
+    private final ApplicationEventPublisher events;
 
-    public AdminHotelApiController(HotelRepository hotelRepository) {
+    public AdminHotelApiController(HotelRepository hotelRepository, ApplicationEventPublisher events) {
         this.hotelRepository = hotelRepository;
+        this.events = events;
+    }
+
+    private static Long actorId(Authentication auth) {
+        try { return auth == null ? null : Long.valueOf(auth.getName()); } catch (Exception e) { return null; }
     }
 
     @Operation(summary = "Danh sách tất cả khách sạn (admin)")
@@ -42,6 +51,9 @@ public class AdminHotelApiController {
     public ApiResponse<HotelApiDto> create(@Valid @RequestBody HotelUpsertRequest req) {
         Hotel h = new Hotel();
         apply(h, req);
+        // KS do admin tao la KS noi bo Dididi (khong gan PMS) -> DIRECT de doc phong tu DB + DAT DUOC.
+        // (Mac dinh entity = CHANNEL -> detail() di tim phong o hotel-pms -> "Chua lay duoc loai phong" -> khong dat duoc.)
+        h.setSource(com.dididi.booking.hotel.domain.enums.HotelSource.DIRECT);
         hotelRepository.save(h);
         return ApiResponse.ok(HotelApiDto.from(h), "Created");
     }
@@ -63,11 +75,14 @@ public class AdminHotelApiController {
     @Operation(summary = "Xoá khách sạn")
     @CacheEvict(value = {"hotelsByCity", "hotelById"}, allEntries = true)   // BP-CACHE-01: tuoi cache sau khi ghi
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
-        if (!hotelRepository.existsById(id)) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id, Authentication auth) {
+        Hotel h = hotelRepository.findById(id).orElse(null);
+        if (h == null) {
             return ResponseEntity.notFound().build();
         }
         hotelRepository.deleteById(id);
+        events.publishEvent(new AuditEvent(actorId(auth), "DELETE_HOTEL", "HOTEL", id,
+                "Xoá khách sạn: " + h.getName()));
         return ResponseEntity.ok(ApiResponse.ok(null, "Deleted"));
     }
 

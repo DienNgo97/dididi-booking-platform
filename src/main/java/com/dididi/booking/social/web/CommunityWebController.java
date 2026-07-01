@@ -384,6 +384,8 @@ public class CommunityWebController {
     public String pollComments(@PathVariable Long postId, @RequestParam(defaultValue = "0") long afterId,
                                Authentication auth, Model model) {
         Long uid = currentUser.id(auth);
+        // IDOR: chi tra comment khi user duoc xem bai viet (chan poll bai PRIVATE/FOLLOWERS bang cach doan postId).
+        postService.getForView(uid, postId);
         model.addAttribute("comments",
                 viewService.toCommentFlat(commentService.newComments(postId, afterId), uid, isAdmin(auth)));
         return "social/comment-fragments :: batch";

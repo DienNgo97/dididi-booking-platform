@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class HotelWebController {
@@ -68,22 +69,40 @@ public class HotelWebController {
                        @RequestParam(required = false) Integer rooms,
                        @RequestParam(required = false) String stay,
                        @RequestParam(required = false) String trip,
+                       // ---- Bộ lọc kiểu Agoda (Nhóm A) ----
+                       @RequestParam(required = false) Long priceMin,
+                       @RequestParam(required = false) Long priceMax,
+                       @RequestParam(required = false) List<Integer> stars,
+                       @RequestParam(required = false) List<String> types,
+                       @RequestParam(required = false) List<String> amenities,
+                       @RequestParam(required = false) List<String> tags,
+                       @RequestParam(required = false) Double minRating,
+                       @RequestParam(required = false) String sort,
                        Authentication auth, Model model) {
         // Tim kiem theo tu khoa: uu tien tham so 'keyword', neu khong co thi dung 'city' (cung o tim kiem chung).
-        // Tu khoa khop ten / thanh pho / dia chi khach san, khong phan biet hoa thuong.
         String q = (keyword != null && !keyword.isBlank()) ? keyword.trim()
                  : (city != null && !city.isBlank()) ? city.trim() : null;
         List<Hotel> hotels = (q == null)
                 ? hotelRepository.findByActiveTrue()
                 : hotelRepository.searchActiveByKeyword(q);
-        // Diem trung binh moi khach san (0.0 = chua co danh gia)
+        // Diem trung binh (0.0 = chua co danh gia) + chuoi tien nghi/dac diem cho data-* (loc o client)
         Map<Long, Double> ratings = new LinkedHashMap<>();
         Map<Long, String> covers = new LinkedHashMap<>();
+        Map<Long, String> amenStr = new LinkedHashMap<>();
+        Map<Long, String> tagStr = new LinkedHashMap<>();
         for (Hotel h : hotels) {
             ratings.put(h.getId(), reviewService.averageRating(BookingType.HOTEL, h.getId()));
             covers.put(h.getId(), hotelImageService.firstImageUrl(h.getId()));
+            amenStr.put(h.getId(), h.getAmenities().stream().map(Enum::name).collect(Collectors.joining(" ")));
+            tagStr.put(h.getId(), h.getTags().stream().map(Enum::name).collect(Collectors.joining(" ")));
         }
+
+        // Loc + sap xep + phan trang CHUYEN SANG CLIENT (xem hotels/list.html) de cap nhat tuc thi, khong reload trang.
+        // Server tra ve TOAN BO KS dang hoat dong; cac tham so loc chi dung de khoi tao trang thai form (giu URL chia se duoc).
+        String s = sort == null ? "" : sort;
         model.addAttribute("hotels", hotels);
+        model.addAttribute("amenStr", amenStr);
+        model.addAttribute("tagStr", tagStr);
         model.addAttribute("ratings", ratings);
         model.addAttribute("covers", covers);
         model.addAttribute("city", q);
@@ -95,6 +114,18 @@ public class HotelWebController {
         model.addAttribute("rooms", rooms);
         model.addAttribute("stay", stay);
         model.addAttribute("trip", trip);
+        // Trang thai bo loc (giu form) + danh muc
+        model.addAttribute("fPriceMin", priceMin);
+        model.addAttribute("fPriceMax", priceMax);
+        model.addAttribute("fStars", stars == null ? List.of() : stars);
+        model.addAttribute("fTypes", types == null ? List.of() : types);
+        model.addAttribute("fAmenities", amenities == null ? List.of() : amenities);
+        model.addAttribute("fTags", tags == null ? List.of() : tags);
+        model.addAttribute("fMinRating", minRating);
+        model.addAttribute("fSort", s);
+        model.addAttribute("allAmenities", com.dididi.booking.hotel.domain.enums.Amenity.values());
+        model.addAttribute("allTags", com.dididi.booking.hotel.domain.enums.HotelTag.values());
+        model.addAttribute("allTypes", com.dididi.booking.hotel.domain.enums.PropertyType.values());
         Long uid = currentUser.idOrNull(auth);
         if (uid != null) model.addAttribute("wishlistedIds", wishlistService.wishlistedHotelIds(uid));
         return "hotels/list";

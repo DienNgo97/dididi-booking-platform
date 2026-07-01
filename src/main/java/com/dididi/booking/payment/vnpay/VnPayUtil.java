@@ -68,6 +68,9 @@ public final class VnPayUtil {
         String received = fields.get("vnp_SecureHash");
         if (received == null || received.isEmpty()) return false;
         String expected = signFields(fields, secret);
-        return expected.equalsIgnoreCase(received);
+        // So sanh HANG-THOI-GIAN (constant-time) tranh timing-oracle tren HMAC (thay cho equalsIgnoreCase).
+        return java.security.MessageDigest.isEqual(
+                expected.toLowerCase().getBytes(StandardCharsets.UTF_8),
+                received.toLowerCase().getBytes(StandardCharsets.UTF_8));
     }
 }
