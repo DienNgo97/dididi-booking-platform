@@ -52,6 +52,13 @@
         <button class="btn" type="submit" style="margin-top:14px" th:text="#{trip.findTrip}">Tìm chuyến đi →</button>
     </form>
     <p class="muted" style="font-size:12px;margin-top:8px" th:text="#{trip.plannerTip}">Mẹo: chọn điểm đến khác sân bay đi để có chuyến bay phù hợp.</p>
+
+    <!-- Trỏ sang trang AI hướng dẫn viên (tính năng riêng, có mục nav + banner trang chủ) -->
+    <a class="card tg-link" href="/trip-guide">
+        <svg th:replace="~{fragments/icons :: i('sparkles','ic-brand')}"></svg>
+        <span><b th:text="#{tripGuide.heading}">AI hướng dẫn viên du lịch</b><br/>
+        <span class="muted" style="font-size:12.5px" th:text="#{tripGuide.linkFromPlanner}">Chưa biết đi đâu, chơi gì? Để AI xếp lịch trình theo giờ cho bạn →</span></span>
+    </a>
 </div>
 <script>
     (function () {
