@@ -11,6 +11,13 @@ import java.util.Optional;
 public interface HotelRepository extends JpaRepository<Hotel, Long> {
     Optional<Hotel> findByExternalId(Long externalId);
     List<Hotel> findByActiveTrue();
+
+    /**
+     * Tải KS active KÈM amenities + tags trong 1 query (fetch join 2 Set — Hibernate 6 cho phép).
+     * Dùng cho /hotels/data khi có lọc tiện nghi/đặc điểm — tránh 2 lazy query cho TỪNG khách sạn.
+     */
+    @Query("select distinct h from Hotel h left join fetch h.amenities left join fetch h.tags where h.active = true")
+    List<Hotel> findActiveTrueFetchFacets();
     List<Hotel> findByActiveTrueAndCityContainingIgnoreCase(String city);
 
     /** Tim khach san dang hoat dong theo tu khoa: khop ten / thanh pho / dia chi (khong phan biet hoa thuong). */

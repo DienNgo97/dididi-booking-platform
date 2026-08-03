@@ -22,8 +22,10 @@
         </div>
         </div>
     </div>
-    <h1 th:text="#{flights.title}">Chuyến bay</h1>
-    <div class="paginate" data-page-size="20">
+    <h1><span th:text="#{flights.title}">Chuyến bay</span>
+        <span class="muted" style="font-size:15px;font-weight:400" th:if="${total != null}" th:text="'· ' + ${#numbers.formatInteger(total,1,'COMMA')}">· 0</span></h1>
+    <!-- PHÂN TRANG SERVER: chỉ render 20 chuyến/trang (xem PERFORMANCE.md) — bỏ client paginate cũ -->
+    <div>
     <div class="fcard" th:each="f : ${flights}">
         <a class="fcard-stretch" th:aria-label="${f.airlineCode + ' ' + f.flightNumber}"
            th:href="@{/booking/flight/{id}(id=${f.id},cabin=${cabin})}"></a>
@@ -51,6 +53,20 @@
     </div>
     </div>
     <p class="muted" th:if="${#lists.isEmpty(flights)}" th:text="#{flights.empty}">Không có chuyến bay.</p>
+
+    <!-- Pager server: link giữ nguyên bộ lọc from/to/date/cabin -->
+    <nav class="pager" th:if="${totalPages != null and totalPages > 1}">
+        <a th:href="@{/flights(from=${from},to=${to},date=${date},cabin=${cabin},page=${curPage - 1})}"
+           th:classappend="${curPage == 1} ? 'is-disabled'">‹</a>
+        <th:block th:each="p : ${pageItems}">
+            <span class="gap" th:if="${p == -1}">…</span>
+            <a th:if="${p != -1}"
+               th:href="@{/flights(from=${from},to=${to},date=${date},cabin=${cabin},page=${p})}"
+               th:classappend="${p == curPage} ? 'is-active'" th:text="${p}">1</a>
+        </th:block>
+        <a th:href="@{/flights(from=${from},to=${to},date=${date},cabin=${cabin},page=${curPage + 1})}"
+           th:classappend="${curPage == totalPages} ? 'is-disabled'">›</a>
+    </nav>
 </div>
 <div th:replace="~{fragments/site :: footer}"></div>
 </body>

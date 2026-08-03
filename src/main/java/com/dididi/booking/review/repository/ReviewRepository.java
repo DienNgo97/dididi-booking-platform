@@ -22,6 +22,12 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "where r.targetType = ?1 and r.targetId = ?2 and r.status = ?3")
     Double averageRating(BookingType targetType, Long targetId, ReviewStatus status);
 
+    /** Diem trung binh theo LO (fix M5 N+1 trang /hotels): 1 query GROUP BY thay vi 1 query/khach san. */
+    @Query("select r.targetId, avg(r.rating) from Review r " +
+            "where r.targetType = ?1 and r.status = ?2 and r.targetId in ?3 group by r.targetId")
+    java.util.List<Object[]> averageRatings(BookingType targetType, ReviewStatus status,
+                                            java.util.Collection<Long> targetIds);
+
     // ---- Admin kiem duyet ----
     Page<Review> findAllByOrderByCreatedAtDesc(Pageable pageable);
 

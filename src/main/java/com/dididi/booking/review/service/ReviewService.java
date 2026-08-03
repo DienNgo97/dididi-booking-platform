@@ -127,6 +127,24 @@ public class ReviewService {
         return Math.round(avg * 10.0) / 10.0;
     }
 
+    /**
+     * Diem trung binh theo LO (fix M5 N+1 trang /hotels): 1 query GROUP BY cho ca danh sach.
+     * Chunk 1000 id/luot. Id khong co review -> khong co key trong map (caller getOrDefault 0.0).
+     */
+    public java.util.Map<Long, Double> averageRatings(BookingType type, java.util.Collection<Long> targetIds) {
+        java.util.Map<Long, Double> out = new java.util.HashMap<>();
+        if (targetIds == null || targetIds.isEmpty()) return out;
+        java.util.List<Long> ids = new java.util.ArrayList<>(targetIds);
+        for (int i = 0; i < ids.size(); i += 1000) {
+            for (Object[] row : reviewRepository.averageRatings(type, ReviewStatus.PUBLISHED,
+                    ids.subList(i, Math.min(i + 1000, ids.size())))) {
+                Double avg = row[1] == null ? null : ((Number) row[1]).doubleValue();
+                out.put((Long) row[0], avg == null ? 0.0 : Math.round(avg * 10.0) / 10.0);
+            }
+        }
+        return out;
+    }
+
     public Page<Review> list(BookingType type, Long targetId, int page, int size) {
         return reviewRepository.findByTargetTypeAndTargetIdAndStatusOrderByCreatedAtDesc(
                 type, targetId, ReviewStatus.PUBLISHED, PageRequest.of(page, size));

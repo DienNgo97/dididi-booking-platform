@@ -43,12 +43,14 @@ public class HotelWebController {
     private final HotelImageService hotelImageService;
     private final WishlistService wishlistService;
     private final CurrentUser currentUser;
+    private final com.dididi.booking.search.HotelSearchService hotelSearchService;
 
     public HotelWebController(HotelRepository hotelRepository, PmsApiAdapter pmsAdapter,
                               RoomTypeRepository roomTypeRepository, ReviewService reviewService,
                               ReviewImageService reviewImageService,
                               HotelImageService hotelImageService, WishlistService wishlistService,
-                              CurrentUser currentUser) {
+                              CurrentUser currentUser,
+                              com.dididi.booking.search.HotelSearchService hotelSearchService) {
         this.hotelRepository = hotelRepository;
         this.pmsAdapter = pmsAdapter;
         this.roomTypeRepository = roomTypeRepository;
@@ -57,6 +59,7 @@ public class HotelWebController {
         this.hotelImageService = hotelImageService;
         this.wishlistService = wishlistService;
         this.currentUser = currentUser;
+        this.hotelSearchService = hotelSearchService;
     }
 
     @GetMapping("/hotels")
@@ -82,29 +85,11 @@ public class HotelWebController {
         // Tim kiem theo tu khoa: uu tien tham so 'keyword', neu khong co thi dung 'city' (cung o tim kiem chung).
         String q = (keyword != null && !keyword.isBlank()) ? keyword.trim()
                  : (city != null && !city.isBlank()) ? city.trim() : null;
-        List<Hotel> hotels = (q == null)
-                ? hotelRepository.findByActiveTrue()
-                : hotelRepository.searchActiveByKeyword(q);
-        // Diem trung binh (0.0 = chua co danh gia) + chuoi tien nghi/dac diem cho data-* (loc o client)
-        Map<Long, Double> ratings = new LinkedHashMap<>();
-        Map<Long, String> covers = new LinkedHashMap<>();
-        Map<Long, String> amenStr = new LinkedHashMap<>();
-        Map<Long, String> tagStr = new LinkedHashMap<>();
-        for (Hotel h : hotels) {
-            ratings.put(h.getId(), reviewService.averageRating(BookingType.HOTEL, h.getId()));
-            covers.put(h.getId(), hotelImageService.firstImageUrl(h.getId()));
-            amenStr.put(h.getId(), h.getAmenities().stream().map(Enum::name).collect(Collectors.joining(" ")));
-            tagStr.put(h.getId(), h.getTags().stream().map(Enum::name).collect(Collectors.joining(" ")));
-        }
 
-        // Loc + sap xep + phan trang CHUYEN SANG CLIENT (xem hotels/list.html) de cap nhat tuc thi, khong reload trang.
-        // Server tra ve TOAN BO KS dang hoat dong; cac tham so loc chi dung de khoi tao trang thai form (giu URL chia se duoc).
+        // TOI UU (PF - AJAX paging): trang HTML chi con "khung" nhe (sidebar loc + o tim kiem).
+        // Danh sach KS do client fetch tu GET /hotels/data (JSON phan trang server) — xem hotels/list.html.
+        // Truoc day render 1.790 the o server ~3,6s/request; gio HTML tra ve gan nhu tuc thi.
         String s = sort == null ? "" : sort;
-        model.addAttribute("hotels", hotels);
-        model.addAttribute("amenStr", amenStr);
-        model.addAttribute("tagStr", tagStr);
-        model.addAttribute("ratings", ratings);
-        model.addAttribute("covers", covers);
         model.addAttribute("city", q);
         model.addAttribute("keyword", q);
         model.addAttribute("checkIn", checkIn);
@@ -126,9 +111,161 @@ public class HotelWebController {
         model.addAttribute("allAmenities", com.dididi.booking.hotel.domain.enums.Amenity.values());
         model.addAttribute("allTags", com.dididi.booking.hotel.domain.enums.HotelTag.values());
         model.addAttribute("allTypes", com.dididi.booking.hotel.domain.enums.PropertyType.values());
-        Long uid = currentUser.idOrNull(auth);
-        if (uid != null) model.addAttribute("wishlistedIds", wishlistService.wishlistedHotelIds(uid));
         return "hotels/list";
+    }
+
+    /**
+     * DANH SÁCH KHÁCH SẠN dạng JSON — lọc + sắp xếp + PHÂN TRANG PHÍA SERVER (tối ưu hiệu năng).
+     * Client (hotels/list.html) fetch endpoint này mỗi khi đổi bộ lọc/sắp xếp/trang (debounce ~300ms):
+     * chỉ ~20 KS/lần thay vì render toàn bộ ~1.800 thẻ. Đếm tổng vẫn đúng trên TOÀN BỘ dữ liệu.
+     * geo=true -> kèm toạ độ các KS khớp bộ lọc (tối đa 800) cho bản đồ Leaflet.
+     * Ảnh bìa chỉ tải cho ĐÚNG trang hiện tại; rating batch 1 query (tận dụng fix M5).
+     */
+    @GetMapping("/hotels/data")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public Map<String, Object> data(@RequestParam(required = false) String city,
+                                    @RequestParam(required = false) String keyword,
+                                    @RequestParam(required = false) Long priceMin,
+                                    @RequestParam(required = false) Long priceMax,
+                                    @RequestParam(required = false) List<Integer> stars,
+                                    @RequestParam(required = false) List<String> types,
+                                    @RequestParam(required = false) List<String> amenities,
+                                    @RequestParam(required = false) List<String> tags,
+                                    @RequestParam(required = false) Double minRating,
+                                    @RequestParam(required = false) String sort,
+                                    @RequestParam(defaultValue = "1") int page,
+                                    @RequestParam(defaultValue = "20") int size,
+                                    @RequestParam(defaultValue = "false") boolean geo,
+                                    Authentication auth) {
+        page = Math.max(1, page);
+        size = Math.min(Math.max(size, 1), 50);
+        String q = (keyword != null && !keyword.isBlank()) ? keyword.trim()
+                 : (city != null && !city.isBlank()) ? city.trim() : null;
+        boolean needFacets = (amenities != null && !amenities.isEmpty()) || (tags != null && !tags.isEmpty());
+
+        // ----- 1) Nguồn: Meili (relevance) -> fallback LIKE; cần lọc tiện nghi thì fetch-join 1 query -----
+        List<Hotel> base;
+        if (q == null) {
+            base = needFacets ? hotelRepository.findActiveTrueFetchFacets() : hotelRepository.findByActiveTrue();
+        } else {
+            List<Long> ids = hotelSearchService.searchIds(q, 500);
+            List<Hotel> pool = needFacets ? hotelRepository.findActiveTrueFetchFacets() : null;
+            if (ids != null) {
+                Map<Long, Hotel> byId = new LinkedHashMap<>();
+                List<Hotel> src = (pool != null) ? pool : hotelRepository.findAllById(ids);
+                for (Hotel h : src) {
+                    if (h.isActive()) byId.put(h.getId(), h);
+                }
+                base = new java.util.ArrayList<>(ids.size());
+                for (Long id : ids) {
+                    Hotel h = byId.get(id);
+                    if (h != null) base.add(h);           // giữ đúng thứ tự relevance
+                }
+            } else {
+                base = hotelRepository.searchActiveByKeyword(q);
+                if (pool != null) {
+                    java.util.Set<Long> keep = new java.util.HashSet<>();
+                    for (Hotel h : base) keep.add(h.getId());
+                    List<Hotel> withFacets = new java.util.ArrayList<>();
+                    for (Hotel h : pool) if (keep.contains(h.getId())) withFacets.add(h);
+                    base = withFacets;
+                }
+            }
+        }
+
+        // ----- 2) Lọc thuộc tính đơn giản (giá / sao / loại) -----
+        java.util.Set<Integer> starSet = stars == null ? java.util.Set.of() : new java.util.HashSet<>(stars);
+        java.util.Set<String> typeSet = types == null ? java.util.Set.of() : new java.util.HashSet<>(types);
+        List<Hotel> filtered = new java.util.ArrayList<>(base.size());
+        for (Hotel h : base) {
+            Long price = h.getMinPrice() != null ? h.getMinPrice().longValue() : null;
+            if (priceMin != null && (price == null || price < priceMin)) continue;
+            if (priceMax != null && (price == null || price > priceMax)) continue;
+            if (!starSet.isEmpty() && (h.getStarRating() == null || !starSet.contains(h.getStarRating()))) continue;
+            if (!typeSet.isEmpty() && (h.getPropertyType() == null || !typeSet.contains(h.getPropertyType().name()))) continue;
+            if (needFacets) {
+                if (amenities != null && !amenities.isEmpty()) {   // tiện nghi: AND
+                    java.util.Set<String> have = h.getAmenities().stream().map(Enum::name).collect(Collectors.toSet());
+                    if (!have.containsAll(amenities)) continue;
+                }
+                if (tags != null && !tags.isEmpty()) {             // nổi bật: OR
+                    java.util.Set<String> have = h.getTags().stream().map(Enum::name).collect(Collectors.toSet());
+                    boolean any = false;
+                    for (String t : tags) if (have.contains(t)) { any = true; break; }
+                    if (!any) continue;
+                }
+            }
+            filtered.add(h);
+        }
+
+        // ----- 3) Rating batch (1 query) -> lọc ngưỡng điểm -----
+        List<Long> fids = filtered.stream().map(Hotel::getId).toList();
+        Map<Long, Double> rmap = reviewService.averageRatings(BookingType.HOTEL, fids);
+        if (minRating != null && minRating > 0) {
+            filtered.removeIf(h -> rmap.getOrDefault(h.getId(), 0.0) < minRating);
+        }
+
+        // ----- 4) Sắp xếp -----
+        String s = sort == null ? "" : sort;
+        switch (s) {
+            case "price_asc" -> filtered.sort(java.util.Comparator.comparingLong(
+                    h -> h.getMinPrice() != null ? h.getMinPrice().longValue() : Long.MAX_VALUE));
+            case "price_desc" -> filtered.sort(java.util.Comparator.comparingLong(
+                    (Hotel h) -> h.getMinPrice() != null ? h.getMinPrice().longValue() : -1L).reversed());
+            case "rating_desc" -> filtered.sort(java.util.Comparator.comparingDouble(
+                    (Hotel h) -> rmap.getOrDefault(h.getId(), 0.0)).reversed());
+            case "stars_desc" -> filtered.sort(java.util.Comparator.comparingInt(
+                    (Hotel h) -> h.getStarRating() != null ? h.getStarRating() : 0).reversed());
+            default -> { /* Đề xuất: giữ thứ tự nguồn (relevance Meili / thứ tự DB) */ }
+        }
+
+        // ----- 5) Phân trang + ảnh bìa CHỈ cho trang hiện tại + wishlist -----
+        int total = filtered.size();
+        int from = Math.min((page - 1) * size, total);
+        int to = Math.min(from + size, total);
+        List<Hotel> slice = filtered.subList(from, to);
+        Map<Long, String> covers = hotelImageService.firstImageUrls(slice.stream().map(Hotel::getId).toList());
+        Long uid = currentUser.idOrNull(auth);
+        java.util.Set<Long> wish = uid == null ? java.util.Set.of()
+                : new java.util.HashSet<>(wishlistService.wishlistedHotelIds(uid));
+
+        List<Map<String, Object>> items = new java.util.ArrayList<>(slice.size());
+        for (Hotel h : slice) {
+            Map<String, Object> it = new LinkedHashMap<>();
+            it.put("id", h.getId());
+            it.put("name", h.getName());
+            it.put("city", h.getCity());
+            it.put("address", h.getAddress());
+            it.put("star", h.getStarRating());
+            it.put("rating", rmap.getOrDefault(h.getId(), 0.0));
+            it.put("price", h.getMinPrice() != null ? h.getMinPrice().longValue() : null);
+            it.put("cover", covers.get(h.getId()));
+            it.put("wishlisted", wish.contains(h.getId()));
+            items.add(it);
+        }
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("total", total);
+        out.put("page", page);
+        out.put("size", size);
+        out.put("items", items);
+        if (geo) {
+            List<Map<String, Object>> pts = new java.util.ArrayList<>();
+            for (Hotel h : filtered) {
+                if (pts.size() >= 800) break;
+                if (h.getLat() == null || h.getLng() == null) continue;
+                Map<String, Object> g = new LinkedHashMap<>();
+                g.put("id", h.getId());
+                g.put("name", h.getName());
+                g.put("lat", h.getLat());
+                g.put("lng", h.getLng());
+                g.put("price", h.getMinPrice() != null ? h.getMinPrice().longValue() : null);
+                g.put("star", h.getStarRating());
+                pts.add(g);
+            }
+            out.put("geo", pts);
+        }
+        return out;
     }
 
     @GetMapping("/hotels/{id}")
@@ -148,7 +285,8 @@ public class HotelWebController {
                          @RequestParam(required = false) String trip,
                          Authentication auth, Model model, HttpSession session) {
         Hotel hotel = hotelRepository.findById(id).orElse(null);
-        if (hotel == null) {
+        if (hotel == null || !hotel.isActive()) {
+            // KS không tồn tại hoặc đã bị admin tắt -> không cho xem chi tiết qua URL trực tiếp.
             return "redirect:/hotels";
         }
         if (tripCity != null && !tripCity.isBlank()) {

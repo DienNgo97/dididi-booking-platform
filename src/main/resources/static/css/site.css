@@ -715,8 +715,8 @@ input:focus,select:focus,textarea:focus{outline:0;}
 .hcard-heart button{display:inline-flex;align-items:center;justify-content:center;padding:0}
 .wish-btn .ic{width:18px;height:18px;vertical-align:0}
 
-/* ===== Google Maps + tiện ích (Nhóm 2) ===== */
-.hotel-map{width:100%;height:300px;border-radius:12px;border:1px solid var(--line);background:#e7f5ee;overflow:hidden}
+/* ===== Bản đồ (Leaflet + OpenStreetMap) + tiện ích (Nhóm 2) ===== */
+.hotel-map{width:100%;height:300px;border-radius:12px;border:1px solid var(--line);background:#e7f5ee;overflow:hidden;position:relative;z-index:0}
 .hotel-map-lg{height:440px}
 .map-nokey{display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);font-size:14px;padding:16px}
 .map-wrap{margin:6px 0 18px;display:flex;flex-direction:column;gap:10px}
@@ -1402,3 +1402,66 @@ body:has(.sx-layout), body:has(.sx-single){
   .hsearch-layout{ grid-template-columns:1fr; }
   .hfilter{ position:static; }
 }
+
+/* ===== AI hướng dẫn viên du lịch (Trip Guide — trang /trip-planner) ===== */
+.tg-card{margin-top:18px;padding:0;overflow:hidden}
+.tg-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid #e8ecf3;background:linear-gradient(135deg,#f2f7ff,#f6fffa)}
+.tg-sub{font-size:12px;margin-left:auto}
+.tg-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.18);flex:0 0 auto}
+.tg-body{max-height:380px;min-height:140px;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#fbfcfe}
+.tg-msg{display:flex}
+.tg-user{justify-content:flex-end}
+.tg-bubble{max-width:85%;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.55;white-space:pre-line;word-break:break-word;background:#fff;border:1px solid #e6eaf2;color:#22304a;border-bottom-left-radius:4px}
+.tg-user .tg-bubble{background:#2563eb;border-color:#2563eb;color:#fff;border-bottom-left-radius:14px;border-bottom-right-radius:4px}
+.tg-typing i{display:inline-block;width:6px;height:6px;margin:0 2px;border-radius:50%;background:#9db1d1;animation:tgblink 1.2s infinite}
+.tg-typing i:nth-child(2){animation-delay:.2s}
+.tg-typing i:nth-child(3){animation-delay:.4s}
+@keyframes tgblink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.tg-chips{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-top:1px dashed #e8ecf3;background:#fff}
+.tg-chips:empty{display:none}
+.tg-chips button{border:1px solid #cfd9ea;background:#f4f7fc;color:#2b3f63;border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer;transition:background .15s,border-color .15s}
+.tg-chips button:hover{background:#e8f0fe;border-color:#9db8e8}
+.tg-input{display:flex;gap:8px;padding:12px 14px;border-top:1px solid #e8ecf3;background:#fff}
+.tg-input input{flex:1;padding:10px 12px;border:1px solid #d3d9e4;border-radius:10px;font-size:13.5px;outline:none}
+.tg-input input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+
+/* ===== Trang riêng /trip-guide + banner trang chủ ===== */
+.tg-hero{padding:26px 4px 6px}
+.tg-hero h1{margin:8px 0 6px}
+.tg-eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#2563eb;background:#e8f0fe;border-radius:999px;padding:5px 12px}
+.tg-topics{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin:14px 0 16px}
+.tg-topics button{display:flex;align-items:center;gap:8px;border:1px solid #dbe3f0;background:#fff;border-radius:12px;padding:11px 13px;font-size:13px;color:#22304a;cursor:pointer;text-align:left;transition:border-color .15s,box-shadow .15s,transform .15s}
+.tg-topics button:hover{border-color:#9db8e8;box-shadow:0 4px 14px rgba(37,99,235,.10);transform:translateY(-1px)}
+.tg-page .tg-body{max-height:52vh;min-height:260px}
+.tg-link{display:flex;align-items:center;gap:12px;margin-top:16px;text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s}
+.tg-link:hover{border-color:#9db8e8;box-shadow:0 4px 14px rgba(37,99,235,.10)}
+.aig-banner{display:flex;align-items:center;gap:18px;border-radius:16px;padding:22px 24px;background:linear-gradient(120deg,#eef4ff 0%,#f2fbf6 100%);border:1px solid #dfe8f7;flex-wrap:wrap}
+.aig-icon{width:52px;height:52px;border-radius:14px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 8px 18px rgba(37,99,235,.28)}
+.aig-icon svg{width:26px;height:26px}
+.aig-txt{flex:1;min-width:260px}
+.aig-txt h3{margin:0 0 4px}
+.aig-txt p{margin:0 0 10px;color:#44506a;font-size:13.5px}
+.aig-chips{display:flex;flex-wrap:wrap;gap:8px}
+.aig-chips a{border:1px solid #cfd9ea;background:#fff;border-radius:999px;padding:5px 12px;font-size:12.5px;color:#2b3f63;text-decoration:none;transition:background .15s,border-color .15s}
+.aig-chips a:hover{background:#e8f0fe;border-color:#9db8e8}
+.aig-cta{white-space:nowrap;align-self:center}
+
+/* Pager dạng LINK (phân trang server — /flights): đồng bộ giao diện với pager button */
+.pager a{min-width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:#fff;border-radius:9px;font-weight:700;font-size:14px;color:var(--ink);text-decoration:none;padding:0 12px;transition:border-color .15s,color .15s,background .15s;}
+.pager a:hover{border-color:var(--brand);color:var(--brand);}
+.pager a.is-active{background:var(--brand);border-color:var(--brand);color:#fff;pointer-events:none;}
+.pager a.is-disabled{opacity:.4;pointer-events:none;}
+
+/* ===== Cộng đồng: bài KHÔNG có media (sx-nomedia) — sửa khoảng cách + thứ tự element =====
+   Bố cục Instagram (hàng nút trên, caption dưới kèm tên đậm) chỉ đẹp khi có ảnh ở giữa.
+   Bài chỉ chữ: caption lên NGAY dưới header, hàng nút xuống dưới có kẻ mảnh, bỏ tên lặp. */
+.sx-card.sx-nomedia{display:flex;flex-direction:column}
+.sx-card.sx-nomedia>.sx-head{order:1;padding-bottom:4px}
+.sx-card.sx-nomedia>.sx-caption{order:2;padding-top:0;padding-bottom:12px}
+.sx-card.sx-nomedia>.sx-caption>.sx-name{display:none}
+.sx-card.sx-nomedia>.sx-actions{order:3;border-top:1px solid #eef1f5;margin:0 16px;padding:4px 0}
+.sx-card.sx-nomedia>.sx-viewcm{order:4;padding-top:8px;padding-bottom:4px}
+.sx-card.sx-nomedia>.sx-inlinecmt{order:5;margin:6px 16px 14px;border-top:0;padding-top:0}
+/* Khoảng cách GIỮA các bài trong cùng 1 lô (.sx-batch trước giờ không có gap — card dính nhau,
+   bố cục cũ padding dày nên khó thấy; đồng bộ 18px với gap của .sx-main). */
+.sx-batch{display:flex;flex-direction:column;gap:18px}
