@@ -31,13 +31,19 @@ public record HotelApiDto(
         String propertyTypeName,
         String region,
         List<AmenityView> amenities,
-        List<String> tags) implements Serializable {
+        List<String> tags,
+        // diem danh gia trung binh (0 neu chua co) — dung cho loc/sort tren mobile
+        Double avgRating) implements Serializable {
 
-    private static final long serialVersionUID = 2L;
+    private static final long serialVersionUID = 3L;
 
     public record AmenityView(String code, String name, String icon) implements Serializable {}
 
     public static HotelApiDto from(Hotel h) {
+        return from(h, null);
+    }
+
+    public static HotelApiDto from(Hotel h, Double avgRating) {
         List<AmenityView> ams = h.getAmenities() == null ? List.of()
                 : h.getAmenities().stream().map(a -> new AmenityView(a.name(), a.getViName(), a.getIcon())).toList();
         List<String> tags = h.getTags() == null ? List.of()
@@ -50,6 +56,6 @@ public record HotelApiDto(
                 h.getPropertyType() != null ? h.getPropertyType().name() : null,
                 h.getPropertyType() != null ? h.getPropertyType().getViName() : null,
                 h.getRegion() != null ? h.getRegion().name() : null,
-                ams, tags);
+                ams, tags, avgRating);
     }
 }

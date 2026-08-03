@@ -17,11 +17,12 @@ public record BookingDto(
         LocalDateTime travelDate,
         int quantity,
         BigDecimal amount,
-        String currency) {
+        String currency,
+        Long groupId) {
 
     public static BookingDto from(Booking b) {
         return new BookingDto(b.getPublicCode(), b.getType().name(), b.getTitle(),
                 b.getStatus().name(), b.getProviderConfirmation(), b.getCheckIn(), b.getCheckOut(),
-                b.getTravelDate(), b.getQuantity(), b.getAmount(), b.getCurrency());
+                b.getTravelDate(), b.getQuantity(), b.getAmount(), b.getCurrency(), b.getGroupId());
     }
 }

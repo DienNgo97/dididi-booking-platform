@@ -99,7 +99,18 @@ public class SyncJobOrchestrator {
             h.setExternalId(it.id());
             h.setName(it.name());
             h.setCity(it.city());
-            h.setAddress(it.address());
+            // Địa chỉ: KHÔNG đè chuỗi thô của PMS lên KS đã có địa chỉ tách chuẩn hoá
+            // (backfill format VN mới: số nhà, đường, phường/xã, tỉnh — bỏ quận/huyện).
+            // PMS trả format cũ nên nếu đè sẽ hoàn tác công chuẩn hoá sau mỗi 15 phút.
+            boolean hasStructuredAddress = (h.getWard() != null && !h.getWard().isBlank())
+                    || (h.getProvince() != null && !h.getProvince().isBlank());
+            if (hasStructuredAddress) {
+                h.setAddress(com.dididi.booking.hotel.domain.HotelSupport.composeAddress(
+                        h.getHouseNumber(), h.getStreet(), h.getWard(), h.getDistrict(),
+                        h.getProvince(), h.getCity()));
+            } else {
+                h.setAddress(it.address());
+            }
             h.setDescription(it.description());
             h.setStarRating(it.starRating());
             // BP-SYNC-02: chi bat active khi lan dau them khach san. Voi khach san da ton tai,
@@ -110,7 +121,7 @@ public class SyncJobOrchestrator {
             hotelRepository.save(h);
         }
         // Sync co the doi thong tin khach san -> bo cache hotel (BP-CACHE-01).
-        evictCaches("hotelsByCity", "hotelById");
+        evictCaches("hotelsByCityV2", "hotelByIdV2");
         return items.size();
     }
 

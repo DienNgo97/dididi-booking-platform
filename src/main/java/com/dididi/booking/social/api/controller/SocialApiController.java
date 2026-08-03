@@ -11,6 +11,7 @@ import com.dididi.booking.social.api.dto.PostView;
 import com.dididi.booking.social.api.dto.ProfileView;
 import com.dididi.booking.social.api.dto.SocialFeedPage;
 import com.dididi.booking.social.domain.entity.Comment;
+import com.dididi.booking.social.domain.entity.Follow;
 import com.dididi.booking.social.domain.entity.Hashtag;
 import com.dididi.booking.social.domain.entity.Post;
 import com.dididi.booking.social.domain.entity.SocialProfile;
@@ -165,6 +166,20 @@ public class SocialApiController {
         return ApiResponse.ok(viewService.toPostView(p, uid, isAdmin(auth)), "Đã đăng bài");
     }
 
+    @Operation(summary = "Khách sạn mà tôi sở hữu (để đăng bài dưới danh nghĩa KS). Rỗng nếu không phải chủ KS.")
+    @GetMapping("/my-hotels")
+    public ApiResponse<List<Map<String, Object>>> myHotels(Authentication auth) {
+        Long uid = uid(auth);
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        hotelRepository.findByVendorId(uid).ifPresent(h -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("id", h.getId());
+            m.put("name", h.getName());
+            out.add(m);
+        });
+        return ApiResponse.ok(out);
+    }
+
     @Operation(summary = "Chi tiết bài")
     @GetMapping("/posts/{id}")
     public ApiResponse<PostView> post(@PathVariable Long id, Authentication auth) {
@@ -200,6 +215,13 @@ public class SocialApiController {
         Long uid = uid(auth);
         Comment c = commentService.add(uid, id, parentId, content);
         return ApiResponse.ok(viewService.toCommentView(c, uid, isAdmin(auth)), "Đã bình luận");
+    }
+
+    @Operation(summary = "Thả/bỏ tim một bình luận (toggle)")
+    @PostMapping("/comments/{id}/like")
+    public ApiResponse<Map<String, Object>> likeComment(@PathVariable Long id, Authentication auth) {
+        var r = engagementService.toggleLike(uid(auth), ReactionTarget.COMMENT, id);
+        return ApiResponse.ok(Map.of("liked", r.liked(), "count", r.count()));
     }
 
     @Operation(summary = "Theo dõi người dùng")
@@ -322,6 +344,79 @@ public class SocialApiController {
         }
         reportService.submit(uid(auth), tt, id, rr, note);
         return ApiResponse.ok(null, "Đã gửi báo cáo");
+    }
+
+    // ---------- Parity mobile: trang KS, yêu cầu theo dõi, avatar/bìa/handle, xoá bình luận ----------
+
+    @Operation(summary = "Bài viết của trang khách sạn (cộng đồng theo KS)")
+    @GetMapping("/hotels/{hotelId}/posts")
+    public ApiResponse<SocialFeedPage> hotelPosts(@PathVariable Long hotelId,
+                                                  @RequestParam(defaultValue = "0") long cursor, Authentication auth) {
+        return ApiResponse.ok(page(postService.postsOfActor(ActorType.HOTEL, hotelId, cursor, PAGE),
+                uid(auth), isAdmin(auth)));
+    }
+
+    @Operation(summary = "Bài viết của một người dùng (để hiển thị trên trang cá nhân)")
+    @GetMapping("/users/{userId}/posts")
+    public ApiResponse<SocialFeedPage> userPosts(@PathVariable Long userId,
+                                                 @RequestParam(defaultValue = "0") long cursor, Authentication auth) {
+        return ApiResponse.ok(page(postService.postsOfActor(ActorType.USER, userId, cursor, PAGE),
+                uid(auth), isAdmin(auth)));
+    }
+
+    @Operation(summary = "Danh sách yêu cầu theo dõi đang chờ (tài khoản riêng tư)")
+    @GetMapping("/follow-requests")
+    public ApiResponse<List<Map<String, Object>>> followRequests(Authentication auth) {
+        Long uid = uid(auth);
+        List<Map<String, Object>> out = new java.util.ArrayList<>();
+        for (Follow f : followService.pendingRequestsFor(uid)) {
+            SocialProfile prof = profileService.getOrCreate(f.getFollowerUserId());
+            out.add(Map.of("followId", f.getId(), "profile", viewService.profileView(prof, uid)));
+        }
+        return ApiResponse.ok(out);
+    }
+
+    @Operation(summary = "Chấp nhận yêu cầu theo dõi")
+    @PostMapping("/follow-requests/{followId}/accept")
+    public ApiResponse<Void> acceptFollowRequest(@PathVariable Long followId, Authentication auth) {
+        followService.acceptRequest(uid(auth), followId);
+        return ApiResponse.ok(null, "Đã chấp nhận");
+    }
+
+    @Operation(summary = "Từ chối yêu cầu theo dõi")
+    @PostMapping("/follow-requests/{followId}/reject")
+    public ApiResponse<Void> rejectFollowRequest(@PathVariable Long followId, Authentication auth) {
+        followService.rejectRequest(uid(auth), followId);
+        return ApiResponse.ok(null, "Đã từ chối");
+    }
+
+    @Operation(summary = "Cập nhật ảnh đại diện")
+    @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> setAvatar(@RequestPart("image") MultipartFile file, Authentication auth) {
+        profileService.setAvatarKey(uid(auth), mediaService.uploadAvatar(file));
+        return ApiResponse.ok(null, "Đã cập nhật ảnh đại diện");
+    }
+
+    @Operation(summary = "Cập nhật ảnh bìa")
+    @PostMapping(value = "/me/cover", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<Void> setCover(@RequestPart("image") MultipartFile file, Authentication auth) {
+        profileService.setCoverKey(uid(auth), mediaService.uploadAvatar(file));
+        return ApiResponse.ok(null, "Đã cập nhật ảnh bìa");
+    }
+
+    @Operation(summary = "Đổi tên người dùng (@handle)")
+    @PostMapping("/me/handle")
+    public ApiResponse<ProfileView> changeHandle(@RequestParam String handle, Authentication auth) {
+        Long uid = uid(auth);
+        SocialProfile p = profileService.changeHandle(uid, handle);
+        return ApiResponse.ok(viewService.profileView(p, uid), "Đã đổi tên người dùng");
+    }
+
+    @Operation(summary = "Xoá bình luận của mình")
+    @DeleteMapping("/comments/{id}")
+    public ApiResponse<Void> deleteComment(@PathVariable Long id, Authentication auth) {
+        commentService.delete(uid(auth), isAdmin(auth), id);
+        return ApiResponse.ok(null, "Đã xoá");
     }
 
     @Operation(summary = "Tải media (ảnh/video) của bài")
