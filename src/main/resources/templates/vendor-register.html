@@ -83,25 +83,30 @@
     box.addEventListener('change', upd); upd();
 })();
 </script>
-<script th:inline="javascript">
-    window.DD_MAPS_KEY = /*[[${mapsApiKey}]]*/ '';
+<script>
+    /* Ghim vị trí KS: Leaflet + OpenStreetMap (không cần API key). Bấm để đặt, kéo để chỉnh. */
     window.initVrMap = function () {
-        var el = document.getElementById('vrMap'); if (!el || !window.google) return;
-        var map = new google.maps.Map(el, { center: { lat: 16.0544, lng: 108.2022 }, zoom: 5, mapTypeControl: false });
+        var el = document.getElementById('vrMap'); if (!el || !window.L || el.__map) return;
+        var map = L.map(el).setView([16.0544, 108.2022], 5);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
         var marker = null;
         function write(la, ln) {
             document.getElementById('vrLat').value = la.toFixed(6);
             document.getElementById('vrLng').value = ln.toFixed(6);
             document.getElementById('vrLatLng').textContent = 'Toạ độ: ' + la.toFixed(6) + ', ' + ln.toFixed(6);
         }
-        function setPin(latLng) {
+        function setPin(latlng) {
             if (!marker) {
-                marker = new google.maps.Marker({ position: latLng, map: map, draggable: true });
-                marker.addListener('dragend', function (e) { write(e.latLng.lat(), e.latLng.lng()); });
-            } else marker.setPosition(latLng);
-            write(latLng.lat(), latLng.lng());
+                marker = L.marker(latlng, { draggable: true }).addTo(map);
+                marker.on('dragend', function () { var q = marker.getLatLng(); write(q.lat, q.lng); });
+            } else marker.setLatLng(latlng);
+            write(latlng.lat, latlng.lng);
         }
-        map.addListener('click', function (e) { setPin(e.latLng); });
+        map.on('click', function (e) { setPin(e.latlng); });
+        el.__map = map;
     };
 </script>
 <th:block th:replace="~{fragments/maps :: loader('initVrMap')}"></th:block>
