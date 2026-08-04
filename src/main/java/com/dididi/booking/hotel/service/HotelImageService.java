@@ -54,6 +54,24 @@ public class HotelImageService {
                 .map(i -> HotelImageDto.from(i).url()).orElse(null);
     }
 
+    /**
+     * URL anh dau tien theo LO (fix M5 N+1 trang /hotels): 1 query IN thay vi 1 query/KS.
+     * Chunk 1000 id/luot cho an toan voi IN clause. KS chua co anh -> khong co key trong map.
+     */
+    public java.util.Map<Long, String> firstImageUrls(java.util.Collection<Long> hotelIds) {
+        java.util.Map<Long, String> out = new java.util.HashMap<>();
+        if (hotelIds == null || hotelIds.isEmpty()) return out;
+        java.util.List<Long> ids = new java.util.ArrayList<>(hotelIds);
+        for (int i = 0; i < ids.size(); i += 1000) {
+            List<HotelImage> chunk = imageRepository
+                    .findByHotelIdInOrderByHotelIdAscSortOrderAscIdAsc(ids.subList(i, Math.min(i + 1000, ids.size())));
+            for (HotelImage img : chunk) {
+                out.putIfAbsent(img.getHotelId(), HotelImageDto.from(img).url()); // ban ghi dau = anh sort dau
+            }
+        }
+        return out;
+    }
+
     @Transactional
     public void deleteImage(Long hotelId, Long imageId) {
         HotelImage img = imageRepository.findById(imageId)

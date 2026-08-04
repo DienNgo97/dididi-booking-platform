@@ -9,6 +9,7 @@
         <a href="/hotels"><svg th:replace="~{fragments/icons :: i('building','')}"></svg> <span th:text="#{nav.hotels}">Khách sạn</span></a>
         <a href="/flights"><svg th:replace="~{fragments/icons :: i('plane','')}"></svg> <span th:text="#{nav.flights}">Chuyến bay</span></a>
         <a href="/trip-planner"><svg th:replace="~{fragments/icons :: i('route','')}"></svg> <span th:text="#{nav.trip}">Trip Planner</span></a>
+        <a href="/trip-guide"><svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg> <span th:text="#{nav.tripGuide}">AI Hướng dẫn viên</span></a>
         <a href="/community"><svg th:replace="~{fragments/icons :: i('compass','')}"></svg> <span th:text="#{nav.community}">Cộng đồng</span></a>
         <span class="sp"></span>
         <span sec:authorize="isAuthenticated()" class="dd dd-bell" id="ddBell">
@@ -200,6 +201,7 @@
             <a href="/hotels" th:text="#{footer.hotels}">Khách sạn</a> ·
             <a href="/flights" th:text="#{footer.flights}">Chuyến bay</a> ·
             <a href="/trip-planner">Trip Planner</a> ·
+            <a href="/trip-guide" th:text="#{nav.tripGuide}">AI Hướng dẫn viên</a> ·
             <a href="/support" th:text="#{footer.support}">Hỗ trợ</a> ·
             <a href="/legal/terms" th:text="#{footer.terms}">Điều khoản</a> ·
             <a href="/legal/privacy" th:text="#{footer.privacy}">Bảo mật</a>

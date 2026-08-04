@@ -43,3 +43,6 @@ application-local.properties
 .env
 .env.*
 *.local
+secrets/
+*firebase*.json
+app.log*

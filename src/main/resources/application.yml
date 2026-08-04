@@ -67,6 +67,11 @@ server:
     encoding:
       charset: UTF-8
       force: true
+  # ---- Toi uu hieu nang: nen gzip response (HTML/JSON nho di 5-10 lan khi truyen) ----
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,text/plain,application/javascript,application/json,image/svg+xml
+    min-response-size: 2048
 
 management:
   endpoints:
@@ -113,6 +118,17 @@ app:
   # ---- Caching @Cacheable (Dot1 #4). TTL cho API doc hotel/flight tren Redis. Khong khai -> mac dinh 10 phut. ----
   cache:
     ttl-minutes: 10
+  # ---- Push notification (FCM) cho app mobile. Bat khi co service-account JSON (Firebase). ----
+  firebase:
+    enabled: ${APP_FIREBASE_ENABLED:false}
+    credentials-path: ${APP_FIREBASE_CREDENTIALS:}
+  # ---- Tim kiem khach san bang MEILISEARCH (full-text khong dau + typo tolerance). ----
+  #      MySQL van la nguon su that; Meilisearch chi la index doc, dong bo 1 chieu (HotelSearchIndexer).
+  #      Tat co / Meili chet -> tu fallback ve MySQL LIKE, khong gay loi trang.
+  search:
+    enabled: ${APP_SEARCH_ENABLED:false}
+    host: ${APP_SEARCH_HOST:http://localhost:7700}
+    api-key: ${APP_SEARCH_API_KEY:}
   # ---- CORS (SEC-06). Origin cho Angular/Flutter goi /api/**. CSV nhieu origin. Prod set domain that.
   #      allowCredentials=true nen KHONG dung "*" — liet ke origin cu the. ----
   cors:
@@ -133,9 +149,14 @@ app:
   # De api-key trong (mac dinh) -> CHI dung KB, chay offline, khong goi mang. Co key -> cau hoi la moi nho LLM.
   support:
     llm:
-      provider: ${SUPPORT_LLM_PROVIDER:openai}   # openai | anthropic
+      provider: ${SUPPORT_LLM_PROVIDER:openai}   # openai | anthropic (openai = moi API noi chuan OpenAI)
       api-key: ${SUPPORT_LLM_API_KEY:}           # de trong -> tat nhanh LLM (chi dung KB)
       model: ${SUPPORT_LLM_MODEL:gpt-4o-mini}    # openai: gpt-4o-mini | anthropic: claude-3-5-haiku-latest
+      # base-url: doi sang dich vu MIEN PHI noi chuan OpenAI (dung chung cho chatbot CSKH + AI Trip Guide):
+      #   Gemini free: https://generativelanguage.googleapis.com/v1beta/openai  (model: gemini-2.5-flash)
+      #   Groq free  : https://api.groq.com/openai/v1                           (model: llama-3.3-70b-versatile)
+      #   Ollama local: http://localhost:11434/v1                               (model: qwen2.5:7b, api-key: ollama)
+      base-url: ${SUPPORT_LLM_BASE_URL:https://api.openai.com/v1}
 
 logging:
   level:

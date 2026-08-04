@@ -5,8 +5,10 @@ import com.dididi.booking.social.domain.enums.ActorType;
 import com.dididi.booking.social.domain.enums.PostStatus;
 import com.dididi.booking.social.domain.enums.PostType;
 import com.dididi.booking.social.domain.enums.PostVisibility;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -67,4 +69,26 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     /** Trạng thái "đã repost" cho 1 lô bài gốc. */
     List<Post> findByAuthorUserIdAndTypeAndStatusAndOriginPostIdIn(
             Long authorUserId, PostType type, PostStatus status, Collection<Long> originPostIds);
+
+    // ===== ADMIN kiểm duyệt (native để BỎ QUA @SQLRestriction -> thấy CẢ bài REMOVED) =====
+
+    /** Liệt kê bài cho admin: lọc tuỳ chọn theo trạng thái / tác giả / từ khoá caption. Bao gồm cả REMOVED. */
+    @Query(value = "SELECT * FROM social_posts WHERE (:status IS NULL OR status = :status) " +
+            "AND (:authorId IS NULL OR author_user_id = :authorId) " +
+            "AND (:q IS NULL OR LOWER(caption) LIKE LOWER(CONCAT('%', :q, '%'))) ORDER BY id DESC",
+            countQuery = "SELECT COUNT(*) FROM social_posts WHERE (:status IS NULL OR status = :status) " +
+            "AND (:authorId IS NULL OR author_user_id = :authorId) " +
+            "AND (:q IS NULL OR LOWER(caption) LIKE LOWER(CONCAT('%', :q, '%')))",
+            nativeQuery = true)
+    Page<Post> adminSearch(@Param("status") String status, @Param("authorId") Long authorId,
+                           @Param("q") String q, Pageable pageable);
+
+    /** Đếm bài theo từng trạng thái (kể cả REMOVED) cho dashboard. Trả [status, count]. */
+    @Query(value = "SELECT status, COUNT(*) FROM social_posts GROUP BY status", nativeQuery = true)
+    List<Object[]> adminCountByStatus();
+
+    /** Khôi phục 1 bài đã gỡ: về PUBLISHED + bỏ soft-delete. */
+    @Modifying
+    @Query(value = "UPDATE social_posts SET status = 'PUBLISHED', deleted_at = NULL WHERE id = :id", nativeQuery = true)
+    int adminRestore(@Param("id") Long id);
 }

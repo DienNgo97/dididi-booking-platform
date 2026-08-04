@@ -46,6 +46,23 @@
         <div class="stat"><div class="num" data-countup="30" data-suffix="+">30+</div><div class="lbl" th:text="#{home.statCities}">Thành phố</div></div>
     </div>
 </div>
+
+<!-- ===== Banner AI Hướng dẫn viên du lịch (tính năng điểm nhấn — trang riêng /trip-guide) ===== -->
+<div class="wrap">
+    <div class="aig-banner">
+        <div class="aig-icon"><svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg></div>
+        <div class="aig-txt">
+            <h3 th:text="#{home.aigTitle}">AI Hướng dẫn viên du lịch</h3>
+            <p th:text="#{home.aigDesc}">Chưa biết đi đâu, chơi gì? AI xếp lịch trình tham quan theo mốc giờ, gợi ý phương tiện di chuyển, quán ăn ngon và khu vui chơi cho 12 thành phố du lịch.</p>
+            <div class="aig-chips">
+                <a th:href="@{/trip-guide(q=#{tripGuide.chip1})}" th:text="#{tripGuide.chip1}">Lịch trình 3 ngày ở Đà Nẵng</a>
+                <a th:href="@{/trip-guide(q=#{tripGuide.chip2})}" th:text="#{tripGuide.chip2}">Ăn gì ở Huế?</a>
+                <a th:href="@{/trip-guide(q=#{tripGuide.chip3})}" th:text="#{tripGuide.chip3}">Đi lại ở Hà Nội thế nào?</a>
+            </div>
+        </div>
+        <a class="btn aig-cta" href="/trip-guide" th:text="#{home.aigCta}">Trò chuyện ngay →</a>
+    </div>
+</div>
 <div class="wrap">
     <div th:replace="~{fragments/site :: flash}"></div>
     <h2 th:text="#{home.featured}">Khách sạn nổi bật</h2>

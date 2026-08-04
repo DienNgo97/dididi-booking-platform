@@ -172,11 +172,19 @@
     </div>
 </div>
 <script th:if="${hotel.hasGeo()}" th:inline="javascript">
+    /* Bản đồ vị trí KS: Leaflet + OpenStreetMap (không cần API key). */
     window.initHotelMap = function () {
-        var el = document.getElementById('hotelMap'); if (!el || !window.google) return;
-        var pos = { lat: /*[[${hotel.lat}]]*/ 16.0, lng: /*[[${hotel.lng}]]*/ 108.0 };
-        var map = new google.maps.Map(el, { center: pos, zoom: 15, mapTypeControl: false, streetViewControl: true });
-        new google.maps.Marker({ position: pos, map: map, title: /*[[${hotel.name}]]*/ 'Khách sạn' });
+        var el = document.getElementById('hotelMap'); if (!el || !window.L || el.__map) return;
+        var la = /*[[${hotel.lat}]]*/ 16.0;
+        var ln = /*[[${hotel.lng}]]*/ 108.0;
+        var nm = /*[[${hotel.name}]]*/ 'Khách sạn';
+        var map = L.map(el).setView([la, ln], 15);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        L.marker([la, ln], { title: nm }).addTo(map);
+        el.__map = map;
     };
 </script>
 <th:block th:if="${hotel.hasGeo()}" th:replace="~{fragments/maps :: loader('initHotelMap')}"></th:block>

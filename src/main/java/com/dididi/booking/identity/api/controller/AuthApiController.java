@@ -26,12 +26,15 @@ public class AuthApiController {
     private final AuthService authService;
     private final AccountService accountService;
     private final UserRepository userRepository;
+    private final com.dididi.booking.identity.service.RefreshTokenService refreshTokenService;
 
     public AuthApiController(AuthService authService, AccountService accountService,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            com.dididi.booking.identity.service.RefreshTokenService refreshTokenService) {
         this.authService = authService;
         this.accountService = accountService;
         this.userRepository = userRepository;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Operation(summary = "Đăng nhập, trả JWT access token")
@@ -44,6 +47,25 @@ public class AuthApiController {
     @PostMapping("/refresh")
     public ApiResponse<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         return ApiResponse.ok(authService.refresh(request.refreshToken()), "Token refreshed");
+    }
+
+    @Operation(summary = "Đăng nhập bằng Google (mobile): xác thực ID token, tìm-hoặc-tạo user, trả JWT")
+    @PostMapping("/google")
+    public ApiResponse<LoginResponse> google(@RequestBody java.util.Map<String, String> body) {
+        return ApiResponse.ok(authService.loginWithGoogle(body.getOrDefault("idToken", "")));
+    }
+
+    @Operation(summary = "Gửi mã OTP đăng nhập qua email (luôn trả OK để không lộ email tồn tại)")
+    @PostMapping("/otp/request")
+    public ApiResponse<Void> requestOtp(@RequestBody java.util.Map<String, String> body) {
+        authService.requestOtp(body.getOrDefault("email", ""));
+        return ApiResponse.ok(null, "Nếu email hợp lệ, mã OTP đã được gửi.");
+    }
+
+    @Operation(summary = "Đăng nhập bằng OTP email: xác thực mã rồi trả JWT")
+    @PostMapping("/otp/verify")
+    public ApiResponse<LoginResponse> verifyOtp(@RequestBody java.util.Map<String, String> body) {
+        return ApiResponse.ok(authService.loginWithOtp(body.getOrDefault("email", ""), body.getOrDefault("code", "")));
     }
 
     @Operation(summary = "Đăng xuất - thu hồi refresh token + vô hiệu access token đã cấp")
@@ -59,11 +81,38 @@ public class AuthApiController {
         return ApiResponse.ok(null, "Đã đăng xuất");
     }
 
+    @Operation(summary = "Đăng xuất khỏi TẤT CẢ thiết bị (thu hồi mọi refresh token của user)")
+    @PostMapping("/logout-all")
+    public ApiResponse<Void> logoutAll(Authentication authentication) {
+        if (authentication == null || authentication.getName() == null) {
+            throw new BusinessException("UNAUTHENTICATED", "Chưa đăng nhập", HttpStatus.UNAUTHORIZED);
+        }
+        refreshTokenService.revokeAllForUser(Long.valueOf(authentication.getName()));
+        return ApiResponse.ok(null, "Đã đăng xuất khỏi tất cả thiết bị");
+    }
+
     @Operation(summary = "Đăng ký tài khoản CUSTOMER (tạo ở trạng thái chờ kích hoạt, gửi email kích hoạt)")
     @PostMapping("/register")
     public ApiResponse<UserDto> register(@Valid @RequestBody RegisterRequest request) {
         User u = accountService.registerCustomer(request.email(), request.password(), request.fullName());
         return ApiResponse.ok(toDto(u), "Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.");
+    }
+
+    @Operation(summary = "Quên mật khẩu: gửi email chứa liên kết/token đặt lại (luôn trả OK để không lộ email tồn tại)")
+    @PostMapping("/forgot-password")
+    public ApiResponse<Void> forgotPassword(@RequestBody java.util.Map<String, String> body) {
+        accountService.requestPasswordReset(body.getOrDefault("email", ""));
+        return ApiResponse.ok(null, "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.");
+    }
+
+    @Operation(summary = "Đặt lại mật khẩu bằng token nhận qua email")
+    @PostMapping("/reset-password")
+    public ApiResponse<Void> resetPassword(@RequestBody java.util.Map<String, String> body) {
+        boolean ok = accountService.resetPassword(body.getOrDefault("token", ""), body.getOrDefault("newPassword", ""));
+        if (!ok) {
+            throw new BusinessException("RESET_FAILED", "Token không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST);
+        }
+        return ApiResponse.ok(null, "Đặt lại mật khẩu thành công. Vui lòng đăng nhập.");
     }
 
     @Operation(summary = "Thông tin tài khoản đang đăng nhập (cần Bearer token)")

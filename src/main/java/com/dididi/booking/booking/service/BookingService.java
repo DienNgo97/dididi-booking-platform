@@ -304,6 +304,9 @@ public class BookingService {
                                       String guestName, LocalDate checkIn, LocalDate checkOut, int rooms) {
         Hotel h = hotelRepository.findById(hotelId)
                 .orElseThrow(() -> new BusinessException("HOTEL_NOT_FOUND", "Không tìm thấy khách sạn", HttpStatus.NOT_FOUND));
+        if (!h.isActive()) {
+            throw new BusinessException("HOTEL_INACTIVE", "Khách sạn hiện không nhận đặt phòng", HttpStatus.CONFLICT);
+        }
         if (checkIn == null || checkOut == null || !checkOut.isAfter(checkIn)) {
             throw new BusinessException("BAD_DATES", "Ngày trả phòng phải sau ngày nhận phòng", HttpStatus.BAD_REQUEST);
         }
@@ -395,6 +398,9 @@ public class BookingService {
                                             String guestName, LocalDate date, LocalTime timeIn, LocalTime timeOut, int rooms) {
         Hotel h = hotelRepository.findById(hotelId)
                 .orElseThrow(() -> new BusinessException("HOTEL_NOT_FOUND", "Không tìm thấy khách sạn", HttpStatus.NOT_FOUND));
+        if (!h.isActive()) {
+            throw new BusinessException("HOTEL_INACTIVE", "Khách sạn hiện không nhận đặt phòng", HttpStatus.CONFLICT);
+        }
         if (h.getSource() != HotelSource.DIRECT) {
             throw new BusinessException("DAY_USE_UNSUPPORTED",
                     "Khách sạn này chưa hỗ trợ đặt theo giờ (chỗ ở trong ngày)", HttpStatus.CONFLICT);

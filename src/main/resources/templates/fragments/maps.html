@@ -2,21 +2,24 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 <!--
-  Loader Google Maps JS API. Tham số: callback = tên hàm window được gọi khi Maps sẵn sàng.
-  Chỉ nhúng khi đã cấu hình app.maps.api-key (đưa ra view qua GlobalNavAdvice -> ${mapsApiKey}).
-  Cách dùng:
+  Loader bản đồ cho WEB: Leaflet + OpenStreetMap (miễn phí, KHÔNG cần API key/billing).
+  (Trước đây dùng Google Maps JS API nhưng Maps Platform chặn "Permission Denied" cấp tài khoản
+   billing — app MOBILE vẫn dùng Google Maps SDK với key riêng, không liên quan.)
+  Tham số: callback = tên hàm window được gọi khi Leaflet sẵn sàng.
+  Cách dùng (giữ nguyên như cũ):
     <th:block th:replace="~{fragments/maps :: loader('initHotelMap')}"></th:block>
 -->
 <th:block th:fragment="loader(callback)">
-  <script th:if="${mapsApiKey != null and !#strings.isEmpty(mapsApiKey)}" async
-          th:src="|https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&loading=async&callback=${callback}|"></script>
-  <script th:unless="${mapsApiKey != null and !#strings.isEmpty(mapsApiKey)}" th:inline="javascript">
-    /* Chưa cấu hình API key -> báo nhẹ trong khung bản đồ, không vỡ trang. */
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+  <script th:inline="javascript">
     (function () {
-      var msg = /*[[#{maps.noKey}]]*/ 'Chưa cấu hình Google Maps API key (app.maps.api-key).';
-      document.querySelectorAll('.hotel-map').forEach(function (el) {
-        el.classList.add('map-nokey'); el.textContent = msg;
-      });
+      var cb = /*[[${callback}]]*/ '';
+      function fire() { if (cb && typeof window[cb] === 'function') window[cb](); }
+      if (window.L) { fire(); return; }
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+      s.onload = fire;
+      document.head.appendChild(s);
     })();
   </script>
 </th:block>

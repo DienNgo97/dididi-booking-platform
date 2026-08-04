@@ -104,7 +104,10 @@
 </aside>
 
 <!-- ===== 1 the bai ===== -->
-<article th:fragment="card(post)" class="sx-card" th:classappend="${post.repost} ? 'sx-repostcard' : ''">
+<!-- sx-nomedia: bài KHÔNG có ảnh/video — CSS đảo bố cục (caption ngay dưới header, hàng nút xuống dưới)
+     vì bố cục kiểu Instagram (nút trên, caption dưới) chỉ hợp lý khi có media ở giữa. -->
+<article th:fragment="card(post)" class="sx-card"
+         th:classappend="${post.repost ? 'sx-repostcard' : (post.hasMedia() ? '' : 'sx-nomedia')}">
 
     <!-- Khi la repost: banner + quote + nhung bai goc -->
     <div th:if="${post.repost}" class="sx-reposthead">
@@ -114,7 +117,9 @@
         <span class="sx-dot">·</span>
         <span class="sx-time" th:attr="data-ts=${post.createdAtMs}">vừa xong</span>
     </div>
-    <div th:if="${post.repost and post.caption}" class="sx-caption"><span th:utext="${post.captionHtml}">quote</span></div>
+    <!-- LƯU Ý: không dùng "and post.caption" trần — SpEL không convert null->boolean (EL1001E)
+         => repost KHÔNG kèm quote (caption null) từng làm sập cả trang feed/explore. -->
+    <div th:if="${post.repost and !#strings.isEmpty(post.caption)}" class="sx-caption"><span th:utext="${post.captionHtml}">quote</span></div>
     <div th:if="${post.repost}">
         <div th:if="${post.original != null}" class="sx-embed">
             <div th:replace="~{social/fragments :: card(${post.original})}"></div>

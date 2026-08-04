@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{tripGuide.pageTitle}">AI Hướng dẫn viên du lịch - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+
+<div class="wrap" style="max-width:860px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <!-- Hero giới thiệu -->
+    <div class="tg-hero">
+        <div class="tg-hero-txt">
+            <span class="tg-eyebrow"><svg th:replace="~{fragments/icons :: i('sparkles','ic-brand')}"></svg> <span th:text="#{tripGuide.heroEyebrow}">Tính năng AI của Dididi</span></span>
+            <h1 th:text="#{tripGuide.heroTitle}">AI Hướng dẫn viên du lịch</h1>
+            <p class="muted" th:text="#{tripGuide.heroDesc}">Lịch trình tham quan theo mốc giờ, phương tiện di chuyển, chỗ ăn uống và khu vui chơi — hỏi bằng tiếng Việt tự nhiên, gõ không dấu cũng hiểu.</p>
+        </div>
+    </div>
+
+    <!-- Chủ đề nhanh -->
+    <div class="tg-topics">
+        <button type="button" onclick="TripGuide.ask('Lịch trình 3 ngày ở Đà Nẵng')"><svg th:replace="~{fragments/icons :: i('route','')}"></svg> <span th:text="#{tripGuide.topic1}">Lịch trình 3 ngày ở Đà Nẵng</span></button>
+        <button type="button" onclick="TripGuide.ask('Lịch trình 2 ngày ở Đà Lạt')"><svg th:replace="~{fragments/icons :: i('route','')}"></svg> <span th:text="#{tripGuide.topic2}">Lịch trình 2 ngày ở Đà Lạt</span></button>
+        <button type="button" onclick="TripGuide.ask('Đi lại ở Hà Nội thế nào?')"><svg th:replace="~{fragments/icons :: i('bolt','')}"></svg> <span th:text="#{tripGuide.topic3}">Đi lại ở Hà Nội</span></button>
+        <button type="button" onclick="TripGuide.ask('Ăn gì ở Huế?')"><svg th:replace="~{fragments/icons :: i('star','')}"></svg> <span th:text="#{tripGuide.topic4}">Ăn gì ở Huế?</span></button>
+        <button type="button" onclick="TripGuide.ask('Chơi gì ở Phú Quốc?')"><svg th:replace="~{fragments/icons :: i('compass','')}"></svg> <span th:text="#{tripGuide.topic5}">Chơi gì ở Phú Quốc?</span></button>
+        <button type="button" onclick="TripGuide.ask('Lịch trình 2 ngày ở Sa Pa')"><svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg> <span th:text="#{tripGuide.topic6}">2 ngày ở Sa Pa</span></button>
+    </div>
+
+    <!-- Khung chat -->
+    <div class="card tg-card tg-page">
+        <div class="tg-head">
+            <span class="tg-dot"></span>
+            <b th:text="#{tripGuide.heading}">AI hướng dẫn viên du lịch</b>
+            <span class="muted tg-sub" th:text="#{tripGuide.sub}">Lịch trình theo giờ · đi lại · ăn uống · vui chơi</span>
+        </div>
+        <div id="tg-body" class="tg-body"></div>
+        <div id="tg-chips" class="tg-chips"></div>
+        <form class="tg-input" onsubmit="return TripGuide.send(event)">
+            <input type="text" id="tg-text" autocomplete="off" maxlength="500"
+                   th:attr="placeholder=#{tripGuide.placeholder}" placeholder="Hỏi về lịch trình, đi lại, ăn uống…"/>
+            <button class="btn" type="submit" th:text="#{tripGuide.send}">Gửi</button>
+        </form>
+    </div>
+    <p class="muted" style="font-size:12px" th:text="#{tripGuide.disclaimer}">Giá và giờ mở cửa chỉ mang tính tham khảo — kiểm tra lại trước chuyến đi nhé.</p>
+</div>
+
+<script th:inline="javascript">
+window.TripGuide = (function () {
+    // LƯU Ý Thymeleaf inline: mỗi /*[[...]]*/ đứng 1 biến riêng, KHÔNG đặt trong mảng [ ... ]
+    // (bẫy parser đã gặp ở hotels/detail.html — xem quy ước team).
+    var GREET = /*[[#{tripGuide.greeting}]]*/ 'Chào bạn! Mình là AI hướng dẫn viên du lịch của Dididi.';
+    var BUSY = /*[[#{tripGuide.busy}]]*/ 'Xin lỗi, hệ thống đang bận. Bạn thử lại nhé.';
+    var CHIP1 = /*[[#{tripGuide.chip1}]]*/ 'Lịch trình 3 ngày ở Đà Nẵng';
+    var CHIP2 = /*[[#{tripGuide.chip2}]]*/ 'Ăn gì ở Huế?';
+    var CHIP3 = /*[[#{tripGuide.chip3}]]*/ 'Đi lại ở Hà Nội thế nào?';
+    var PRESET = /*[[${presetQuestion}]]*/ '';
+    var body, chips, input, typingEl = null;
+    function E() {
+        if (!body) { body = document.getElementById('tg-body'); chips = document.getElementById('tg-chips'); input = document.getElementById('tg-text'); }
+    }
+    function scrollDown() { if (body) body.scrollTop = body.scrollHeight; }
+    function bubble(role, text) {
+        E(); if (!body) return;
+        var row = document.createElement('div'); row.className = 'tg-msg tg-' + role;
+        var bb = document.createElement('div'); bb.className = 'tg-bubble';
+        bb.textContent = text; // textContent => an toàn XSS; xuống dòng nhờ white-space:pre-line
+        row.appendChild(bb); body.appendChild(row); scrollDown();
+    }
+    function typing(on) {
+        E(); if (!body) return;
+        if (on) { if (typingEl) return; typingEl = document.createElement('div'); typingEl.className = 'tg-msg tg-bot';
+            typingEl.innerHTML = '<div class="tg-bubble tg-typing"><i></i><i></i><i></i></div>'; body.appendChild(typingEl); scrollDown(); }
+        else if (typingEl) { body.removeChild(typingEl); typingEl = null; }
+    }
+    function renderChips(list) {
+        E(); if (!chips) return;
+        chips.innerHTML = '';
+        (list || []).forEach(function (s) {
+            var b = document.createElement('button'); b.type = 'button'; b.textContent = s;
+            b.addEventListener('click', function () { ask(s); });
+            chips.appendChild(b);
+        });
+    }
+    function respond(text) {
+        typing(true);
+        fetch('/trip-guide/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'q=' + encodeURIComponent(text)
+        }).then(function (r) { return r.json(); })
+          .then(function (d) {
+              typing(false);
+              bubble('bot', (d && d.answer) ? d.answer : BUSY);
+              renderChips(d && d.suggests);
+          })
+          .catch(function () { typing(false); bubble('bot', BUSY); });
+    }
+    function ask(text) { bubble('user', text); respond(text); }
+    function send(ev) {
+        if (ev) ev.preventDefault();
+        E(); if (!input) return false;
+        var t = (input.value || '').trim(); if (!t) return false;
+        input.value = ''; ask(t); return false;
+    }
+    function init() {
+        E(); if (!body) return;
+        bubble('bot', GREET);
+        renderChips([CHIP1, CHIP2, CHIP3]);
+        if (PRESET && PRESET.trim()) { ask(PRESET.trim()); } // chip trang chủ dẫn tới ?q=...
+        if (input) input.focus();
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+    return { send: send, ask: ask };
+})();
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

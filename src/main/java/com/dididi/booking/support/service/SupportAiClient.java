@@ -47,17 +47,33 @@ public class SupportAiClient {
     private final String provider;
     private final String apiKey;
     private final String model;
+    private final String baseUrl;
+    /** "low"/"medium"/"high" cho model thinking (Gemini 3, o-series). RỖNG = không gửi (an toàn cho gpt-4o-mini). */
+    private final String reasoningEffort;
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(6)).build();
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /**
+     * base-url cho provider "openai": mọi dịch vụ NÓI CHUẨN OpenAI đều dùng được, kể cả MIỄN PHÍ:
+     *  - OpenAI:  https://api.openai.com/v1                                  (mặc định, trả phí)
+     *  - Gemini:  https://generativelanguage.googleapis.com/v1beta/openai    (free tier, model gemini-2.5-flash)
+     *  - Groq:    https://api.groq.com/openai/v1                             (free tier, model llama-3.3-70b-versatile)
+     *  - Ollama:  http://localhost:11434/v1                                  (chạy local 100% free, model qwen2.5:7b,
+     *                                                                         api-key điền chuỗi bất kỳ vd "ollama")
+     */
     public SupportAiClient(
             @Value("${app.support.llm.provider:openai}") String provider,
             @Value("${app.support.llm.api-key:}") String apiKey,
-            @Value("${app.support.llm.model:gpt-4o-mini}") String model) {
+            @Value("${app.support.llm.model:gpt-4o-mini}") String model,
+            @Value("${app.support.llm.base-url:https://api.openai.com/v1}") String baseUrl,
+            @Value("${app.support.llm.reasoning-effort:}") String reasoningEffort) {
         this.provider = provider == null ? "openai" : provider.trim().toLowerCase();
         this.apiKey = apiKey == null ? "" : apiKey.trim();
         this.model = model == null ? "gpt-4o-mini" : model.trim();
+        String b = (baseUrl == null || baseUrl.isBlank()) ? "https://api.openai.com/v1" : baseUrl.trim();
+        this.baseUrl = b.endsWith("/") ? b.substring(0, b.length() - 1) : b;
+        this.reasoningEffort = reasoningEffort == null ? "" : reasoningEffort.trim().toLowerCase();
     }
 
     /** Có bật nhánh LLM không (đã cấu hình api-key). */
@@ -66,16 +82,28 @@ public class SupportAiClient {
     }
 
     /**
-     * Hỏi LLM. Trả về câu trả lời, hoặc Optional.empty() nếu chưa cấu hình / lỗi / rỗng.
-     * KHÔNG bao giờ ném ngoại lệ.
+     * Hỏi LLM (nhánh CSKH — system prompt mặc định). Trả về câu trả lời, hoặc Optional.empty()
+     * nếu chưa cấu hình / lỗi / rỗng. KHÔNG bao giờ ném ngoại lệ.
      */
     public Optional<String> ask(String question, Locale locale) {
+        // max_tokens 2000 (truoc la 400): cac model THINKING (vd Gemini 3) tinh ca token suy nghi
+        // vao max_tokens -> de thap se bi cat cut cau tra loi giua chung.
+        return ask(SYSTEM_PROMPT, question, locale, 2000);
+    }
+
+    /**
+     * Bản tổng quát: cho phép module khác (vd AI hướng dẫn viên du lịch — Trip Guide) dùng lại
+     * client này với SYSTEM PROMPT + max_tokens riêng, chung cấu hình app.support.llm.*.
+     */
+    public Optional<String> ask(String systemPrompt, String question, Locale locale, int maxTokens) {
         if (apiKey.isBlank() || question == null || question.isBlank()) {
             return Optional.empty();
         }
-        String system = SYSTEM_PROMPT + "\n" + languageInstruction(locale);
+        String system = systemPrompt + "\n" + languageInstruction(locale);
         try {
-            return "anthropic".equals(provider) ? askAnthropic(question, system) : askOpenAi(question, system);
+            return "anthropic".equals(provider)
+                    ? askAnthropic(question, system, maxTokens)
+                    : askOpenAi(question, system, maxTokens);
         } catch (Exception ex) {
             log.warn("Support LLM call failed ({}): {}", provider, ex.toString());
             return Optional.empty();
@@ -92,16 +120,21 @@ public class SupportAiClient {
         }
     }
 
-    private Optional<String> askOpenAi(String question, String system) throws Exception {
+    private Optional<String> askOpenAi(String question, String system, int maxTokens) throws Exception {
         ObjectNode body = mapper.createObjectNode();
         body.put("model", model);
         body.put("temperature", 0.3);
+        body.put("max_tokens", maxTokens);
+        if (!reasoningEffort.isBlank()) {
+            // Model thinking (Gemini 3...): "low" giup tra loi nhanh, khong chay het max_tokens vao suy nghi.
+            body.put("reasoning_effort", reasoningEffort);
+        }
         ArrayNode messages = body.putArray("messages");
         messages.add(msg("system", system));
         messages.add(msg("user", question));
 
-        HttpRequest req = HttpRequest.newBuilder(URI.create("https://api.openai.com/v1/chat/completions"))
-                .timeout(Duration.ofSeconds(12))
+        HttpRequest req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))
+                .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + apiKey)
                 .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body)))
@@ -116,16 +149,16 @@ public class SupportAiClient {
         return content.isTextual() ? nonBlank(content.asText()) : Optional.empty();
     }
 
-    private Optional<String> askAnthropic(String question, String system) throws Exception {
+    private Optional<String> askAnthropic(String question, String system, int maxTokens) throws Exception {
         ObjectNode body = mapper.createObjectNode();
         body.put("model", model);
-        body.put("max_tokens", 400);
+        body.put("max_tokens", maxTokens);
         body.put("system", system);
         ArrayNode messages = body.putArray("messages");
         messages.add(msg("user", question));
 
         HttpRequest req = HttpRequest.newBuilder(URI.create("https://api.anthropic.com/v1/messages"))
-                .timeout(Duration.ofSeconds(12))
+                .timeout(Duration.ofSeconds(30))
                 .header("Content-Type", "application/json")
                 .header("x-api-key", apiKey)
                 .header("anthropic-version", "2023-06-01")

@@ -46,7 +46,7 @@ public class AdminHotelApiController {
     }
 
     @Operation(summary = "Tạo khách sạn")
-    @CacheEvict(value = {"hotelsByCity", "hotelById"}, allEntries = true)   // BP-CACHE-01: tuoi cache sau khi ghi
+    @CacheEvict(value = {"hotelsByCityV2", "hotelByIdV2"}, allEntries = true)   // BP-CACHE-01: tuoi cache sau khi ghi
     @PostMapping
     public ApiResponse<HotelApiDto> create(@Valid @RequestBody HotelUpsertRequest req) {
         Hotel h = new Hotel();
@@ -59,7 +59,7 @@ public class AdminHotelApiController {
     }
 
     @Operation(summary = "Cập nhật khách sạn")
-    @CacheEvict(value = {"hotelsByCity", "hotelById"}, allEntries = true)   // BP-CACHE-01: tuoi cache sau khi ghi
+    @CacheEvict(value = {"hotelsByCityV2", "hotelByIdV2"}, allEntries = true)   // BP-CACHE-01: tuoi cache sau khi ghi
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<HotelApiDto>> update(@PathVariable Long id,
                                                            @Valid @RequestBody HotelUpsertRequest req) {
@@ -73,7 +73,7 @@ public class AdminHotelApiController {
     }
 
     @Operation(summary = "Xoá khách sạn")
-    @CacheEvict(value = {"hotelsByCity", "hotelById"}, allEntries = true)   // BP-CACHE-01: tuoi cache sau khi ghi
+    @CacheEvict(value = {"hotelsByCityV2", "hotelByIdV2"}, allEntries = true)   // BP-CACHE-01: tuoi cache sau khi ghi
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id, Authentication auth) {
         Hotel h = hotelRepository.findById(id).orElse(null);

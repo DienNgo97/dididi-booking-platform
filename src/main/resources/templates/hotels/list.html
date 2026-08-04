@@ -84,7 +84,7 @@
     <div class="hresults">
     <h1><span th:text="#{hotels.title}">Khách sạn</span><span class="muted" th:if="${city}"> · <span th:text="${city}"></span></span></h1>
     <div class="hresult-bar">
-        <span class="hresult-count"><b id="hcount">0</b> chỗ ở</span>
+        <span class="hresult-count"><b id="hcount">…</b> chỗ ở</span>
         <label class="hresult-sort">Sắp xếp:
             <select id="hsort">
                 <option value=""           th:selected="${fSort == null or fSort == ''}">Đề xuất</option>
@@ -95,8 +95,7 @@
             </select>
         </label>
     </div>
-    <!-- Bản đồ kết quả tìm kiếm (Nhóm 2 - Google Maps) -->
-    <div class="map-wrap" th:if="${hotels != null and !#lists.isEmpty(hotels)}">
+    <div class="map-wrap">
         <div class="map-bar">
             <button type="button" class="btn ghost" id="toggleMap"><svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg>
                 <span data-show th:text="#{maps.showMap}">Xem bản đồ</span><span data-hide hidden th:text="#{maps.hideMap}">Ẩn bản đồ</span></button>
@@ -104,164 +103,72 @@
         </div>
         <div id="hotelsMap" class="hotel-map hotel-map-lg" style="display:none"></div>
     </div>
-    <div class="hlist" id="hlist" data-page-size="20">
-    <div class="hcard" th:each="h : ${hotels}"
-         th:attr="data-price=${h.minPrice != null ? h.minPrice.longValue() : ''},data-star=${h.starRating != null ? h.starRating : 0},data-rating=${ratings.get(h.id)},data-type=${h.propertyType != null ? h.propertyType.name() : ''},data-amen=${amenStr.get(h.id)},data-tags=${tagStr.get(h.id)}">
-        <a class="hcard-stretch" th:aria-label="${h.name}"
-           th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}"></a>
-        <div class="hcard-img">
-            <img th:if="${covers.get(h.id) != null}" th:src="${covers.get(h.id)}" alt="ảnh khách sạn" th:alt="#{home.hotelImgAlt}"/>
-            <div class="ph" th:if="${covers.get(h.id) == null}"><svg th:replace="~{fragments/icons :: i('building','')}"></svg></div>
-            <form class="hcard-heart" sec:authorize="isAuthenticated()" th:action="@{/account/wishlist/toggle}" method="post">
-                <input type="hidden" name="hotelId" th:value="${h.id}"/>
-                <input type="hidden" name="back"
-                       th:value="${city != null and !#strings.isEmpty(city)} ? @{/hotels(city=${city})} : '/hotels'"/>
-                <button type="submit" class="wish-btn" th:title="#{nav.wishlist}"
-                        th:classappend="${wishlistedIds != null and wishlistedIds.contains(h.id)} ? 'is-on' : ''"
-                        ><svg th:replace="~{fragments/icons :: i('heart', ${wishlistedIds != null and wishlistedIds.contains(h.id)} ? 'ic-fill' : '')}"></svg></button>
-            </form>
-        </div>
-        <div class="hcard-body">
-            <h3><a th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}" th:text="${h.name}">Hotel</a></h3>
-            <div class="hcard-loc"><svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg> <span th:text="${h.city}"></span> · <span th:text="${h.address}"></span></div>
-            <div class="chips">
-                <span class="chip" th:if="${h.starRating != null}" th:text="${h.starRating} + ' ' + #{hotels.starsUnit}">4 sao</span>
-                <span class="chip" th:text="#{hotels.instantConfirm}">Xác nhận tức thì</span>
-                <span class="chip" th:text="#{hotels.payOnline}">Thanh toán online</span>
-            </div>
-        </div>
-        <div class="hcard-aside">
-            <div class="rate" th:if="${ratings.get(h.id) > 0}">
-                <div class="lab"><b th:text="#{hotels.ratingLabel}">Đánh giá</b><small th:text="#{hotels.outOf5}">trên 5</small></div>
-                <span class="score" th:text="${#numbers.formatDecimal(ratings.get(h.id),1,1)}">4.5</span>
-            </div>
-            <div class="muted" th:if="${ratings.get(h.id) == 0}" style="font-size:12px" th:text="#{hotels.noRating}">Chưa có đánh giá</div>
-            <div class="hcard-price">
-                <span class="amt" th:if="${h.minPrice != null}" th:text="${#numbers.formatInteger(h.minPrice,1,'COMMA')} + 'đ'">1.000.000đ</span>
-                <small th:if="${h.minPrice != null}" th:text="#{hotels.perNight}">/ đêm</small>
-                <a class="btn" style="margin-top:8px;width:100%"
-                   th:href="@{/hotels/{id}(id=${h.id},stay=${stay},checkIn=${checkIn},checkOut=${checkOut},adults=${adults},children=${children},rooms=${rooms},trip=${trip})}"
-                   th:text="#{hotels.view}">Xem chỗ trống</a>
-            </div>
-        </div>
-    </div>
-    </div>
+    <!-- Card do CLIENT render từ GET /hotels/data (JSON phân trang server) — xem script bên dưới -->
+    <div class="hlist" id="hlist"></div>
+    <nav class="pager" id="hpager"></nav>
     <p class="muted" id="hempty" style="display:none" th:text="#{hotels.empty}">Không có khách sạn phù hợp.</p>
+    <p class="muted" id="hloading" style="display:none">Đang tải…</p>
     </div><!-- /.hresults -->
     </div><!-- /.hsearch-layout -->
 </div>
-<script>
-(function () {
-    var csrf = document.querySelector('meta[name=_csrf]'), csrfH = document.querySelector('meta[name=_csrf_header]');
-    function headers() {
-        var h = { 'Content-Type': 'application/x-www-form-urlencoded' };
-        if (csrf && csrf.content && csrfH && csrfH.content) h[csrfH.content] = csrf.content;
-        return h;
-    }
-    document.querySelectorAll('form.hcard-heart').forEach(function (form) {
-        form.addEventListener('submit', function (e) {
-            e.preventDefault();
-            var idEl = form.querySelector('input[name=hotelId]');
-            var btn = form.querySelector('button');
-            if (!idEl || !btn || btn.disabled) return;
-            btn.disabled = true;
-            fetch('/account/wishlist/toggle-ajax', { method: 'POST', headers: headers(), credentials: 'same-origin',
-                body: 'hotelId=' + encodeURIComponent(idEl.value) })
-                .then(function (r) { if (r.status === 401 || r.status === 403) { window.location = '/login'; return null; } return r.json(); })
-                .then(function (d) {
-                    if (!d) return;
-                    btn.innerHTML = d.wishlisted ? '<svg class="ic ic-fill" viewBox="0 0 24 24"><use href="#ic-heart"></use></svg>' : '<svg class="ic" viewBox="0 0 24 24"><use href="#ic-heart"></use></svg>';
-                    btn.classList.toggle('is-on', !!d.wishlisted);
-                    btn.disabled = false;
-                })
-                .catch(function () { btn.disabled = false; form.submit(); });
-        });
-    });
-})();
+
+<script sec:authorize="isAuthenticated()">window.DD_AUTH = true;</script>
+<script th:inline="javascript">
+    window.DD_MAPS_T = {
+        detail: /*[[#{maps.viewDetail}]]*/ 'Xem chi tiết',
+        night: /*[[#{hotels.perNight}]]*/ '/ đêm'
+    };
+    window.DD_HL_T = {
+        starsUnit: /*[[#{hotels.starsUnit}]]*/ 'sao',
+        instant: /*[[#{hotels.instantConfirm}]]*/ 'Xác nhận tức thì',
+        payOnline: /*[[#{hotels.payOnline}]]*/ 'Thanh toán online',
+        ratingLabel: /*[[#{hotels.ratingLabel}]]*/ 'Đánh giá',
+        outOf5: /*[[#{hotels.outOf5}]]*/ 'trên 5',
+        noRating: /*[[#{hotels.noRating}]]*/ 'Chưa có đánh giá',
+        perNight: /*[[#{hotels.perNight}]]*/ '/ đêm',
+        view: /*[[#{hotels.view}]]*/ 'Xem chỗ trống',
+        imgAlt: /*[[#{home.hotelImgAlt}]]*/ 'ảnh khách sạn',
+        wishlist: /*[[#{nav.wishlist}]]*/ 'Yêu thích'
+    };
 </script>
 <script>
-/* Bộ lọc / sắp xếp / phân trang khách sạn — chạy hoàn toàn ở client, cập nhật tức thì, không tải lại trang. */
+/* ============================================================================
+   /hotels — TỐI ƯU HIỆU NĂNG: phân trang + lọc + sắp xếp PHÍA SERVER qua AJAX.
+   Trước: server render TOÀN BỘ ~1.800 thẻ (~3,6s + HTML nặng), client lọc DOM.
+   Sau  : trang HTML nhẹ; client fetch /hotels/data (JSON ~20 KS/lần, debounce 300ms)
+          -> tải trang gần tức thì, đếm tổng vẫn đúng trên toàn bộ dữ liệu,
+          scale được tới hàng trăm nghìn KS. Bản đồ lấy toạ độ theo đúng bộ lọc.
+   ========================================================================== */
 (function () {
     var form = document.getElementById('hfilterForm');
     var box = document.getElementById('hlist');
     if (!form || !box) return;
-    var size = parseInt(box.getAttribute('data-page-size') || '20', 10);
-    var cards = Array.prototype.slice.call(box.querySelectorAll('.hcard'));
-    var origin = cards.slice();                 // thứ tự gốc cho "Đề xuất"
-    var ord = new Map(); origin.forEach(function (c, i) { ord.set(c, i); });
+    var T = window.DD_HL_T, AUTH = !!window.DD_AUTH;
     var sortSel = document.getElementById('hsort');
     var countEl = document.getElementById('hcount');
     var emptyEl = document.getElementById('hempty');
-    var pager = document.createElement('nav'); pager.className = 'pager';
-    box.parentNode.insertBefore(pager, box.nextSibling);
+    var loadEl = document.getElementById('hloading');
+    var pager = document.getElementById('hpager');
+    var SIZE = 20, cur = 1, total = 0, reqSeq = 0;
 
+    // Ngữ cảnh tìm kiếm ban đầu (giữ cho link chi tiết + URL chia sẻ — fix M4: không mất keyword/ngày)
+    var init = new URLSearchParams(location.search);
+    var CTX = {};
+    ['keyword', 'city', 'stay', 'checkIn', 'checkOut', 'adults', 'children', 'rooms', 'trip'].forEach(function (k) {
+        var v = init.get(k); if (v) CTX[k] = v;
+    });
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
     function num(v) { v = parseFloat(v); return isNaN(v) ? null : v; }
     function checked(name) { return Array.prototype.map.call(form.querySelectorAll('input[name="' + name + '"]:checked'), function (i) { return i.value; }); }
     function radio(name) { var el = form.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ''; }
     function field(name) { var el = form.querySelector('[name="' + name + '"]'); return el ? el.value : ''; }
 
-    function matched() {
-        var pMin = num(field('priceMin')), pMax = num(field('priceMax'));
-        var stars = checked('stars'), types = checked('types'), tags = checked('tags'), amens = checked('amenities');
-        var minR = num(radio('minRating'));
-        return cards.filter(function (c) {
-            var price = num(c.getAttribute('data-price'));
-            var star = c.getAttribute('data-star') || '0';
-            var rating = num(c.getAttribute('data-rating')) || 0;
-            var type = c.getAttribute('data-type') || '';
-            var amen = (c.getAttribute('data-amen') || '').split(/\s+/).filter(Boolean);
-            var tg = (c.getAttribute('data-tags') || '').split(/\s+/).filter(Boolean);
-            if (pMin != null && (price == null || price < pMin)) return false;
-            if (pMax != null && (price == null || price > pMax)) return false;
-            if (stars.length && stars.indexOf(star) < 0) return false;            // sao: OR
-            if (types.length && types.indexOf(type) < 0) return false;            // loại: OR
-            if (minR != null && minR > 0 && rating < minR) return false;          // điểm: ngưỡng
-            if (amens.length && !amens.every(function (a) { return amen.indexOf(a) >= 0; })) return false; // tiện nghi: AND
-            if (tags.length && !tags.some(function (t) { return tg.indexOf(t) >= 0; })) return false;       // nổi bật: OR
-            return true;
-        });
-    }
-
-    function sortList(list) {
-        var s = sortSel ? sortSel.value : '';
-        var g = function (c, k, d) { var v = num(c.getAttribute(k)); return v == null ? d : v; };
-        if (s === 'price_asc') list.sort(function (a, b) { return g(a, 'data-price', 1e15) - g(b, 'data-price', 1e15); });
-        else if (s === 'price_desc') list.sort(function (a, b) { return g(b, 'data-price', -1) - g(a, 'data-price', -1); });
-        else if (s === 'rating_desc') list.sort(function (a, b) { return g(b, 'data-rating', 0) - g(a, 'data-rating', 0); });
-        else if (s === 'stars_desc') list.sort(function (a, b) { return g(b, 'data-star', 0) - g(a, 'data-star', 0); });
-        else list.sort(function (a, b) { return ord.get(a) - ord.get(b); });      // Đề xuất: thứ tự gốc
-        return list;
-    }
-
-    var cur = 1, view = [];
-    function pgList(c, t) { var r = [], i; if (t <= 7) { for (i = 1; i <= t; i++) r.push(i); return r; } r.push(1); var s = Math.max(2, c - 1), e = Math.min(t - 1, c + 1); if (s > 2) r.push('…'); for (i = s; i <= e; i++) r.push(i); if (e < t - 1) r.push('…'); r.push(t); return r; }
-    function drawPager() {
-        var pages = Math.ceil(view.length / size); pager.innerHTML = ''; if (pages <= 1) return;
-        function add(label, page, o) { o = o || {}; if (label === '…') { var gp = document.createElement('span'); gp.className = 'gap'; gp.textContent = '…'; pager.appendChild(gp); return; } var b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (o.active) b.className = 'is-active'; if (o.disabled) b.disabled = true; if (!o.disabled && !o.active) b.addEventListener('click', function () { go(page, true); }); pager.appendChild(b); }
-        add('‹', cur - 1, { disabled: cur === 1 });
-        pgList(cur, pages).forEach(function (n) { add(n, n, { active: n === cur }); });
-        add('›', cur + 1, { disabled: cur === pages });
-    }
-    function go(p, scroll) {
-        var pages = Math.max(1, Math.ceil(view.length / size));
-        cur = Math.min(Math.max(1, p), pages);
-        view.forEach(function (c, i) { c.style.display = (i >= (cur - 1) * size && i < cur * size) ? '' : 'none'; });
-        drawPager();
-        if (scroll) { var y = box.getBoundingClientRect().top + window.pageYOffset - 130; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); }
-    }
-
-    function apply() {
-        cards.forEach(function (c) { c.style.display = 'none'; });
-        view = sortList(matched());
-        view.forEach(function (c) { box.appendChild(c); });        // sắp lại DOM theo thứ tự đã sort
-        if (countEl) countEl.textContent = view.length;
-        if (emptyEl) emptyEl.style.display = view.length ? 'none' : '';
-        cur = 1; go(1, false);
-        syncUrl();
-    }
-
-    function syncUrl() {
+    function filterParams() {
         var p = new URLSearchParams();
+        if (CTX.keyword) p.set('keyword', CTX.keyword);
+        else if (CTX.city) p.set('city', CTX.city);
         if (field('priceMin')) p.set('priceMin', field('priceMin'));
         if (field('priceMax')) p.set('priceMax', field('priceMax'));
         checked('stars').forEach(function (v) { p.append('stars', v); });
@@ -270,13 +177,194 @@
         checked('amenities').forEach(function (v) { p.append('amenities', v); });
         var mr = radio('minRating'); if (mr) p.set('minRating', mr);
         if (sortSel && sortSel.value) p.set('sort', sortSel.value);
+        return p;
+    }
+
+    function detailUrl(id) {
+        var p = new URLSearchParams();
+        ['stay', 'checkIn', 'checkOut', 'adults', 'children', 'rooms', 'trip'].forEach(function (k) {
+            if (CTX[k]) p.set(k, CTX[k]);
+        });
+        var qs = p.toString();
+        return '/hotels/' + id + (qs ? ('?' + qs) : '');
+    }
+
+    function cardHtml(h) {
+        var url = detailUrl(h.id);
+        var img = h.cover
+            ? '<img src="' + esc(h.cover) + '" alt="' + esc(T.imgAlt) + '"/>'
+            : '<div class="ph"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-building"></use></svg></div>';
+        var heart = AUTH
+            ? '<form class="hcard-heart" data-hotel="' + h.id + '"><button type="submit" class="wish-btn' + (h.wishlisted ? ' is-on' : '') + '" title="' + esc(T.wishlist) + '">'
+              + '<svg class="ic' + (h.wishlisted ? ' ic-fill' : '') + '" viewBox="0 0 24 24"><use href="#ic-heart"></use></svg></button></form>'
+            : '';
+        var rate = (h.rating && h.rating > 0)
+            ? '<div class="rate"><div class="lab"><b>' + esc(T.ratingLabel) + '</b><small>' + esc(T.outOf5) + '</small></div><span class="score">' + h.rating.toFixed(1) + '</span></div>'
+            : '<div class="muted" style="font-size:12px">' + esc(T.noRating) + '</div>';
+        var price = h.price != null
+            ? '<span class="amt">' + Number(h.price).toLocaleString('vi-VN') + 'đ</span><small>' + esc(T.perNight) + '</small>'
+            : '';
+        return '<div class="hcard">'
+            + '<a class="hcard-stretch" aria-label="' + esc(h.name) + '" href="' + url + '"></a>'
+            + '<div class="hcard-img">' + img + heart + '</div>'
+            + '<div class="hcard-body">'
+            +   '<h3><a href="' + url + '">' + esc(h.name) + '</a></h3>'
+            +   '<div class="hcard-loc"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-map-pin"></use></svg> <span>' + esc(h.city) + '</span> · <span>' + esc(h.address) + '</span></div>'
+            +   '<div class="chips">'
+            +     (h.star ? '<span class="chip">' + h.star + ' ' + esc(T.starsUnit) + '</span>' : '')
+            +     '<span class="chip">' + esc(T.instant) + '</span><span class="chip">' + esc(T.payOnline) + '</span>'
+            +   '</div>'
+            + '</div>'
+            + '<div class="hcard-aside">' + rate
+            +   '<div class="hcard-price">' + price
+            +     '<a class="btn" style="margin-top:8px;width:100%" href="' + url + '">' + esc(T.view) + '</a>'
+            +   '</div>'
+            + '</div>'
+            + '</div>';
+    }
+
+    // ---- Pager (server-driven) ----
+    function pgList(c, t) { var r = [], i; if (t <= 7) { for (i = 1; i <= t; i++) r.push(i); return r; } r.push(1); var s = Math.max(2, c - 1), e = Math.min(t - 1, c + 1); if (s > 2) r.push('…'); for (i = s; i <= e; i++) r.push(i); if (e < t - 1) r.push('…'); r.push(t); return r; }
+    function drawPager() {
+        var pages = Math.ceil(total / SIZE); pager.innerHTML = ''; if (pages <= 1) return;
+        function add(label, page, o) { o = o || {}; if (label === '…') { var gp = document.createElement('span'); gp.className = 'gap'; gp.textContent = '…'; pager.appendChild(gp); return; } var b = document.createElement('button'); b.type = 'button'; b.textContent = label; if (o.active) b.className = 'is-active'; if (o.disabled) b.disabled = true; if (!o.disabled && !o.active) b.addEventListener('click', function () { load(page, true); }); pager.appendChild(b); }
+        add('‹', cur - 1, { disabled: cur === 1 });
+        pgList(cur, pages).forEach(function (n) { add(n, n, { active: n === cur }); });
+        add('›', cur + 1, { disabled: cur === pages });
+    }
+
+    function syncUrl() {
+        var p = filterParams();
+        ['stay', 'checkIn', 'checkOut', 'adults', 'children', 'rooms', 'trip'].forEach(function (k) {
+            if (CTX[k]) p.set(k, CTX[k]);
+        });
+        if (cur > 1) p.set('page', cur);
         var qs = p.toString();
         history.replaceState(null, '', '/hotels' + (qs ? ('?' + qs) : ''));
     }
 
-    form.addEventListener('change', apply);
-    var t; form.addEventListener('input', function (e) { if (!e.target || e.target.type !== 'number') return; clearTimeout(t); t = setTimeout(apply, 350); });
-    if (sortSel) sortSel.addEventListener('change', apply);
+    // ---- Gọi server (chống race: chỉ nhận response của lượt gọi mới nhất) ----
+    function load(page, scroll) {
+        cur = Math.max(1, page || 1);
+        var p = filterParams();
+        p.set('page', cur); p.set('size', SIZE);
+        if (mapOpen()) p.set('geo', 'true');
+        var seq = ++reqSeq;
+        if (loadEl) loadEl.style.display = '';
+        fetch('/hotels/data?' + p.toString(), { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (seq !== reqSeq) return;                  // đã có lượt gọi mới hơn
+                if (loadEl) loadEl.style.display = 'none';
+                total = d.total || 0;
+                if (countEl) countEl.textContent = total.toLocaleString('vi-VN');
+                if (emptyEl) emptyEl.style.display = total ? 'none' : '';
+                box.innerHTML = (d.items || []).map(cardHtml).join('');
+                drawPager();
+                syncUrl();
+                if (d.geo) updateMap(d.geo);
+                if (scroll) { var y = box.getBoundingClientRect().top + window.pageYOffset - 130; window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' }); }
+            })
+            .catch(function () { if (loadEl) loadEl.style.display = 'none'; });
+    }
+
+    // ---- Wishlist (uỷ quyền sự kiện vì card render lại liên tục) ----
+    var csrf = document.querySelector('meta[name=_csrf]'), csrfH = document.querySelector('meta[name=_csrf_header]');
+    box.addEventListener('submit', function (e) {
+        var f = e.target.closest('form.hcard-heart'); if (!f) return;
+        e.preventDefault();
+        var btn = f.querySelector('button'); if (!btn || btn.disabled) return;
+        btn.disabled = true;
+        var h = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        if (csrf && csrf.content && csrfH && csrfH.content) h[csrfH.content] = csrf.content;
+        fetch('/account/wishlist/toggle-ajax', { method: 'POST', headers: h, credentials: 'same-origin',
+            body: 'hotelId=' + encodeURIComponent(f.getAttribute('data-hotel')) })
+            .then(function (r) { if (r.status === 401 || r.status === 403) { window.location = '/login'; return null; } return r.json(); })
+            .then(function (d) {
+                if (!d) return;
+                btn.innerHTML = d.wishlisted ? '<svg class="ic ic-fill" viewBox="0 0 24 24"><use href="#ic-heart"></use></svg>' : '<svg class="ic" viewBox="0 0 24 24"><use href="#ic-heart"></use></svg>';
+                btn.classList.toggle('is-on', !!d.wishlisted);
+                btn.disabled = false;
+            })
+            .catch(function () { btn.disabled = false; });
+    });
+
+    // ---- Bản đồ Leaflet: markers theo ĐÚNG bộ lọc hiện tại (geo từ /hotels/data) ----
+    var toggle = document.getElementById('toggleMap'), near = document.getElementById('nearMe'), mapEl = document.getElementById('hotelsMap');
+    var map = null, markerLayer = null, leafletLoading = false;
+    function mapOpen() { return mapEl && mapEl.style.display !== 'none' && mapEl.style.display !== ''; }
+    function openMap(show) {
+        mapEl.style.display = show ? 'block' : 'none';
+        toggle.querySelectorAll('[data-show]').forEach(function (x) { x.hidden = show; });
+        toggle.querySelectorAll('[data-hide]').forEach(function (x) { x.hidden = !show; });
+    }
+    function ensureLeaflet(cb) {
+        if (window.L) { if (cb) cb(); return; }
+        if (leafletLoading) return; leafletLoading = true;
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+        document.head.appendChild(l);
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+        s.onload = function () { if (cb) cb(); };
+        document.head.appendChild(s);
+    }
+    function buildMap() {
+        if (map || !window.L) return;
+        map = L.map(mapEl).setView([16.05, 108.2], 6);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+        markerLayer = L.layerGroup().addTo(map);
+        window.__hotelsMap = map;
+    }
+    function updateMap(geo) {
+        if (!window.L) return;
+        buildMap();
+        if (!markerLayer) return;
+        markerLayer.clearLayers();
+        var pts = [];
+        (geo || []).forEach(function (h) {
+            var m = L.marker([h.lat, h.lng], { title: h.name }).addTo(markerLayer);
+            pts.push([h.lat, h.lng]);
+            var price = h.price ? Number(h.price).toLocaleString('vi-VN') + 'đ ' + window.DD_MAPS_T.night : '';
+            m.bindPopup('<div style="min-width:170px;font-size:13px"><b>' + esc(h.name) + '</b><br>' + (h.star ? ('★ ' + h.star + ' · ') : '') + price + '<br><a href="/hotels/' + h.id + '">' + window.DD_MAPS_T.detail + ' →</a></div>');
+        });
+        if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 14 });
+    }
+    if (toggle) toggle.addEventListener('click', function () {
+        var show = !mapOpen();
+        openMap(show);
+        if (show) ensureLeaflet(function () {
+            buildMap();
+            setTimeout(function () { map.invalidateSize(); }, 60);
+            load(cur, false);                                  // nạp geo theo bộ lọc hiện tại
+        });
+    });
+    if (near) near.addEventListener('click', function () {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(function (p) {
+            openMap(true);
+            ensureLeaflet(function () {
+                buildMap();
+                setTimeout(function () { map.invalidateSize(); }, 60);
+                load(cur, false);
+                var lat = p.coords.latitude, lng = p.coords.longitude;
+                L.circleMarker([lat, lng], { radius: 7, color: '#fff', weight: 2, fillColor: '#2f8b60', fillOpacity: 1 })
+                    .addTo(map).bindPopup('Vị trí của bạn');
+                map.setView([lat, lng], 13);
+            });
+        });
+    });
+
+    // ---- Sự kiện bộ lọc: debounce 300ms, luôn quay về trang 1 ----
+    var deb;
+    function refilter() { clearTimeout(deb); deb = setTimeout(function () { load(1, false); }, 300); }
+    form.addEventListener('change', refilter);
+    form.addEventListener('input', function (e) { if (e.target && e.target.type === 'number') refilter(); });
+    if (sortSel) sortSel.addEventListener('change', function () { load(1, false); });
     var clr = document.getElementById('hfClear');
     if (clr) clr.addEventListener('click', function () {
         form.querySelectorAll('input[type=checkbox]').forEach(function (i) { i.checked = false; });
@@ -284,82 +372,10 @@
         var pn = form.querySelector('[name=priceMin]'); if (pn) pn.value = '';
         var px = form.querySelector('[name=priceMax]'); if (px) px.value = '';
         if (sortSel) sortSel.value = '';
-        apply();
+        load(1, false);
     });
 
-    apply();   // chạy lần đầu — tôn trọng trạng thái form do server render từ URL
-})();
-</script>
-<script th:inline="javascript">
-    window.DD_MAPS_KEY = /*[[${mapsApiKey}]]*/ '';
-    window.DD_MAPS_T = {
-        detail: /*[[#{maps.viewDetail}]]*/ 'Xem chi tiết',
-        noKey: /*[[#{maps.noKey}]]*/ 'Chưa cấu hình Google Maps API key.',
-        night: /*[[#{hotels.perNight}]]*/ '/ đêm'
-    };
-    window.DD_HOTELS = [];
-    [# th:each="h : ${hotels}"][# th:if="${h.hasGeo()}"]
-    window.DD_HOTELS.push({ id: [[${h.id}]], name: [[${h.name}]], lat: [[${h.lat}]], lng: [[${h.lng}]], price: [[${h.minPrice}]], star: [[${h.starRating}]], url: [[@{/hotels/{id}(id=${h.id})}]] });
-    [/][/]
-</script>
-<script>
-(function () {
-    var toggle = document.getElementById('toggleMap'), near = document.getElementById('nearMe'), el = document.getElementById('hotelsMap');
-    if (!toggle || !el) return;
-    var loaded = false, map = null, info = null;
-    function open(show) {
-        el.style.display = show ? 'block' : 'none';
-        toggle.querySelectorAll('[data-show]').forEach(function (x) { x.hidden = show; });
-        toggle.querySelectorAll('[data-hide]').forEach(function (x) { x.hidden = !show; });
-    }
-    function build() {
-        if (!window.google || !google.maps) { el.classList.add('map-nokey'); el.textContent = window.DD_MAPS_T.noKey; return; }
-        var hs = window.DD_HOTELS || [];
-        map = new google.maps.Map(el, { zoom: 12, mapTypeControl: false, center: hs.length ? { lat: hs[0].lat, lng: hs[0].lng } : { lat: 16.05, lng: 108.2 } });
-        info = new google.maps.InfoWindow();
-        var b = new google.maps.LatLngBounds();
-        hs.forEach(function (h) {
-            var m = new google.maps.Marker({ position: { lat: h.lat, lng: h.lng }, map: map, title: h.name });
-            b.extend(m.getPosition());
-            m.addListener('click', function () {
-                var price = h.price ? Number(h.price).toLocaleString('vi-VN') + 'đ ' + window.DD_MAPS_T.night : '';
-                info.setContent('<div style="min-width:170px;font-size:13px"><b>' + h.name + '</b><br>' + (h.star ? ('★ ' + h.star + ' · ') : '') + price + '<br><a href="' + h.url + '">' + window.DD_MAPS_T.detail + ' →</a></div>');
-                info.open(map, m);
-            });
-        });
-        if (hs.length) map.fitBounds(b);
-        window.__hotelsMap = map;
-    }
-    window.initHotelsMap = build;
-    function ensure(cb) {
-        if (window.google && google.maps) { if (!map) build(); if (cb) cb(); return; }
-        if (loaded) return; loaded = true;
-        var key = window.DD_MAPS_KEY || '';
-        if (!key) { open(true); el.classList.add('map-nokey'); el.textContent = window.DD_MAPS_T.noKey; return; }
-        window.initHotelsMap = function () { build(); if (cb) cb(); };
-        var s = document.createElement('script'); s.async = true;
-        s.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key) + '&loading=async&callback=initHotelsMap';
-        document.head.appendChild(s);
-    }
-    toggle.addEventListener('click', function () {
-        var show = el.style.display === 'none' || !el.style.display;
-        open(show);
-        if (show) ensure(function () { if (map) google.maps.event.trigger(map, 'resize'); });
-    });
-    if (near) near.addEventListener('click', function () {
-        if (!navigator.geolocation) return;
-        navigator.geolocation.getCurrentPosition(function (p) {
-            open(true);
-            ensure(function () {
-                if (!map) return;
-                var loc = { lat: p.coords.latitude, lng: p.coords.longitude };
-                map.setCenter(loc); map.setZoom(13);
-                new google.maps.Marker({ position: loc, map: map, title: 'Vị trí của bạn',
-                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#2f8b60', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 } });
-                google.maps.event.trigger(map, 'resize');
-            });
-        });
-    });
+    load(parseInt(init.get('page') || '1', 10), false);   // lần đầu — tôn trọng trạng thái form + trang từ URL
 })();
 </script>
 <div th:replace="~{fragments/site :: footer}"></div>

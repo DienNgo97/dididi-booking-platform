@@ -19,9 +19,11 @@ import java.util.List;
 public class UserNotificationService {
 
     private final UserNotificationRepository repo;
+    private final PushSender pushSender;
 
-    public UserNotificationService(UserNotificationRepository repo) {
+    public UserNotificationService(UserNotificationRepository repo, PushSender pushSender) {
         this.repo = repo;
+        this.pushSender = pushSender;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -38,6 +40,12 @@ public class UserNotificationService {
         n.setUrl(url);
         n.setRefId(refId);
         repo.save(n);
+        // Đẩy push (FCM) tới thiết bị của user — @Async + tự bỏ qua nếu Firebase chưa bật.
+        try {
+            pushSender.sendToUser(recipientUserId, title, body, url);
+        } catch (RuntimeException ignore) {
+            // push lỗi không được làm hỏng việc tạo thông báo
+        }
     }
 
     @Transactional(readOnly = true)

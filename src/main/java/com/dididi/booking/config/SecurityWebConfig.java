@@ -30,9 +30,9 @@ public class SecurityWebConfig {
                                         com.dididi.booking.identity.security.OAuth2LoginSuccessHandler oauth2SuccessHandler) throws Exception {
         http
                 // Tro ly CSKH la endpoint hoi-dap/log khong trang thai -> mien CSRF (bong bong chat o moi trang).
-                .csrf(c -> c.ignoringRequestMatchers("/support/ask", "/support/log"))
+                .csrf(c -> c.ignoringRequestMatchers("/support/ask", "/support/log", "/trip-guide/ask"))
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers("/", "/home", "/hotels/**", "/flights/**", "/trip-planner/**",
+                        .requestMatchers("/", "/home", "/hotels/**", "/flights/**", "/trip-planner/**", "/trip-guide/**",
                                 "/login", "/login/**", "/register", "/vendor-register",
                                 "/forgot-password", "/reset-password", "/verify",
                                 "/css/**", "/js/**", "/images/**", "/webjars/**").permitAll()
