@@ -9,6 +9,7 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -32,8 +33,17 @@ public class CacheConfig implements CachingConfigurer {
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory,
+                                          ResourceLoader resourceLoader,
                                           @Value("${app.cache.ttl-minutes:10}") long ttlMinutes) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+        // QUAN TRỌNG: truyền ClassLoader hiện tại cho bộ giải mã JDK.
+        // defaultCacheConfig() KHÔNG tham số dùng classloader mặc định của ứng dụng; khi chạy dev
+        // với spring-boot-devtools, code đang chạy lại nằm ở RestartClassLoader -> object đọc từ
+        // Redis là "cùng tên lớp nhưng khác classloader" => ClassCastException kiểu
+        // "FlightApiDto cannot be cast to FlightApiDto" NGAY KHI code chạm vào field của DTO cache
+        // (lọc/sắp xếp). Trước đây controller chỉ trả thẳng list nên Jackson đọc bằng reflection và
+        // lỗi này bị GIẤU. resourceLoader.getClassLoader() = đúng loader đang chạy sau mỗi lần restart.
+        RedisCacheConfiguration config = RedisCacheConfiguration
+                .defaultCacheConfig(resourceLoader.getClassLoader())
                 .entryTtl(Duration.ofMinutes(ttlMinutes))
                 .disableCachingNullValues();
         return RedisCacheManager.builder(connectionFactory)

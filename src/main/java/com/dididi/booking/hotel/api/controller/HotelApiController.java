@@ -47,6 +47,7 @@ public class HotelApiController {
     public ApiResponse<PagedResponse<HotelApiDto>> list(
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
 
@@ -60,6 +61,21 @@ public class HotelApiController {
         List<HotelApiDto> all = keyword != null
                 ? hotelQueryService.searchActive(keyword)
                 : hotelQueryService.listActive(normalizedCity);
+
+        // sort=rating|price_asc|price_desc — sắp TRƯỚC khi cắt trang để "Top đánh giá cao"
+        // là top toàn hệ thống chứ không phải top của trang đang xem.
+        if (sort != null && !sort.isBlank()) {
+            Comparator<HotelApiDto> cmp = switch (sort) {
+                case "rating" -> Comparator.comparingDouble(
+                        (HotelApiDto h) -> h.avgRating() == null ? 0.0 : h.avgRating()).reversed();
+                case "price_asc" -> Comparator.comparingDouble(
+                        h -> h.minPrice() == null ? Double.MAX_VALUE : h.minPrice().doubleValue());
+                case "price_desc" -> Comparator.comparingDouble(
+                        (HotelApiDto h) -> h.minPrice() == null ? -1 : h.minPrice().doubleValue()).reversed();
+                default -> null;
+            };
+            if (cmp != null) all = all.stream().sorted(cmp).toList();
+        }
 
         int from = Math.min(page * size, all.size());
         int to = Math.min(from + size, all.size());
