@@ -129,8 +129,7 @@ public class PostService {
         rp.setVisibility(PostVisibility.PUBLIC);
         rp.setStatus(PostStatus.PUBLISHED);
         Post saved = postRepository.save(rp);
-        root.setRepostCount(root.getRepostCount() + 1);
-        postRepository.save(root);
+        postRepository.bumpRepostCount(root.getId(), 1);   // DI-B: +1 ngay trong DB (không đọc-sửa-ghi)
         profileService.adjustPostsCount(userId, 1);
         if (rp.getCaption() != null) {
             hashtagService.linkHashtags(saved.getId(), rp.getCaption());
@@ -139,6 +138,33 @@ public class PostService {
         notificationService.create(root.getAuthorUserId(), userId, NotificationType.REPOST, root.getId(), null);
         return saved;
     }
+
+    /**
+     * Toggle repost trong 1 giao dịch + trả về SỐ ĐẾM MỚI đọc lại từ DB (DI-B).
+     * Client dùng số này thay vì tự +1/-1 nên không bao giờ lệch khi bấm nhanh/nhiều tab.
+     */
+    public RepostResult toggleRepost(Long userId, Long postId) {
+        // Tìm bài GỐC rồi KHOÁ nó lại: mọi toggle repost trên cùng bài xếp hàng -> "kiểm tra rồi
+        // tạo/gỡ" thành nguyên tử. Thiếu khoá này, N request song song đều thấy "chưa repost"
+        // và cùng tạo N bài repost trùng (đã thực nghiệm).
+        Long rootId = postId;
+        Post p = postRepository.findById(postId).orElse(null);
+        if (p != null && p.getType() == PostType.REPOST && p.getOriginPostId() != null) {
+            rootId = p.getOriginPostId();
+        }
+        postRepository.findByIdForUpdate(rootId);   // giữ khoá tới hết giao dịch
+
+        boolean removed = removeRepost(userId, rootId);
+        if (!removed) {
+            createRepost(userId, rootId, null);
+        }
+        postRepository.flush();   // đảm bảo UPDATE đếm đã xuống DB trước khi đọc lại
+        int count = postRepository.findById(rootId).map(Post::getRepostCount).orElse(0);
+        return new RepostResult(!removed, count);
+    }
+
+    /** Kết quả toggle repost: trạng thái mới + số lượt đăng lại hiện tại của bài gốc. */
+    public record RepostResult(boolean reposted, int count) { }
 
     /** Gỡ repost của user cho 1 bài gốc. */
     public boolean removeRepost(Long userId, Long originalPostId) {
@@ -156,11 +182,7 @@ public class PostService {
         repost.setDeletedAt(Instant.now());
         postRepository.save(repost);
         profileService.adjustPostsCount(userId, -1);
-        final Long fRoot = rootId;
-        postRepository.findById(fRoot).ifPresent(root -> {
-            root.setRepostCount(Math.max(0, root.getRepostCount() - 1));
-            postRepository.save(root);
-        });
+        postRepository.bumpRepostCount(rootId, -1);        // DI-B: -1 ngay trong DB, kẹp không âm
         return true;
     }
 
@@ -189,10 +211,7 @@ public class PostService {
         // Don sach de tranh "rac" + lech bo dem:
         hashtagService.unlinkPost(p.getId());                 // giam Hashtag.postCount + xoa PostHashtag
         if (p.getType() == PostType.REPOST && p.getOriginPostId() != null) {
-            postRepository.findById(p.getOriginPostId()).ifPresent(root -> {
-                root.setRepostCount(Math.max(0, root.getRepostCount() - 1));   // giam repostCount bai goc
-                postRepository.save(root);
-            });
+            postRepository.bumpRepostCount(p.getOriginPostId(), -1);   // DI-B: giam repostCount bai goc (nguyen tu)
         }
     }
 

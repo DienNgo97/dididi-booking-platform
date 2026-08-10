@@ -18,6 +18,34 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
+    // ===== DI-B: cập nhật ĐẾM NGUYÊN TỬ (1 câu UPDATE) thay vì đọc entity -> set -> save.
+    // Đọc-sửa-ghi bị lost update khi 2 request song song, và save() còn ghi đè MỌI cột khác
+    // của bài viết bằng bản chụp cũ trong bộ nhớ. Các câu dưới chỉ đụng đúng 1 cột đếm.
+
+    /** Đặt likeCount = giá trị COUNT(*) vừa đo (idempotent, không phụ thuộc giá trị cũ). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Post p set p.likeCount = :c where p.id = :id")
+    int updateLikeCount(@Param("id") Long id, @Param("c") int count);
+
+    /** Đặt commentCount = giá trị COUNT(*) vừa đo. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Post p set p.commentCount = :c where p.id = :id")
+    int updateCommentCount(@Param("id") Long id, @Param("c") int count);
+
+    /**
+     * Khoá bi quan dòng bài viết (SELECT ... FOR UPDATE) — dùng cho TOGGLE REPOST:
+     * "kiểm tra đã repost chưa -> tạo/gỡ" phải nguyên tử, nếu không nhiều request song song
+     * đều thấy "chưa repost" và cùng tạo (đã thực nghiệm: 6 request -> 6 bài repost trùng).
+     */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Post p where p.id = :id")
+    Optional<Post> findByIdForUpdate(@Param("id") Long id);
+
+    /** Cộng/trừ repostCount ngay trong DB, kẹp không âm (delta = +1 / -1). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Post p set p.repostCount = case when p.repostCount + :delta < 0 then 0 else p.repostCount + :delta end where p.id = :id")
+    int bumpRepostCount(@Param("id") Long id, @Param("delta") int delta);
+
     /**
      * Feed cá nhân hoá: bài (PUBLISHED) của các chủ thể user/hotel mà mình theo dõi + của mình.
      * Keyset theo id giảm dần (cursor = Long.MAX_VALUE cho trang đầu).

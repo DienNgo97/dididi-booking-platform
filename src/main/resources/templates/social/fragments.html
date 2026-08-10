@@ -239,6 +239,15 @@
                 .then(function (r) { if (r.status === 401 || r.status === 403) { window.location = '/login'; return null; } return r.json(); })
                 .then(function (d) { if (d) cb(d); }).catch(function () {});
         }
+        /* DI-B (chống double-click): bọc handler của nút toggle — đang có request bay thì bỏ qua click
+           tiếp theo, mở khoá khi server trả lời. Server cũng đã idempotent, đây là lớp phòng thứ hai
+           và giúp UI không nhấp nháy. */
+        function guard(btn, run) {
+            if (btn.getAttribute('data-busy') === '1') return;
+            btn.setAttribute('data-busy', '1');
+            btn.classList.add('is-busy');
+            run(function () { btn.removeAttribute('data-busy'); btn.classList.remove('is-busy'); });
+        }
         function rel(ms) {
             var s = Math.floor((Date.now() - ms) / 1000);
             if (s < 60) return 'vừa xong';
@@ -263,18 +272,24 @@
             root.querySelectorAll('.sx-like:not([data-bound])').forEach(function (btn) {
                 btn.setAttribute('data-bound', '1');
                 btn.addEventListener('click', function () {
-                    post('/community/posts/' + btn.getAttribute('data-post-id') + '/like-ajax', function (d) {
-                        fill(btn, d.liked);
-                        var c = btn.querySelector('.sx-like-count'); if (c) c.textContent = d.count;
+                    guard(btn, function (done) {
+                        post('/community/posts/' + btn.getAttribute('data-post-id') + '/like-ajax', function (d) {
+                            fill(btn, d.liked);
+                            var c = btn.querySelector('.sx-like-count'); if (c) c.textContent = d.count;
+                        });
+                        setTimeout(done, 400);
                     });
                 });
             });
             root.querySelectorAll('.sx-clike:not([data-bound])').forEach(function (btn) {
                 btn.setAttribute('data-bound', '1');
                 btn.addEventListener('click', function () {
-                    post('/community/comments/' + btn.getAttribute('data-comment-id') + '/like-ajax', function (d) {
-                        fill(btn, d.liked);
-                        var c = btn.querySelector('.sx-clike-count'); if (c) c.textContent = d.count > 0 ? d.count : '';
+                    guard(btn, function (done) {
+                        post('/community/comments/' + btn.getAttribute('data-comment-id') + '/like-ajax', function (d) {
+                            fill(btn, d.liked);
+                            var c = btn.querySelector('.sx-clike-count'); if (c) c.textContent = d.count > 0 ? d.count : '';
+                        });
+                        setTimeout(done, 400);
                     });
                 });
             });
@@ -283,8 +298,11 @@
             root.querySelectorAll('.sx-bookmark:not([data-bound])').forEach(function (btn) {
                 btn.setAttribute('data-bound', '1');
                 btn.addEventListener('click', function () {
-                    post('/community/posts/' + btn.getAttribute('data-post-id') + '/bookmark-ajax', function (d) {
-                        fill(btn, d.bookmarked);
+                    guard(btn, function (done) {
+                        post('/community/posts/' + btn.getAttribute('data-post-id') + '/bookmark-ajax', function (d) {
+                            fill(btn, d.bookmarked);
+                        });
+                        setTimeout(done, 400);
                     });
                 });
             });
@@ -293,10 +311,14 @@
             root.querySelectorAll('.sx-repost:not([data-bound])').forEach(function (btn) {
                 btn.setAttribute('data-bound', '1');
                 btn.addEventListener('click', function () {
-                    post('/community/posts/' + btn.getAttribute('data-post-id') + '/repost-ajax', function (d) {
-                        btn.classList.toggle('is-on', !!d.reposted);
-                        var c = btn.querySelector('.sx-repost-count');
-                        if (c) { var n = parseInt(c.textContent, 10) || 0; c.textContent = d.reposted ? n + 1 : Math.max(0, n - 1); }
+                    guard(btn, function (done) {
+                        post('/community/posts/' + btn.getAttribute('data-post-id') + '/repost-ajax', function (d) {
+                            btn.classList.toggle('is-on', !!d.reposted);
+                            var c = btn.querySelector('.sx-repost-count');
+                            // DI-B: lấy count TỪ SERVER (trước đây tự +1/-1 ở client -> lệch khi bấm nhanh)
+                            if (c && typeof d.count === 'number') { c.textContent = d.count; }
+                        });
+                        setTimeout(done, 500);
                     });
                 });
             });

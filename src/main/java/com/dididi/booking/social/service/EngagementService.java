@@ -5,7 +5,6 @@ import com.dididi.booking.social.domain.entity.Post;
 import com.dididi.booking.social.domain.entity.Reaction;
 import com.dididi.booking.social.domain.enums.NotificationType;
 import com.dididi.booking.social.domain.enums.ReactionTarget;
-import com.dididi.booking.social.domain.enums.ReactionType;
 import com.dididi.booking.social.repository.CommentRepository;
 import com.dididi.booking.social.repository.PostRepository;
 import com.dididi.booking.social.repository.ReactionRepository;
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -45,27 +43,26 @@ public class EngagementService {
         if (postId != null) {
             postService.getForView(userId, postId);
         }
-        Optional<Reaction> existing = reactionRepository
-                .findByUserIdAndTargetTypeAndTargetId(userId, target, targetId);
+        // DI-B: TOGGLE Ở TẦNG DB (không đọc-rồi-ghi trên entity).
+        //   - đang like  -> DELETE, trả về số dòng xoá được;
+        //   - chưa like  -> INSERT IGNORE, trùng thì 0 dòng nhưng KHÔNG lỗi (idempotent).
+        // Nhờ vậy nhiều request song song không bao giờ làm hỏng transaction (AssertionFailure).
         boolean liked;
-        if (existing.isPresent()) {
-            reactionRepository.delete(existing.get());
+        boolean wasLiked = reactionRepository
+                .existsByUserIdAndTargetTypeAndTargetId(userId, target, targetId);
+        if (wasLiked) {
+            reactionRepository.deleteLike(userId, target, targetId);
             liked = false;
         } else {
-            Reaction r = new Reaction();
-            r.setUserId(userId);
-            r.setTargetType(target);
-            r.setTargetId(targetId);
-            r.setType(ReactionType.LIKE);
-            reactionRepository.save(r);
+            reactionRepository.insertIgnoreLike(userId, target.name(), targetId);
             liked = true;
         }
         long count = reactionRepository.countByTargetTypeAndTargetId(target, targetId);
         if (target == ReactionTarget.POST) {
             Post p = postRepository.findById(targetId).orElse(null);
             if (p != null) {
-                p.setLikeCount((int) count);
-                postRepository.save(p);
+                // DI-B: UPDATE thẳng cột đếm (không save() cả entity -> tránh lost update + ghi đè cột khác)
+                postRepository.updateLikeCount(targetId, (int) count);
                 if (liked) {
                     notificationService.create(p.getAuthorUserId(), userId, NotificationType.LIKE_POST, targetId, null);
                 }
@@ -73,8 +70,7 @@ public class EngagementService {
         } else {
             Comment c = commentRepository.findById(targetId).orElse(null);
             if (c != null) {
-                c.setLikeCount((int) count);
-                commentRepository.save(c);
+                commentRepository.updateLikeCount(targetId, (int) count);   // DI-B: UPDATE nguyên tử
                 if (liked) {
                     notificationService.create(c.getAuthorUserId(), userId, NotificationType.LIKE_COMMENT, c.getPostId(), targetId);
                 }

@@ -22,6 +22,11 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     long countByParentIdAndStatus(Long parentId, PostStatus status);
 
+    /** DI-B: đặt likeCount của bình luận bằng 1 câu UPDATE (không đọc-sửa-ghi cả entity). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Comment c set c.likeCount = :c where c.id = :id")
+    int updateLikeCount(@Param("id") Long id, @Param("c") int count);
+
     // ===== ADMIN kiểm duyệt (native để BỎ QUA @SQLRestriction -> thấy CẢ comment REMOVED) =====
 
     /** Liệt kê bình luận cho admin: lọc tuỳ chọn theo trạng thái / tác giả / bài. Bao gồm cả REMOVED. */

@@ -8,7 +8,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -27,15 +26,12 @@ public class BookmarkService {
 
     public boolean toggle(Long userId, Long postId) {
         postService.getForView(userId, postId); // chi cho luu bai nguoi dung duoc phep xem
-        Optional<Bookmark> existing = bookmarkRepository.findByUserIdAndPostId(userId, postId);
-        if (existing.isPresent()) {
-            bookmarkRepository.delete(existing.get());
+        // DI-B: toggle ở tầng DB — INSERT IGNORE/DELETE, bấm nhiều lần không ném lỗi.
+        if (bookmarkRepository.existsByUserIdAndPostId(userId, postId)) {
+            bookmarkRepository.deleteBookmark(userId, postId);
             return false;
         }
-        Bookmark b = new Bookmark();
-        b.setUserId(userId);
-        b.setPostId(postId);
-        bookmarkRepository.save(b);
+        bookmarkRepository.insertIgnore(userId, postId);
         return true;
     }
 

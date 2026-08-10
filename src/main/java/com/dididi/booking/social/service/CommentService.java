@@ -65,9 +65,11 @@ public class CommentService {
         c.setParentId(normalizedParent);
         c.setContent(content.trim());
         c.setStatus(PostStatus.PUBLISHED);
-        Comment saved = commentRepository.save(c);
-        post.setCommentCount((int) commentRepository.countByPostIdAndStatus(postId, PostStatus.PUBLISHED));
-        postRepository.save(post);
+        Comment saved = commentRepository.saveAndFlush(c);   // flush để COUNT(*) thấy bình luận vừa thêm
+        // DI-B: UPDATE thẳng cột đếm thay vì đọc entity -> set -> save (tránh lost update khi 2 người
+        // bình luận cùng lúc, và không ghi đè các cột khác của bài bằng bản chụp cũ).
+        postRepository.updateCommentCount(postId,
+                (int) commentRepository.countByPostIdAndStatus(postId, PostStatus.PUBLISHED));
 
         // thong bao: tra loi -> bao tac gia binh luan cha; binh luan -> bao tac gia bai
         if (normalizedParent != null && parentAuthorId != null) {
@@ -99,10 +101,8 @@ public class CommentService {
         }
         c.setStatus(PostStatus.REMOVED);
         c.setDeletedAt(Instant.now());
-        commentRepository.save(c);
-        postRepository.findById(c.getPostId()).ifPresent(p -> {
-            p.setCommentCount((int) commentRepository.countByPostIdAndStatus(p.getId(), PostStatus.PUBLISHED));
-            postRepository.save(p);
-        });
+        commentRepository.saveAndFlush(c);
+        postRepository.updateCommentCount(c.getPostId(),                       // DI-B: UPDATE nguyên tử
+                (int) commentRepository.countByPostIdAndStatus(c.getPostId(), PostStatus.PUBLISHED));
     }
 }

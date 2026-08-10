@@ -298,11 +298,9 @@ public class SocialApiController {
     @PostMapping("/posts/{id}/repost")
     public ApiResponse<Map<String, Object>> repost(@PathVariable Long id, Authentication auth) {
         Long uid = uid(auth);
-        boolean removed = postService.removeRepost(uid, id);
-        if (!removed) {
-            postService.createRepost(uid, id, null);
-        }
-        return ApiResponse.ok(Map.of("reposted", !removed));
+        // DI-B: dùng chung toggle nguyên tử với web, trả kèm số đếm mới.
+        com.dididi.booking.social.service.PostService.RepostResult r = postService.toggleRepost(uid, id);
+        return ApiResponse.ok(Map.of("reposted", r.reposted(), "count", r.count()));
     }
 
     @Operation(summary = "Bài trending")
