@@ -22,16 +22,27 @@ public class HomeController {
     private final HotelRepository hotelRepository;
     private final ReviewService reviewService;
     private final HotelImageService hotelImageService;
+    private final com.dididi.booking.promo.service.PersonalPromoService promoService;
+    private final CurrentUser currentUser;
 
     public HomeController(HotelRepository hotelRepository, ReviewService reviewService,
-                          HotelImageService hotelImageService) {
+                          HotelImageService hotelImageService,
+                          com.dididi.booking.promo.service.PersonalPromoService promoService,
+                          CurrentUser currentUser) {
         this.hotelRepository = hotelRepository;
         this.reviewService = reviewService;
         this.hotelImageService = hotelImageService;
+        this.promoService = promoService;
+        this.currentUser = currentUser;
     }
 
     @GetMapping({"/", "/home"})
-    public String home(Model model) {
+    public String home(Model model, org.springframework.security.core.Authentication auth) {
+        // Banner "Bạn có quà": chỉ hiện khi khách ĐANG có voucher cá nhân còn dùng được.
+        Long uid = currentUser.idOrNull(auth);
+        if (uid != null) {
+            model.addAttribute("giftVoucher", promoService.firstUsable(uid));
+        }
         model.addAttribute("featured",
                 hotelRepository.findAll(PageRequest.of(0, 4)).getContent());
 

@@ -47,6 +47,19 @@
     </div>
 </div>
 
+<!-- ===== Banner QUÀ TẶNG cá nhân hoá (chỉ hiện khi khách đang có voucher dùng được) ===== -->
+<div class="wrap" th:if="${giftVoucher != null}">
+    <div class="gift-banner">
+        <div class="gift-ic"><svg th:replace="~{fragments/icons :: i('gift','')}"></svg></div>
+        <div class="gift-txt">
+            <h3 th:text="#{home.giftTitle}">Bạn có quà từ Dididi!</h3>
+            <p><span th:text="${giftVoucher.description}">Quà sinh nhật</span> ·
+                <span class="gift-code" th:text="${giftVoucher.code}">BD-A1B2C3</span></p>
+        </div>
+        <a class="btn" href="/account/offers" th:text="#{home.giftCta}">Xem ưu đãi</a>
+    </div>
+</div>
+
 <!-- ===== Banner AI Hướng dẫn viên du lịch (tính năng điểm nhấn — trang riêng /trip-guide) ===== -->
 <div class="wrap">
     <div class="aig-banner">

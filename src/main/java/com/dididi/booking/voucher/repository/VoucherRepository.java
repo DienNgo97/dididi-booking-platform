@@ -10,4 +10,7 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
     Optional<Voucher> findByCodeIgnoreCase(String code);
     boolean existsByCodeIgnoreCase(String code);
     List<Voucher> findAllByOrderByIdDesc();
+
+    /** Voucher RIÊNG của 1 khách (quà cá nhân hoá + voucher đổi điểm) — trang "Ưu đãi của tôi". */
+    List<Voucher> findByOwnerUserIdOrderByIdDesc(Long ownerUserId);
 }

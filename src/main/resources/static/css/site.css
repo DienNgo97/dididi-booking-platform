@@ -1465,3 +1465,29 @@ body:has(.sx-layout), body:has(.sx-single){
 /* Khoảng cách GIỮA các bài trong cùng 1 lô (.sx-batch trước giờ không có gap — card dính nhau,
    bố cục cũ padding dày nên khó thấy; đồng bộ 18px với gap của .sx-main). */
 .sx-batch{display:flex;flex-direction:column;gap:18px}
+
+/* DI-B: nút toggle (tim/đăng lại/lưu) đang chờ server -> mờ nhẹ + không nhận click nữa */
+.sx-like.is-busy,.sx-clike.is-busy,.sx-repost.is-busy,.sx-bookmark.is-busy{opacity:.55;pointer-events:none}
+
+/* ===== Ưu đãi của tôi (khuyến mãi cá nhân hoá) ===== */
+.promo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin:12px 0 4px}
+.promo-card{display:flex;background:#fff;border:1px solid #e6eaf2;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(20,40,80,.05)}
+.promo-card.is-dead{opacity:.55;filter:grayscale(.6)}
+.promo-left{width:104px;flex:0 0 104px;background:linear-gradient(135deg,#2f8b60,#39a97a);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative}
+.promo-left::after{content:"";position:absolute;right:-7px;top:0;bottom:0;width:14px;background:radial-gradient(circle at 7px 7px,transparent 6px,#fff 6px) 0 0/14px 14px repeat-y}
+.promo-amt{font-size:24px;font-weight:800;letter-spacing:-.5px;line-height:1.1;text-align:center;padding:0 6px;word-break:break-word}
+.promo-off{font-size:11px;letter-spacing:2px;opacity:.9}
+.promo-body{flex:1;min-width:0;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.promo-desc{font-weight:700;color:#1c2536;font-size:14.5px}
+.promo-meta{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:#6b7688}
+.promo-code{display:flex;align-items:center;gap:8px;margin-top:auto}
+.promo-code code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;font-weight:700;color:#2f8b60;background:#eef7f2;border:1px dashed #9ed3b8;border-radius:8px;padding:5px 10px}
+.promo-copy{padding:5px 10px;font-size:12.5px}
+/* Banner quà tặng trên trang chủ */
+.gift-banner{display:flex;align-items:center;gap:16px;border-radius:16px;padding:18px 22px;background:linear-gradient(120deg,#fff7ed,#fef2f2);border:1px solid #fcd9b6;flex-wrap:wrap;margin-bottom:6px}
+.gift-ic{width:50px;height:50px;border-radius:14px;background:#f97316;color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 8px 18px rgba(249,115,22,.28)}
+.gift-ic svg{width:26px;height:26px}
+.gift-txt{flex:1;min-width:240px}
+.gift-txt h3{margin:0 0 3px}
+.gift-txt p{margin:0;color:#7c5c3e;font-size:13.5px}
+.gift-code{font-family:ui-monospace,Menlo,monospace;font-weight:700;background:#fff;border:1px dashed #f0a868;border-radius:8px;padding:3px 9px}
