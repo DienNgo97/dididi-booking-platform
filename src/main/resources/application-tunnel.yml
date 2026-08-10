@@ -1,0 +1,41 @@
+# ============================================================
+#  PROFILE "tunnel" — đưa web ra INTERNET để KIỂM THỬ (không phải production).
+#  Cách dùng: chạy app với profile thêm 'tunnel' và đặt biến môi trường PUBLIC_URL.
+#
+#    export PUBLIC_URL=https://abc-xyz.trycloudflare.com
+#    mvn spring-boot:run -Dspring-boot.run.profiles=dev,local,tunnel
+#
+#  (Trong STS: Run Configurations → Environment → thêm PUBLIC_URL,
+#   và VM arguments: -Dspring.profiles.active=dev,local,tunnel)
+#
+#  File này CHỈ ghi đè những chỗ phụ thuộc địa chỉ máy — mọi thứ khác giữ nguyên
+#  application.yml / application-local.yml (DB, Meilisearch, Gemini... vẫn localhost
+#  vì chúng chạy cùng máy, không cần ra Internet).
+# ============================================================
+app:
+  # Link trong email xác thực / đặt lại mật khẩu phải trỏ ra ngoài, nếu không người
+  # kiểm thử bấm vào sẽ mở localhost trên MÁY HỌ (không tồn tại).
+  base-url: ${PUBLIC_URL:http://localhost:8080}
+
+  vnpay:
+    # VNPay gọi ngược về đây sau khi thanh toán sandbox -> bắt buộc là URL công khai.
+    return-url: ${PUBLIC_URL:http://localhost:8080}/payment/vnpay-return
+
+  cors:
+    # Thêm domain public để Angular admin (nếu cũng mở tunnel) gọi được API.
+    allowed-origins: ${PUBLIC_ORIGINS:http://localhost:4200,http://localhost:4300}
+
+  seed:
+    # Đưa lên mạng thì KHÔNG seed thêm nữa (dữ liệu đã có sẵn trong DB).
+    demo: false
+    hotels300: false
+    scale5x: false
+
+server:
+  # Nhận header X-Forwarded-* từ Cloudflare/ngrok để app tự biết mình đang chạy sau HTTPS.
+  # Thiếu dòng này: link sinh ra bị http:// và cookie Secure có thể không được set đúng.
+  forward-headers-strategy: native
+
+logging:
+  level:
+    org.hibernate.SQL: warn      # tắt log SQL cho đỡ rác khi nhiều người vào cùng lúc

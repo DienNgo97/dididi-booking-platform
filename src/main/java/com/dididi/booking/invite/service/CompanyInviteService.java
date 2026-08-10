@@ -30,8 +30,13 @@ public class CompanyInviteService {
     private final UserRepository userRepository;
     private final EmailService emailService;
 
+    /** Xem {@link com.dididi.booking.identity.service.AccountService#normalizeBaseUrl} — cắt "/" thừa ở cuối. */
+    private String baseUrl = "http://localhost:8080";
+
     @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    void setBaseUrl(String v) {
+        this.baseUrl = com.dididi.booking.identity.service.AccountService.normalizeBaseUrl(v);
+    }
 
     public CompanyInviteService(CompanyInviteRepository repository, CompanyService companyService,
                                 UserRepository userRepository, EmailService emailService) {
