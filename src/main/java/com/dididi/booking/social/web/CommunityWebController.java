@@ -510,11 +510,9 @@ public class CommunityWebController {
     @ResponseBody
     public Map<String, Object> repost(@PathVariable Long id, Authentication auth) {
         Long uid = currentUser.id(auth);
-        boolean removed = postService.removeRepost(uid, id);
-        if (!removed) {
-            postService.createRepost(uid, id, null);
-        }
-        return Map.of("ok", true, "reposted", !removed);
+        // DI-B: toggle + đọc lại số đếm trong CÙNG giao dịch -> client hiển thị số thật từ server.
+        com.dididi.booking.social.service.PostService.RepostResult r = postService.toggleRepost(uid, id);
+        return Map.of("ok", true, "reposted", r.reposted(), "count", r.count());
     }
 
     // ===================== NOTIFICATIONS =====================

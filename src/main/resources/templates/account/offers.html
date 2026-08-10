@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="#{promo.pageTitle}">Ưu đãi của tôi - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap" style="max-width:900px">
+    <div th:replace="~{fragments/site :: flash}"></div>
+
+    <h1 th:text="#{promo.title}">Ưu đãi của tôi</h1>
+    <p class="muted" th:text="#{promo.intro}">Mã giảm giá dành riêng cho bạn — nhập ở bước thanh toán để được giảm.</p>
+
+    <!-- Đang dùng được -->
+    <h2 style="margin-top:22px" th:text="#{promo.usable}">Đang dùng được</h2>
+    <p class="muted" th:if="${#lists.isEmpty(usable)}" th:text="#{promo.empty}">
+        Bạn chưa có ưu đãi nào. Thêm ngày sinh trong hồ sơ để nhận quà sinh nhật nhé!</p>
+    <div class="promo-grid">
+        <div class="promo-card" th:each="v : ${usable}">
+            <div class="promo-left">
+                <!-- Rút gọn số tiền (2.000.000đ -> "2tr", 200.000đ -> "200k") cho vừa ô -->
+                <div class="promo-amt"
+                     th:text="${v.discountType.name() == 'PERCENT'}
+                              ? (${#numbers.formatDecimal(v.discountValue,1,0)} + '%')
+                              : (${v.discountValue.longValue() >= 1000000}
+                                 ? (${#numbers.formatDecimal(v.discountValue.longValue() / 1000000.0,1,1)} + 'tr')
+                                 : (${v.discountValue.longValue() / 1000} + 'k'))">10%</div>
+                <div class="promo-off" th:text="#{promo.off}">GIẢM</div>
+            </div>
+            <div class="promo-body">
+                <div class="promo-desc" th:text="${v.description}">Quà sinh nhật</div>
+                <div class="promo-meta">
+                    <span th:if="${v.maxDiscount != null}"
+                          th:text="#{promo.maxDiscount} + ' ' + ${#numbers.formatInteger(v.maxDiscount,1,'COMMA')} + 'đ'">Tối đa</span>
+                    <span th:if="${v.minOrderAmount != null}"
+                          th:text="#{promo.minOrder} + ' ' + ${#numbers.formatInteger(v.minOrderAmount,1,'COMMA')} + 'đ'">Đơn từ</span>
+                    <span th:if="${v.validTo != null}"
+                          th:text="#{promo.validTo} + ' ' + ${#temporals.format(v.validTo,'dd/MM/yyyy')}">HSD</span>
+                </div>
+                <div class="promo-code">
+                    <code th:text="${v.code}">BD-A1B2C3</code>
+                    <button type="button" class="btn ghost promo-copy" th:attr="data-code=${v.code}"
+                            th:text="#{promo.copy}">Sao chép</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hết hạn / đã dùng -->
+    <th:block th:if="${!#lists.isEmpty(expired)}">
+        <h2 style="margin-top:26px" th:text="#{promo.expired}">Đã hết hạn</h2>
+        <div class="promo-grid">
+            <div class="promo-card is-dead" th:each="v : ${expired}">
+                <div class="promo-left">
+                    <div class="promo-amt"
+                         th:text="${v.discountType.name() == 'PERCENT'}
+                                  ? (${#numbers.formatDecimal(v.discountValue,1,0)} + '%')
+                                  : (${#numbers.formatInteger(v.discountValue,1,'COMMA')} + 'đ')">10%</div>
+                </div>
+                <div class="promo-body">
+                    <div class="promo-desc" th:text="${v.description}">Ưu đãi</div>
+                    <div class="promo-meta">
+                        <code th:text="${v.code}">WB-XYZ</code>
+                        <span th:if="${v.validTo != null}"
+                              th:text="#{promo.validTo} + ' ' + ${#temporals.format(v.validTo,'dd/MM/yyyy')}">HSD</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </th:block>
+
+    <p class="muted" style="margin-top:24px;font-size:12.5px" th:text="#{promo.note}">
+        Mỗi mã chỉ dùng được 1 lần và chỉ áp dụng cho tài khoản của bạn.</p>
+</div>
+<script>
+document.querySelectorAll('.promo-copy').forEach(function (b) {
+    b.addEventListener('click', function () {
+        var code = b.getAttribute('data-code');
+        var done = function () { var t = b.textContent; b.textContent = '✓'; setTimeout(function () { b.textContent = t; }, 1200); };
+        if (navigator.clipboard) { navigator.clipboard.writeText(code).then(done).catch(done); }
+        else { done(); }
+    });
+});
+</script>
+<div th:replace="~{fragments/site :: footer}"></div>
+</body>
+</html>

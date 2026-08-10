@@ -218,12 +218,10 @@ public class CommunityAdminService {
     private Comment setCommentStatus(Long id, PostStatus st) {
         Comment c = commentRepository.findById(id).orElseThrow(() -> notFound("COMMENT_NOT_FOUND", "bình luận"));
         c.setStatus(st);
-        commentRepository.save(c);
-        // đồng bộ commentCount của bài (chỉ đếm PUBLISHED)
-        postRepository.findById(c.getPostId()).ifPresent(p -> {
-            p.setCommentCount((int) commentRepository.countByPostIdAndStatus(p.getId(), PostStatus.PUBLISHED));
-            postRepository.save(p);
-        });
+        commentRepository.saveAndFlush(c);
+        // đồng bộ commentCount của bài (chỉ đếm PUBLISHED) — DI-B: UPDATE nguyên tử
+        postRepository.updateCommentCount(c.getPostId(),
+                (int) commentRepository.countByPostIdAndStatus(c.getPostId(), PostStatus.PUBLISHED));
         return c;
     }
 
@@ -235,10 +233,8 @@ public class CommunityAdminService {
         if (commentRepository.adminRestore(id) == 0) throw notFound("COMMENT_NOT_FOUND", "bình luận");
         // Sau UPDATE native, comment hiện lại -> đếm lại commentCount của bài (mọi nhánh khác đều recount).
         commentRepository.findById(id).ifPresent(c ->
-            postRepository.findById(c.getPostId()).ifPresent(p -> {
-                p.setCommentCount((int) commentRepository.countByPostIdAndStatus(p.getId(), PostStatus.PUBLISHED));
-                postRepository.save(p);
-            }));
+                postRepository.updateCommentCount(c.getPostId(),
+                        (int) commentRepository.countByPostIdAndStatus(c.getPostId(), PostStatus.PUBLISHED)));
     }
 
     // ===================== MEMBERS =====================

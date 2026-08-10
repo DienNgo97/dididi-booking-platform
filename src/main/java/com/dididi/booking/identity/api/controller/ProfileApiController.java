@@ -58,6 +58,7 @@ public class ProfileApiController {
         out.put("email", u.getEmail());
         out.put("fullName", u.getFullName());
         out.put("phone", u.getPhone());
+        out.put("birthDate", u.getBirthDate() == null ? null : u.getBirthDate().toString());
         out.put("phoneVerified", u.isPhoneVerified());
         out.put("role", u.getRole().name());
         out.put("emailVerified", u.getStatus() == UserStatus.ACTIVE);
@@ -69,6 +70,20 @@ public class ProfileApiController {
     public ApiResponse<Void> updateName(@RequestBody Map<String, String> body, Authentication auth) {
         profileService.updateName(uid(auth), body.getOrDefault("fullName", ""));
         return ApiResponse.ok(null, "Đã cập nhật tên hiển thị.");
+    }
+
+    @Operation(summary = "Cập nhật ngày sinh (yyyy-MM-dd, để trống = xoá) — dùng cho quà sinh nhật")
+    @PostMapping("/birthday")
+    public ApiResponse<Void> updateBirthday(@RequestBody Map<String, String> body, Authentication auth) {
+        String raw = body.get("birthDate");
+        java.time.LocalDate d;
+        try {
+            d = (raw == null || raw.isBlank()) ? null : java.time.LocalDate.parse(raw.trim());
+        } catch (Exception ex) {
+            throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không hợp lệ (yyyy-MM-dd)", HttpStatus.BAD_REQUEST);
+        }
+        profileService.updateBirthDate(uid(auth), d);
+        return ApiResponse.ok(null, d == null ? "Đã xoá ngày sinh." : "Đã cập nhật ngày sinh.");
     }
 
     @Operation(summary = "Đổi mật khẩu (đăng xuất các phiên khác)")

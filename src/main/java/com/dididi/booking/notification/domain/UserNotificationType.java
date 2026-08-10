@@ -18,7 +18,9 @@ public enum UserNotificationType {
     COMPANY_INVITE("ic-users"),
     COMPANY_INVITE_ACCEPTED("ic-users"),
     GROUP_MEMBER_JOINED("ic-users"),
-    GROUP_PAYMENT_SPLIT("ic-credit-card");
+    GROUP_PAYMENT_SPLIT("ic-credit-card"),
+    /** Khuyến mãi cá nhân hoá: sinh nhật / khách quay lại / tri ân hạng / chào mừng. */
+    PROMO_GRANTED("ic-gift");
 
     private final String icon;
 

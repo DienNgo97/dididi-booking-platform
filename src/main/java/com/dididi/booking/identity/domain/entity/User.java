@@ -28,6 +28,10 @@ public class User extends BaseEntity {
     @Column(length = 20)
     private String phone;
 
+    /** Ngày sinh (khách tự khai trong hồ sơ) — dùng cho chương trình quà sinh nhật. */
+    @Column(name = "birth_date")
+    private java.time.LocalDate birthDate;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role = Role.CUSTOMER;
@@ -70,6 +74,9 @@ public class User extends BaseEntity {
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+
+    public java.time.LocalDate getBirthDate() { return birthDate; }
+    public void setBirthDate(java.time.LocalDate birthDate) { this.birthDate = birthDate; }
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }

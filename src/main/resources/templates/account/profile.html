@@ -162,6 +162,25 @@
                 </div>
             </div>
         </div>
+        <!-- Ngày sinh: dùng cho chương trình QUÀ SINH NHẬT (xem /account/offers) -->
+        <div class="pf-row">
+            <div class="pf-l">
+                <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('gift','')}"></svg></span>
+                <div style="flex:1;min-width:0">
+                    <div class="pf-t" th:text="#{profile.birthDate}">Ngày sinh</div>
+                    <div class="pf-v" th:text="${user.birthDate != null} ? ${#temporals.format(user.birthDate,'dd/MM/yyyy')} : '—'">—</div>
+                    <div class="muted" style="font-size:12px" th:text="#{profile.birthDateHint}">Thêm ngày sinh để nhận quà sinh nhật hằng năm từ Dididi.</div>
+                    <details class="pf">
+                        <summary class="btn ghost" style="margin-top:8px" th:text="#{profile.edit}">Sửa</summary>
+                        <form class="pf-form" th:action="@{/account/profile/birthday}" method="post">
+                            <input type="date" name="birthDate"
+                                   th:value="${user.birthDate != null} ? ${#temporals.format(user.birthDate,'yyyy-MM-dd')} : ''"/>
+                            <button class="btn" type="submit" th:text="#{profile.save}">Lưu</button>
+                        </form>
+                    </details>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- ============ Xóa tài khoản ============ -->

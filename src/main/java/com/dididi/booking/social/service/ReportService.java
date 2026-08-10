@@ -72,12 +72,10 @@ public class ReportService {
             commentRepository.findById(targetId).ifPresent(c -> {
                 if (c.getStatus() == PostStatus.PUBLISHED) {
                     c.setStatus(PostStatus.HIDDEN);
-                    commentRepository.save(c);
-                    // dem lai commentCount cua bai (comment bi an khong con duoc tinh)
-                    postRepository.findById(c.getPostId()).ifPresent(p -> {
-                        p.setCommentCount((int) commentRepository.countByPostIdAndStatus(c.getPostId(), PostStatus.PUBLISHED));
-                        postRepository.save(p);
-                    });
+                    commentRepository.saveAndFlush(c);
+                    // dem lai commentCount cua bai (comment bi an khong con duoc tinh) — DI-B: UPDATE nguyen tu
+                    postRepository.updateCommentCount(c.getPostId(),
+                            (int) commentRepository.countByPostIdAndStatus(c.getPostId(), PostStatus.PUBLISHED));
                 }
             });
         }

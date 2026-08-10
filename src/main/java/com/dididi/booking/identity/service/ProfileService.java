@@ -41,6 +41,26 @@ public class ProfileService {
     }
 
     /**
+     * Cập nhật ngày sinh — dùng cho chương trình QUÀ SINH NHẬT.
+     * Cho phép xoá (null). Chặn ngày tương lai và tuổi phi lý (>120).
+     */
+    @Transactional
+    public void updateBirthDate(Long userId, java.time.LocalDate birthDate) {
+        if (birthDate != null) {
+            java.time.LocalDate today = java.time.LocalDate.now();
+            if (birthDate.isAfter(today)) {
+                throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không thể ở tương lai", HttpStatus.BAD_REQUEST);
+            }
+            if (birthDate.isBefore(today.minusYears(120))) {
+                throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không hợp lệ", HttpStatus.BAD_REQUEST);
+            }
+        }
+        User u = get(userId);
+        u.setBirthDate(birthDate);
+        userRepository.save(u);
+    }
+
+    /**
      * Bước 1 xác thực SĐT: lưu số (đánh dấu chưa xác thực) rồi gửi OTP.
      * Nếu số trùng số đã xác thực thì không cần làm gì.
      */

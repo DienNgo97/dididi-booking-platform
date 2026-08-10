@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -98,38 +99,61 @@ public class CommissionService {
     }
 
     /**
-     * Hoa hong cua 1 don (lam tron) cho bao cao theo ky; tra ve null neu don khong thuoc vendor nao
-     * (don CHANNEL/PMS hoac ve may bay). Dung ty le hieu luc cua vendor (rieng hoac mac dinh).
+     * Ma gia cho nhom "khach san CHUA GAN doi tac" (vendorId = null tren Hotel — vd khach san do
+     * nen tang tu tao/seed). FIX M6: truoc day cac don nay bi BO QUA -> bao cao hoa hong thieu
+     * doanh thu that. Nay van tinh, gom vao 1 dong rieng voi ty le MAC DINH.
+     */
+    public static final long NO_VENDOR_KEY = 0L;
+
+    /**
+     * Hoa hong cua 1 don (lam tron) cho bao cao theo ky; tra ve null neu don KHONG PHAI don khach san
+     * (vd ve may bay). Don khach san chua gan doi tac -> van tinh theo ty le mac dinh (fix M6).
      */
     public BigDecimal commissionForReport(Booking b) {
+        if (b.getType() != BookingType.HOTEL || b.getTargetId() == null) return null;
         Long vendorId = resolveVendor(b);
-        if (vendorId == null) return null;
         BigDecimal amt = b.getAmount() == null ? BigDecimal.ZERO : b.getAmount();
-        return amt.multiply(effectiveRate(vendorId)).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal rate = (vendorId == null) ? getDefaultRate() : effectiveRate(vendorId);
+        return amt.multiply(rate).setScale(0, RoundingMode.HALF_UP);
     }
 
-    /** Bao cao hoa hong: tinh tren cac don HOTEL da CONFIRMED co vendor (DIRECT), gom theo vendor. */
+    /**
+     * Bao cao hoa hong: tinh tren MOI don HOTEL da CONFIRMED, gom theo vendor.
+     * Don cua khach san chua gan doi tac gom vao dong {@link #NO_VENDOR_KEY} (ty le mac dinh).
+     * Hieu nang: nap map hotelId -> vendorId 1 lan thay vi findById cho TUNG don (N+1).
+     */
     public CommissionReportDto report() {
+        Map<Long, Long> vendorByHotel = new HashMap<>();
+        for (Hotel h : hotelRepository.findAll()) {
+            vendorByHotel.put(h.getId(), h.getVendorId());
+        }
         Map<Long, long[]> count = new LinkedHashMap<>();
         Map<Long, BigDecimal> gross = new LinkedHashMap<>();
         for (Booking b : bookingRepository.findByStatusOrderByCreatedAtDesc(BookingStatus.CONFIRMED)) {
-            Long vendorId = resolveVendor(b);
-            if (vendorId == null) continue;
+            if (b.getType() != BookingType.HOTEL || b.getTargetId() == null) continue;
+            Long vendorId = vendorByHotel.get(b.getTargetId());
+            Long key = (vendorId == null) ? NO_VENDOR_KEY : vendorId;
             BigDecimal amt = b.getAmount() == null ? BigDecimal.ZERO : b.getAmount();
-            gross.merge(vendorId, amt, BigDecimal::add);
-            count.computeIfAbsent(vendorId, k -> new long[1])[0]++;
+            gross.merge(key, amt, BigDecimal::add);
+            count.computeIfAbsent(key, k -> new long[1])[0]++;
         }
         List<CommissionReportRow> rows = new ArrayList<>();
         BigDecimal tGross = BigDecimal.ZERO, tComm = BigDecimal.ZERO, tNet = BigDecimal.ZERO;
         for (Map.Entry<Long, BigDecimal> e : gross.entrySet()) {
-            Long vendorId = e.getKey();
+            Long key = e.getKey();
+            boolean noVendor = NO_VENDOR_KEY == key;
             BigDecimal g = e.getValue();
-            BigDecimal rate = effectiveRate(vendorId);
+            BigDecimal rate = noVendor ? getDefaultRate() : effectiveRate(key);
             BigDecimal comm = g.multiply(rate).setScale(0, RoundingMode.HALF_UP);
             BigDecimal net = g.subtract(comm);
-            User u = userRepository.findById(vendorId).orElse(null);
-            rows.add(new CommissionReportRow(vendorId, u != null ? u.getFullName() : ("Vendor #" + vendorId),
-                    count.get(vendorId)[0], g, rate, comm, net));
+            String name;
+            if (noVendor) {
+                name = "Khách sạn chưa gắn đối tác (nền tảng)";
+            } else {
+                User u = userRepository.findById(key).orElse(null);
+                name = u != null ? u.getFullName() : ("Vendor #" + key);
+            }
+            rows.add(new CommissionReportRow(key, name, count.get(key)[0], g, rate, comm, net));
             tGross = tGross.add(g);
             tComm = tComm.add(comm);
             tNet = tNet.add(net);
