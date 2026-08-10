@@ -31,6 +31,7 @@ public class LoyaltyService {
     private final LoyaltyTransactionRepository repository;
     private final VoucherRepository voucherRepository;
     private final BookingRepository bookingRepository;
+    private final com.dididi.booking.identity.repository.UserRepository userRepository;
 
     /** Diem het han sau 1 nam ke tu khi tich (don tich diem phat sinh). */
     private static final long POINT_VALID_DAYS = 365;
@@ -55,10 +56,12 @@ public class LoyaltyService {
 
     public LoyaltyService(LoyaltyTransactionRepository repository, VoucherRepository voucherRepository,
                           BookingRepository bookingRepository,
+                          com.dididi.booking.identity.repository.UserRepository userRepository,
                           com.dididi.booking.notification.service.UserNotificationService userNotificationService) {
         this.repository = repository;
         this.voucherRepository = voucherRepository;
         this.bookingRepository = bookingRepository;
+        this.userRepository = userRepository;
         this.userNotificationService = userNotificationService;
     }
 
@@ -135,6 +138,11 @@ public class LoyaltyService {
     /** Doi diem lay voucher giam gia (FIXED, 1 luot). Tra ve voucher da tao. */
     @Transactional
     public Voucher redeemForVoucher(Long userId, int points) {
+        // FIX M9 (race đổi điểm): khoá bi quan dòng user -> mọi request ĐỔI ĐIỂM của cùng người
+        // phải xếp hàng, nên "đọc số dư -> kiểm tra -> trừ điểm" thành nguyên tử.
+        // Trước đây 2 tab bấm cùng lúc đều thấy đủ điểm -> tạo 2 voucher, số dư âm.
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new BusinessException("NOT_FOUND", "Không tìm thấy tài khoản", HttpStatus.NOT_FOUND));
         if (points < minRedeem) {
             throw new BusinessException("MIN_REDEEM", "Tối thiểu " + minRedeem + " điểm mỗi lần đổi", HttpStatus.BAD_REQUEST);
         }
