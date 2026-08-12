@@ -1,0 +1,25 @@
+# CODEOWNERS — ai bắt buộc phải duyệt khi file bị sửa
+#
+# Có hiệu lực khi ruleset "protect-main" bật "Require review from Code Owners".
+# Khi đó mọi PR chạm vào file khớp luật đều cần approval của người ghi ở đây,
+# approval của người khác không tính.
+#
+# QUY TẮC KHỚP: dòng KHỚP CUỐI CÙNG thắng (ngược với .gitignore).
+# Nên dòng "*" phải nằm TRÊN CÙNG, các luật cụ thể xếp xuống dưới.
+
+# Mặc định: mọi thay đổi cần Ngô Trung Điền duyệt.
+* @DienNgo97
+
+# ── Khi nhóm quen việc, mở dần bằng cách thêm dòng cụ thể bên dưới ─────────
+# Ví dụ (đang tắt, bỏ dấu # để dùng):
+#
+#   /src/main/resources/i18n/        @DienNgo97 @ban-lam-i18n
+#   /src/main/resources/templates/   @DienNgo97 @ban-lam-giao-dien
+#   *.md                             @ban-viet-tai-lieu
+#
+# Riêng 2 vùng dưới đây nên giữ mình bạn duyệt kể cả về sau, vì sai một chút
+# là mất tiền hoặc thủng bảo mật:
+#
+#   /src/main/java/com/dididi/booking/gateway/    @DienNgo97
+#   /src/main/java/com/dididi/booking/config/     @DienNgo97
+#   /.github/workflows/                           @DienNgo97
