@@ -10,6 +10,7 @@ import com.dididi.booking.identity.domain.enums.UserStatus;
 import com.dididi.booking.identity.repository.UserRepository;
 import com.dididi.booking.identity.repository.UserTokenRepository;
 import com.dididi.booking.notification.EmailService;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -55,8 +56,29 @@ public class AccountService {
     private final SessionRegistry sessionRegistry;
     private final ApplicationEventPublisher events;
 
+    /**
+     * Địa chỉ gốc để dựng link trong email (xác thực / đặt lại mật khẩu).
+     * Setter tự CẮT dấu "/" thừa ở cuối: người cấu hình dán URL kiểu
+     * "https://abc.trycloudflare.com/" thì link vẫn đúng, không thành "...com//verify".
+     */
+    private String baseUrl = "http://localhost:8080";
+
     @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    void setBaseUrl(String v) {
+        this.baseUrl = normalizeBaseUrl(v);
+        // In ra lúc khởi động để biết ngay link email sẽ trỏ đi đâu (không chứa token -> an toàn).
+        LoggerFactory.getLogger(AccountService.class)
+                .info("Link trong email sẽ dùng app.base-url = {}", this.baseUrl);
+    }
+
+    /** Bỏ mọi dấu "/" ở cuối; rỗng/null -> localhost. Dùng chung cho mọi nơi ghép link. */
+    public static String normalizeBaseUrl(String v) {
+        String s = (v == null) ? "" : v.trim();
+        while (s.endsWith("/")) {
+            s = s.substring(0, s.length() - 1);
+        }
+        return s.isEmpty() ? "http://localhost:8080" : s;
+    }
 
     @Value("${app.verification.ttl-hours:24}")
     private long verifyTtlHours;

@@ -31,6 +31,14 @@ spring:
   thymeleaf:
     cache: false
     encoding: UTF-8
+    servlet:
+      # Render xong HOAN TOAN roi moi ghi ra response (khong stream tung phan).
+      # Ly do: trang co nav lon (>8KB) se lam Tomcat commit response giua chung;
+      # den luc gap <form th:action> can sinh CSRF token -> phai tao session moi ->
+      # "Cannot create a session after the response has been committed" -> trang loi
+      # nua voi (khach truy cap LAN DAU vao /forgot-password, /login, /register).
+      # Tat streaming cung giup loi template tra ve trang 500 dung chuan thay vi HTML cut.
+      produce-partial-output-while-processing: false
   messages:
     basename: i18n/messages,i18n/booking,i18n/error
     encoding: UTF-8

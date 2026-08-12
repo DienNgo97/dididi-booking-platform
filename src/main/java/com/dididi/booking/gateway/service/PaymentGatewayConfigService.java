@@ -20,7 +20,26 @@ public class PaymentGatewayConfigService {
     @Value("${app.vnpay.tmn-code}")   private String fbTmnCode;
     @Value("${app.vnpay.hash-secret}") private String fbHashSecret;
     @Value("${app.vnpay.pay-url}")    private String fbPayUrl;
-    @Value("${app.vnpay.return-url}") private String fbReturnUrl;
+    /**
+     * URL VNPay gọi ngược về sau thanh toán. Chuẩn hoá "//" -> "/" phòng khi PUBLIC_URL
+     * được dán kèm dấu "/" ở cuối (vd https://abc.trycloudflare.com/ + /payment/vnpay-return).
+     */
+    private String fbReturnUrl;
+
+    @Value("${app.vnpay.return-url}")
+    void setFbReturnUrl(String v) {
+        String s = (v == null) ? "" : v.trim();
+        // gộp mọi "//" nằm SAU phần "scheme://" thành "/"
+        int schemeEnd = s.indexOf("://");
+        if (schemeEnd > 0) {
+            String scheme = s.substring(0, schemeEnd + 3);
+            String rest = s.substring(schemeEnd + 3).replaceAll("/{2,}", "/");
+            s = scheme + rest;
+        }
+        this.fbReturnUrl = s;
+        org.slf4j.LoggerFactory.getLogger(PaymentGatewayConfigService.class)
+                .info("VNPay return-url (mặc định từ cấu hình) = {}", s);
+    }
 
     public PaymentGatewayConfigService(PaymentGatewayConfigRepository repository) {
         this.repository = repository;
