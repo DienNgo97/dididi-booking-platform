@@ -24,7 +24,9 @@ public class FlightQueryService {
     @Cacheable(value = "flightSearch",
             key = "(#from == null ? '' : #from.toLowerCase()) + '|' + (#to == null ? '' : #to.toLowerCase()) + '|' + (#date == null ? '' : #date.toString())")
     public List<FlightApiDto> search(String from, String to, LocalDate date) {
-        return flightRepository.findAllByOrderByDepartureTime().stream()
+        // Chỉ chuyến provider (có sơ đồ ghế). Chuyến demo cục bộ (externalId >= 900000) bị loại.
+        return flightRepository.findByExternalIdLessThanOrderByDepartureTime(
+                        com.dididi.booking.booking.service.BookingService.LOCAL_FLIGHT_EXTERNAL_ID_BASE).stream()
                 .filter(f -> from == null || from.isBlank() || from.equalsIgnoreCase(f.getFromAirport()))
                 .filter(f -> to == null || to.isBlank() || to.equalsIgnoreCase(f.getToAirport()))
                 .filter(f -> date == null
