@@ -1,5 +1,7 @@
 package com.dididi.booking.vendor.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.hotel.domain.CityGeo;
 import com.dididi.booking.hotel.domain.HotelSupport;
 import com.dididi.booking.hotel.domain.entity.Hotel;
@@ -35,12 +37,15 @@ public class VendorRegistrationWebController {
     private final UserRepository userRepository;
     private final HotelRepository hotelRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.dididi.booking.notification.EmailService emailService;
 
     public VendorRegistrationWebController(UserRepository userRepository, HotelRepository hotelRepository,
-                                           PasswordEncoder passwordEncoder) {
+                                           PasswordEncoder passwordEncoder,
+                                           com.dididi.booking.notification.EmailService emailService) {
         this.userRepository = userRepository;
         this.hotelRepository = hotelRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     /** Danh sách loại hình & tiện ích cho form (luôn có ở mọi handler của controller này). */
@@ -49,6 +54,18 @@ public class VendorRegistrationWebController {
 
     @ModelAttribute("amenityList")
     public Amenity[] amenityList() { return Amenity.values(); }
+
+    /**
+     * Bảng toạ độ trung tâm các TP (từ CityGeo — MỘT nguồn sự thật với fallback backend) bơm xuống JS:
+     * gõ Tỉnh/Thành phố xong bản đồ tự bay tới đó, ghim tay chỉ còn là tinh chỉnh (QA TC-C-01).
+     */
+    @ModelAttribute("cityGeoJs")
+    public java.util.Map<String, double[]> cityGeoJs() {
+        java.util.Map<String, double[]> out = new java.util.LinkedHashMap<>();
+        com.dididi.booking.hotel.domain.CityGeo.all()
+                .forEach((name, g) -> out.put(name, new double[]{g.lat(), g.lng()}));
+        return out;
+    }
 
     @GetMapping("/vendor-register")
     public String form(Authentication auth) {
@@ -124,8 +141,12 @@ public class VendorRegistrationWebController {
         hotel.setVendorId(vendor.getId());
         hotelRepository.save(hotel);
 
-        ra.addFlashAttribute("message",
-                "Đăng ký thành công! Tài khoản đang chờ admin duyệt — bạn sẽ nhận email khi được duyệt.");
+        // QA TC-C-01: xác nhận ngay qua email là ĐÃ NHẬN hồ sơ (async — lỗi SMTP không chặn đăng ký).
+        emailService.sendVendorRegistered(email, hotelName,
+                org.springframework.context.i18n.LocaleContextHolder.getLocale());
+
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f50",
+                "Đăng ký thành công! Chúng tôi đã gửi email xác nhận — tài khoản đang chờ admin duyệt."));
         return "redirect:/vendor-register";
     }
 }

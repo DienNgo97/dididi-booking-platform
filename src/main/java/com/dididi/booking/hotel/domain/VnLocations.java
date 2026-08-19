@@ -119,14 +119,99 @@ public final class VnLocations {
             15)
     );
 
+
+    /**
+     * 24 TỈNH/THÀNH CÒN LẠI (bổ sung 18/08/2026) — cùng 12 điểm trong ALL phủ đủ 34 đơn vị cấp tỉnh
+     * sau sáp nhập 1/7/2025. Mỗi tỉnh chọn tỉnh lỵ hoặc điểm du lịch tiêu biểu làm "city".
+     * Phường lấy theo quy ước đặt tên sau sáp nhập (nhiều phường trung tâm mang tên TP cũ);
+     * một số tên đã đối chiếu báo chí (Hạc Thành, Thành Sen, Phố Hiến, Trấn Biên, Thục Phán...).
+     * weight = 3 KS/điểm (tổng 72) — dùng bởi HotelBulkSeeder phase 2 (app.seed.hotels34).
+     */
+    public static final List<Loc> EXTRA = List.of(
+        new Loc("Hải Phòng", "TP. Hải Phòng", Region.NORTH, 20.8449, 106.6881,
+            new String[]{"Phường Hồng Bàng", "Phường Lê Chân", "Phường Ngô Quyền", "Phường Đồ Sơn"},
+            new String[]{"Điện Biên Phủ", "Lạch Tray", "Trần Phú", "Tô Hiệu", "Cầu Đất", "Văn Cao"}, 3),
+        new Loc("Hà Giang", "Tỉnh Tuyên Quang", Region.NORTH, 22.8233, 104.9836,
+            new String[]{"Phường Hà Giang 1", "Phường Hà Giang 2"},
+            new String[]{"Nguyễn Trãi", "Trần Phú", "Lý Tự Trọng", "Nguyễn Thái Học"}, 3),
+        new Loc("Thái Nguyên", "Tỉnh Thái Nguyên", Region.NORTH, 21.5928, 105.8442,
+            new String[]{"Phường Phan Đình Phùng", "Phường Gia Sàng", "Phường Quyết Thắng"},
+            new String[]{"Hoàng Văn Thụ", "Lương Ngọc Quyến", "Cách Mạng Tháng Tám", "Bến Tượng"}, 3),
+        new Loc("Việt Trì", "Tỉnh Phú Thọ", Region.NORTH, 21.3100, 105.4020,
+            new String[]{"Phường Việt Trì", "Phường Nông Trang", "Phường Vân Phú"},
+            new String[]{"Hùng Vương", "Trần Phú", "Nguyễn Tất Thành", "Châu Phong"}, 3),
+        new Loc("Bắc Ninh", "Tỉnh Bắc Ninh", Region.NORTH, 21.1861, 106.0763,
+            new String[]{"Phường Kinh Bắc", "Phường Vũ Ninh", "Phường Đại Phúc"},
+            new String[]{"Lý Thái Tổ", "Nguyễn Gia Thiều", "Trần Hưng Đạo", "Ngô Gia Tự"}, 3),
+        new Loc("Hưng Yên", "Tỉnh Hưng Yên", Region.NORTH, 20.6464, 106.0512,
+            new String[]{"Phường Phố Hiến", "Phường Sơn Nam"},
+            new String[]{"Điện Biên", "Trưng Trắc", "Nguyễn Văn Linh", "Bãi Sậy"}, 3),
+        new Loc("Ninh Bình", "Tỉnh Ninh Bình", Region.NORTH, 20.2506, 105.9745,
+            new String[]{"Phường Hoa Lư", "Phường Tây Hoa Lư", "Phường Nam Hoa Lư"},
+            new String[]{"Trần Hưng Đạo", "Lương Văn Thăng", "Đinh Tiên Hoàng", "Tràng An"}, 3),
+        new Loc("Sầm Sơn", "Tỉnh Thanh Hóa", Region.CENTRAL, 19.7472, 105.9040,
+            new String[]{"Phường Sầm Sơn", "Phường Nam Sầm Sơn", "Phường Hạc Thành"},
+            new String[]{"Hồ Xuân Hương", "Lê Lợi", "Nguyễn Du", "Thanh Niên"}, 3),
+        new Loc("Vinh", "Tỉnh Nghệ An", Region.CENTRAL, 18.6796, 105.6813,
+            new String[]{"Phường Thành Vinh", "Phường Trường Vinh", "Phường Cửa Lò"},
+            new String[]{"Quang Trung", "Lê Lợi", "Nguyễn Thị Minh Khai", "Bình Minh"}, 3),
+        new Loc("Hà Tĩnh", "Tỉnh Hà Tĩnh", Region.CENTRAL, 18.3428, 105.9057,
+            new String[]{"Phường Thành Sen", "Phường Trần Phú"},
+            new String[]{"Phan Đình Phùng", "Trần Phú", "Hải Thượng Lãn Ông", "Nguyễn Công Trứ"}, 3),
+        new Loc("Đồng Hới", "Tỉnh Quảng Trị", Region.CENTRAL, 17.4659, 106.5983,
+            new String[]{"Phường Đồng Hới", "Phường Đồng Thuận"},
+            new String[]{"Trần Hưng Đạo", "Lý Thường Kiệt", "Nguyễn Hữu Cảnh", "Trương Pháp"}, 3),
+        new Loc("Quảng Ngãi", "Tỉnh Quảng Ngãi", Region.CENTRAL, 15.1214, 108.8044,
+            new String[]{"Phường Cẩm Thành", "Phường Nghĩa Lộ"},
+            new String[]{"Quang Trung", "Lê Trung Đình", "Hùng Vương", "Phan Đình Phùng"}, 3),
+        new Loc("Quy Nhơn", "Tỉnh Gia Lai", Region.CENTRAL, 13.7820, 109.2191,
+            new String[]{"Phường Quy Nhơn", "Phường Quy Nhơn Nam", "Phường Quy Nhơn Đông"},
+            new String[]{"An Dương Vương", "Xuân Diệu", "Nguyễn Tất Thành", "Trần Hưng Đạo"}, 3),
+        new Loc("Buôn Ma Thuột", "Tỉnh Đắk Lắk", Region.CENTRAL, 12.6797, 108.0382,
+            new String[]{"Phường Buôn Ma Thuột", "Phường Tân An", "Phường Tuy Hòa"},
+            new String[]{"Lê Duẩn", "Phan Chu Trinh", "Nguyễn Tất Thành", "Y Jút"}, 3),
+        new Loc("Biên Hòa", "Tỉnh Đồng Nai", Region.SOUTH, 10.9508, 106.8221,
+            new String[]{"Phường Trấn Biên", "Phường Tam Hiệp", "Phường Long Bình"},
+            new String[]{"Võ Thị Sáu", "Phạm Văn Thuận", "30 Tháng 4", "Nguyễn Ái Quốc"}, 3),
+        new Loc("Tây Ninh", "Tỉnh Tây Ninh", Region.SOUTH, 11.3100, 106.0980,
+            new String[]{"Phường Tân Ninh", "Phường Long Hoa"},
+            new String[]{"30 Tháng 4", "Cách Mạng Tháng Tám", "Trần Hưng Đạo", "Võ Thị Sáu"}, 3),
+        new Loc("Mỹ Tho", "Tỉnh Đồng Tháp", Region.SOUTH, 10.3600, 106.3600,
+            new String[]{"Phường Mỹ Tho", "Phường Đạo Thạnh"},
+            new String[]{"Trưng Trắc", "Ấp Bắc", "Lê Lợi", "Nam Kỳ Khởi Nghĩa"}, 3),
+        new Loc("Vĩnh Long", "Tỉnh Vĩnh Long", Region.SOUTH, 10.2537, 105.9722,
+            new String[]{"Phường Long Châu", "Phường Phước Hậu"},
+            new String[]{"Phạm Thái Bường", "30 Tháng 4", "Nguyễn Huệ", "Trưng Nữ Vương"}, 3),
+        new Loc("Cà Mau", "Tỉnh Cà Mau", Region.SOUTH, 9.1769, 105.1524,
+            new String[]{"Phường An Xuyên", "Phường Tân Thành"},
+            new String[]{"Phan Ngọc Hiển", "Nguyễn Tất Thành", "Trần Hưng Đạo", "Lý Thường Kiệt"}, 3),
+        new Loc("Điện Biên Phủ", "Tỉnh Điện Biên", Region.NORTH, 21.3860, 103.0230,
+            new String[]{"Phường Điện Biên Phủ", "Phường Mường Thanh"},
+            new String[]{"Võ Nguyên Giáp", "7 Tháng 5", "Hoàng Văn Thái", "Trường Chinh"}, 3),
+        new Loc("Lai Châu", "Tỉnh Lai Châu", Region.NORTH, 22.3964, 103.4590,
+            new String[]{"Phường Tân Phong", "Phường Đoàn Kết"},
+            new String[]{"Trần Hưng Đạo", "Lê Duẩn", "Hoàng Văn Thái", "Điện Biên Phủ"}, 3),
+        new Loc("Mộc Châu", "Tỉnh Sơn La", Region.NORTH, 20.8460, 104.6380,
+            new String[]{"Phường Mộc Châu", "Phường Mộc Sơn"},
+            new String[]{"Hoàng Quốc Việt", "Tây Tiến", "Chu Văn Thịnh", "Trần Huy Liệu"}, 3),
+        new Loc("Lạng Sơn", "Tỉnh Lạng Sơn", Region.NORTH, 21.8537, 106.7615,
+            new String[]{"Phường Kỳ Lừa", "Phường Tam Thanh", "Phường Đông Kinh"},
+            new String[]{"Trần Đăng Ninh", "Lê Lợi", "Bà Triệu", "Hùng Vương"}, 3),
+        new Loc("Cao Bằng", "Tỉnh Cao Bằng", Region.NORTH, 22.6657, 106.2570,
+            new String[]{"Phường Thục Phán", "Phường Nùng Trí Cao"},
+            new String[]{"Kim Đồng", "Vườn Cam", "Hoàng Đình Giong", "Xuân Trường"}, 3)
+    );
+
     /** Tra cứu địa danh theo tên thành phố (khớp gần đúng, không phân biệt hoa/thường); không thấy → null. */
     public static Loc byCity(String city) {
         if (city == null || city.isBlank()) return null;
         String c = city.trim().toLowerCase(Locale.ROOT);
-        for (Loc l : ALL) {
+        java.util.List<Loc> both = new java.util.ArrayList<>(ALL);
+        both.addAll(EXTRA);
+        for (Loc l : both) {
             if (l.city.toLowerCase(Locale.ROOT).equals(c)) return l;
         }
-        for (Loc l : ALL) {
+        for (Loc l : both) {
             String k = l.city.toLowerCase(Locale.ROOT);
             if (c.contains(k) || k.contains(c)) return l;
         }

@@ -17,7 +17,7 @@
         <h3 style="margin:14px 0 4px" th:text="#{vendor.hotelSection}">Khách sạn</h3>
         <label th:text="#{vendor.hotelNameReq}">Tên khách sạn *</label>
         <input type="text" name="hotelName" required/>
-        <label th:text="#{home.city}">Thành phố</label>
+        <label th:text="#{vendor.city}">Tỉnh/Thành phố</label>
         <input type="text" name="city"/>
         <label th:text="#{vendor.addrDetail}">Địa chỉ chi tiết</label>
         <div class="vr-addr">
@@ -26,18 +26,19 @@
         </div>
         <div class="vr-addr" style="margin-top:8px">
             <input type="text" name="ward" th:placeholder="#{vendor.ward}" style="flex:1;min-width:150px"/>
-            <input type="text" name="district" th:placeholder="#{vendor.district}" style="flex:1;min-width:150px"/>
+            <!-- QA TC-C-01: BỎ ô Quận/huyện — địa chỉ VN sau sáp nhập 2025 chỉ còn Phường/Xã + Tỉnh/Thành phố
+                 (backend @RequestParam district đã optional, entity giữ cột cho dữ liệu cũ). -->
         </div>
 
         <label th:text="#{vendor.propertyType}">Loại hình lưu trú</label>
-        <select name="propertyType">
-            <option th:each="pt : ${propertyTypes}" th:value="${pt.name()}" th:text="${pt.viName}">Khách sạn</option>
+        <select name="propertyType" style="width:100%;padding:11px;border:1px solid #d3d9e4;border-radius:10px;font-size:14px;background:#fff;box-sizing:border-box">
+            <option th:each="pt : ${propertyTypes}" th:value="${pt.name()}" th:text="#{'hotel.type.' + ${pt.name()}}">Khách sạn</option>
         </select>
 
         <label th:text="#{vendor.amenities}">Tiện ích</label>
         <div class="vr-amenities">
             <label class="vr-amenity" th:each="am : ${amenityList}">
-                <input type="checkbox" name="amenities" th:value="${am.name()}"/><span th:text="${am.viName}">Tiện ích</span>
+                <input type="checkbox" name="amenities" th:value="${am.name()}"/><span th:text="#{'hotel.amenity.' + ${am.name()}}">Tiện ích</span>
             </label>
         </div>
 
@@ -45,7 +46,7 @@
         <div id="vrMap" class="hotel-map" style="height:260px"></div>
         <input type="hidden" name="lat" id="vrLat"/>
         <input type="hidden" name="lng" id="vrLng"/>
-        <p class="muted" id="vrLatLng" style="font-size:12px;margin:6px 0 0"></p>
+        <p class="muted" id="vrLatLng" th:attr="data-label=#{vendor.coords}" style="font-size:12px;margin:6px 0 0"></p>
 
         <label th:text="#{vendor.starRating}">Hạng sao</label>
         <div class="starpick">
@@ -83,7 +84,7 @@
     box.addEventListener('change', upd); upd();
 })();
 </script>
-<script>
+<script th:inline="javascript">
     /* Ghim vị trí KS: Leaflet + OpenStreetMap (không cần API key). Bấm để đặt, kéo để chỉnh. */
     window.initVrMap = function () {
         var el = document.getElementById('vrMap'); if (!el || !window.L || el.__map) return;
@@ -92,11 +93,37 @@
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
+
+        /* TỰ BAY TỚI TỈNH/THÀNH PHỐ VỪA GÕ (QA TC-C-01): bảng CityGeo bơm từ server — cùng
+           nguồn sự thật với fallback "không ghim thì lấy tâm TP" ở backend, không gọi mạng.
+           Chỉ đổi TẦM NHÌN, không tự đặt ghim — ghim vẫn là thao tác chủ đích của vendor. */
+        var CITY_GEO = /*[[${cityGeoJs}]]*/ {};
+        function stripVn(s) {
+            return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
+        }
+        var cityInput = document.querySelector('input[name=city]');
+        if (cityInput) {
+            var flyTimer = null;
+            function flyToCity() {
+                var q = stripVn(cityInput.value);
+                if (q.length < 2) return;
+                for (var name in CITY_GEO) {
+                    var k = stripVn(name);
+                    if (k.indexOf(q) >= 0 || q.indexOf(k) >= 0) {
+                        map.flyTo([CITY_GEO[name][0], CITY_GEO[name][1]], 13);
+                        return;
+                    }
+                }
+            }
+            cityInput.addEventListener('input', function () { clearTimeout(flyTimer); flyTimer = setTimeout(flyToCity, 500); });
+            cityInput.addEventListener('change', flyToCity);
+        }
         var marker = null;
         function write(la, ln) {
             document.getElementById('vrLat').value = la.toFixed(6);
             document.getElementById('vrLng').value = ln.toFixed(6);
-            document.getElementById('vrLatLng').textContent = 'Toạ độ: ' + la.toFixed(6) + ', ' + ln.toFixed(6);
+            document.getElementById('vrLatLng').textContent = ((document.getElementById('vrLatLng').getAttribute('data-label'))||'Toạ độ:') + ' ' + la.toFixed(6) + ', ' + ln.toFixed(6);
         }
         function setPin(latlng) {
             if (!marker) {

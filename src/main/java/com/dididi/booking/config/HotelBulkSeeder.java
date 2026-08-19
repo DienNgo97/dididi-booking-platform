@@ -52,6 +52,12 @@ public class HotelBulkSeeder implements CommandLineRunner {
     @Value("${app.seed.hotels300:false}")
     private boolean enabled;
 
+    /** Phase 2 (18/08/2026): +72 KS cho 24 tỉnh/thành còn lại -> phủ đủ 34 đơn vị cấp tỉnh sau sáp nhập. */
+    public static final long EXT2_BASE = 805_000L;
+
+    @Value("${app.seed.hotels34:false}")
+    private boolean enabled34;
+
     private final HotelRepository hotelRepository;
     private final RoomTypeRepository roomTypeRepository;
 
@@ -80,7 +86,11 @@ public class HotelBulkSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        if (!enabled) return;
+        if (enabled) seed300();
+        if (enabled34) seed34();
+    }
+
+    private void seed300() {
         if (hotelRepository.findByExternalId(EXT_BASE + 1).isPresent()) {
             // Đã seed trước đó -> KHÔNG tạo lại. Nhưng tự sửa các KS seed cũ bị đánh nhầm source=CHANNEL
             // (khiến detail() đi tìm phòng ở hotel-pms 8082, không có -> không đặt được) về DIRECT.
@@ -111,6 +121,32 @@ public class HotelBulkSeeder implements CommandLineRunner {
         }
         log.info("[HotelBulkSeeder] HOÀN TẤT: đã tạo {} khách sạn mới trên {} thành phố. Tổng KS hiện có = {}.",
                 seq, VnLocations.ALL.size(), hotelRepository.count());
+    }
+
+    /**
+     * Phase 2: 24 tỉnh/thành còn lại (VnLocations.EXTRA, 3 KS/điểm = 72 KS) -> đủ 34 đơn vị cấp tỉnh.
+     * Idempotent bằng dải externalId 805001..805072, độc lập với phase 300 (chạy được riêng lẻ).
+     */
+    private void seed34() {
+        if (hotelRepository.findByExternalId(EXT2_BASE + 1).isPresent()) {
+            log.info("[HotelBulkSeeder] Phase 34 tỉnh: đã seed trước đó -> bỏ qua.");
+            return;
+        }
+        log.info("[HotelBulkSeeder] Phase 34 tỉnh: seed {} điểm đến x3 KS...", VnLocations.EXTRA.size());
+        Set<String> usedNames = new HashSet<>();
+        int seq = 0;
+        for (VnLocations.Loc loc : VnLocations.EXTRA) {
+            for (int n = 0; n < loc.weight; n++) {
+                seq++;
+                int star = 3 + rnd.nextInt(3);
+                double mult = priceMult(star, loc);
+                Hotel h = buildHotel(loc, seq, star, mult, usedNames);
+                h.setExternalId(EXT2_BASE + seq);   // ghi đè dải id phase 2 (buildHotel gán dải phase 1)
+                hotelRepository.save(h);
+                seedRoomTypes(h, mult);
+            }
+        }
+        log.info("[HotelBulkSeeder] Phase 34 tỉnh HOÀN TẤT: +{} KS. Tổng KS = {}.", seq, hotelRepository.count());
     }
 
     // ----- build -----
