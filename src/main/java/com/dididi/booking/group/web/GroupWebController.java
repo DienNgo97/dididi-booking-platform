@@ -1,5 +1,7 @@
 package com.dididi.booking.group.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.common.QrCodeUtil;
@@ -89,6 +91,10 @@ public class GroupWebController {
     }
 
     /** Bang dieu khien nhom (xem duoc qua link). */
+    /** Thanh toán thử cả nhóm (dev/kiểm thử) — cùng cờ app.payment.mock-enabled với trang /payment. */
+    @org.springframework.beans.factory.annotation.Value("${app.payment.mock-enabled:false}")
+    private boolean mockPayEnabled;
+
     @GetMapping("/g/{token}")
     public String dashboard(@PathVariable String token, Authentication auth, Model model) {
         GroupBooking g = groupService.getByToken(token);
@@ -145,6 +151,7 @@ public class GroupWebController {
             BigDecimal share = totalAll.divide(BigDecimal.valueOf(rows.size()), 0, java.math.RoundingMode.HALF_UP);
             model.addAttribute("evenShare", share);
         }
+        model.addAttribute("mockPayEnabled", mockPayEnabled);
         return "group/dashboard";
     }
 
@@ -169,7 +176,7 @@ public class GroupWebController {
             if (pay) {
                 return "redirect:/payment/" + b.getPublicCode();   // them & thanh toan ngay
             }
-            ra.addFlashAttribute("message", "Đã thêm phòng vào nhóm. Bấm \"Thanh toán phần của tôi\" khi muốn trả.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f46", "Đã thêm phòng vào nhóm. Bấm \"Thanh toán phần của tôi\" khi muốn trả."));
             return "redirect:/g/" + token;                         // chi them -> ve bang dieu khien
         } catch (Exception ex) {
             ra.addFlashAttribute("error", ex.getMessage());
@@ -183,7 +190,7 @@ public class GroupWebController {
                              Authentication auth, RedirectAttributes ra) {
         try {
             groupService.removeRoom(token, code, currentUser.id(auth));
-            ra.addFlashAttribute("message", "Đã xoá phòng khỏi nhóm");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f34", "Đã xoá phòng khỏi nhóm"));
         } catch (Exception ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -196,7 +203,7 @@ public class GroupWebController {
                                Authentication auth, RedirectAttributes ra) {
         try {
             groupService.removeMember(token, userId, currentUser.id(auth));
-            ra.addFlashAttribute("message", "Đã xoá thành viên khỏi nhóm");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f35", "Đã xoá thành viên khỏi nhóm"));
         } catch (Exception ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -210,7 +217,7 @@ public class GroupWebController {
         Long myId = currentUser.idOrNull(auth);
         if (myId == null) return "redirect:/login";
         if (!myId.equals(g.getOrganizerUserId())) {
-            ra.addFlashAttribute("error", "Chỉ người tạo nhóm mới thanh toán cho cả nhóm");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f02", "Chỉ người tạo nhóm mới thanh toán cho cả nhóm"));
             return "redirect:/g/" + token;
         }
         // BP-GRP-01: chot dung tap phong PENDING tai thoi diem nay; total tinh tu chinh tap do.
@@ -222,7 +229,7 @@ public class GroupWebController {
             if (b.getAmount() != null) total = total.add(b.getAmount());
         }
         if (lead == null) {
-            ra.addFlashAttribute("message", "Không có phòng nào cần thanh toán");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f09", "Không có phòng nào cần thanh toán"));
             return "redirect:/g/" + token;
         }
         String txnRef = "GRP" + g.getId() + "_" + System.currentTimeMillis();
@@ -231,12 +238,52 @@ public class GroupWebController {
         return "redirect:" + url;
     }
 
+    /**
+     * QA TC-C-33: thanh toán THỬ cho cả nhóm (không qua cổng) — trước đây "trả cả nhóm" chỉ có
+     * đường VNPay thật nên không kiểm thử được luồng gộp. Cùng cơ chế chốt tập phòng (BP-GRP-01)
+     * và cùng đường xác nhận confirmGroupBookings với luồng VNPay — chỉ khác bước trả tiền.
+     * Ẩn sau cờ app.payment.mock-enabled (prod ép false).
+     */
+    @PostMapping("/g/{token}/pay-group-mock")
+    public String payGroupMock(@PathVariable String token, Authentication auth, RedirectAttributes ra) {
+        if (!mockPayEnabled) {
+            throw new com.dididi.booking.common.exception.BusinessException(
+                    "NOT_FOUND", "Không tìm thấy", org.springframework.http.HttpStatus.NOT_FOUND);
+        }
+        GroupBooking g = groupService.getByToken(token);
+        Long myId = currentUser.idOrNull(auth);
+        if (myId == null) return "redirect:/login";
+        if (!myId.equals(g.getOrganizerUserId())) {
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f02", "Chỉ người tạo nhóm mới thanh toán cho cả nhóm"));
+            return "redirect:/g/" + token;
+        }
+        List<Booking> chosen = groupService.beginGroupPayment(g.getId());
+        Booking lead = null;
+        BigDecimal total = BigDecimal.ZERO;
+        for (Booking b : chosen) {
+            if (lead == null) lead = b;
+            if (b.getAmount() != null) total = total.add(b.getAmount());
+        }
+        if (lead == null) {
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f09", "Không có phòng nào cần thanh toán"));
+            return "redirect:/g/" + token;
+        }
+        String txnRef = "GRP" + g.getId() + "_MOCK" + System.currentTimeMillis();
+        var p = paymentService.initiateVnpayWithAmount(lead, total, txnRef);
+        paymentService.markPaid(p, "MOCK-" + System.currentTimeMillis(), null, "00",
+                java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        groupService.confirmGroupBookings(g.getId());
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f49",
+                "Đã thanh toán thử cho cả nhóm (không qua cổng thanh toán). Các phòng đã chốt được xác nhận."));
+        return "redirect:/g/" + token;
+    }
+
     /** Dong nhom (chu nhom): khong cho them phong moi. */
     @PostMapping("/g/{token}/close")
     public String close(@PathVariable String token, Authentication auth, RedirectAttributes ra) {
         try {
             groupService.closeGroup(token, currentUser.id(auth));
-            ra.addFlashAttribute("message", "Đã đóng nhóm");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f38", "Đã đóng nhóm"));
         } catch (Exception ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -248,7 +295,7 @@ public class GroupWebController {
     public String reopen(@PathVariable String token, Authentication auth, RedirectAttributes ra) {
         try {
             groupService.reopenGroup(token, currentUser.id(auth));
-            ra.addFlashAttribute("message", "Đã mở lại nhóm");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f28", "Đã mở lại nhóm"));
         } catch (Exception ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -260,7 +307,7 @@ public class GroupWebController {
     public String endTrip(@PathVariable String token, Authentication auth, RedirectAttributes ra) {
         try {
             groupService.endTrip(token, currentUser.id(auth));
-            ra.addFlashAttribute("message", "Đã kết thúc chuyến đi. Bạn có thể xuất hoá đơn chia tiền.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f25", "Đã kết thúc chuyến đi. Bạn có thể xuất hoá đơn chia tiền."));
         } catch (Exception ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -272,7 +319,7 @@ public class GroupWebController {
     public String reopenTrip(@PathVariable String token, Authentication auth, RedirectAttributes ra) {
         try {
             groupService.reopenTrip(token, currentUser.id(auth));
-            ra.addFlashAttribute("message", "Đã mở lại chuyến đi");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f27", "Đã mở lại chuyến đi"));
         } catch (Exception ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -340,7 +387,7 @@ public class GroupWebController {
                        Authentication auth, RedirectAttributes ra) {
         try {
             groupService.updateGroup(token, currentUser.id(auth), title, roomTypeId, deadline, splitEven);
-            ra.addFlashAttribute("message", "Đã cập nhật nhóm");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f13", "Đã cập nhật nhóm"));
         } catch (Exception ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }

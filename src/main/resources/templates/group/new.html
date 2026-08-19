@@ -22,7 +22,7 @@
         <input type="hidden" name="roomName" th:value="${roomName}"/>
 
         <label class="muted" th:text="#{group.groupName}">Tên nhóm</label><br/>
-        <input type="text" name="title" th:value="#{group.tripGroupPrefix} + ${hotelName}" maxlength="80"
+        <input type="text" name="title" th:value="#{group.tripGroupPrefix} + ' ' + ${hotelName}" maxlength="80"
                style="width:100%;padding:9px;border:1px solid #d3d9e4;border-radius:8px;margin-bottom:10px"/>
 
         <div style="display:flex;gap:10px;flex-wrap:wrap">

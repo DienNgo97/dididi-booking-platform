@@ -121,6 +121,15 @@
             <span th:if="${splitEven and evenShare != null}" th:utext="#{group.refundYou(${#numbers.formatInteger(evenShare,1,'COMMA')})}">Sau đó mỗi người hoàn lại bạn
                 <b>0</b> VND (chia đều).</span>
         </div>
+        <!-- Thanh toán thử cả nhóm (QA TC-C-33) — chỉ hiện khi bật app.payment.mock-enabled -->
+        <form th:if="${mockPayEnabled}" th:action="@{'/g/' + ${group.token} + '/pay-group-mock'}" method="post" style="margin-top:8px">
+            <button type="submit" class="btn ghost" th:attr="data-confirm=#{group.payGroupMockConfirm}">
+                <svg th:replace="~{fragments/icons :: i('credit-card','')}"></svg>
+                <span th:text="#{group.payGroupMock}">Thanh toán thử cả nhóm (không qua cổng)</span>
+            </button>
+        </form>
+        <div class="muted" style="font-size:12px;margin-top:0">
+        </div>
     </div>
 
     <!-- Danh sach thanh vien -->
