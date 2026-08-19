@@ -113,8 +113,11 @@ public class CommunityAdminService {
     // ===================== REPORTS =====================
 
     @Transactional(readOnly = true)
-    public Page<ContentReport> listReports(ReportStatus status, int page, int size) {
+    public Page<ContentReport> listReports(ReportStatus status, String q, int page, int size) {
         Pageable pg = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "id"));
+        if (q != null && !q.isBlank()) {
+            return reportRepository.adminSearch(q.trim(), status, pg);
+        }
         return (status == null) ? reportRepository.findAll(pg) : reportRepository.findByStatus(status, pg);
     }
 
@@ -206,9 +209,10 @@ public class CommunityAdminService {
     // ===================== COMMENTS =====================
 
     @Transactional(readOnly = true)
-    public Page<Comment> listComments(PostStatus status, Long authorId, Long postId, int page, int size) {
+    public Page<Comment> listComments(PostStatus status, Long authorId, Long postId, String q, int page, int size) {
         return commentRepository.adminSearch(
-                status == null ? null : status.name(), authorId, postId, PageRequest.of(page, size));
+                status == null ? null : status.name(), authorId, postId,
+                (q == null || q.isBlank()) ? null : q.trim(), PageRequest.of(page, size));
     }
 
     public Comment hideComment(Long id) { return setCommentStatus(id, PostStatus.HIDDEN); }

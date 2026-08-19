@@ -29,9 +29,13 @@ public class AdminFlightApiController {
     @GetMapping
     public ApiResponse<PagedResponse<FlightApiDto>> list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "departureTime"));
-        Page<Flight> result = flightRepository.findAll(pageable);
+        // Thanh tìm kiếm tab Chuyến bay: số hiệu / sân bay đi / đến.
+        Page<Flight> result = (q != null && !q.isBlank())
+                ? flightRepository.adminSearch(q.trim(), pageable)
+                : flightRepository.findAll(pageable);
         return ApiResponse.ok(PagedResponse.of(result.map(FlightApiDto::from)));
     }
 

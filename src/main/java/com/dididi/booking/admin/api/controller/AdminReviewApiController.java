@@ -34,9 +34,10 @@ public class AdminReviewApiController {
     @GetMapping
     public ApiResponse<PagedResponse<AdminReviewDto>> list(
             @RequestParam(required = false) ReviewStatus status,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AdminReviewDto> p = reviewService.listForAdmin(status, page, size).map(AdminReviewDto::from);
+        Page<AdminReviewDto> p = reviewService.listForAdmin(status, q, page, size).map(AdminReviewDto::from);
         return ApiResponse.ok(PagedResponse.of(p));
     }
 

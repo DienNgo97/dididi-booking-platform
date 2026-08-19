@@ -33,7 +33,15 @@ public class AuditService {
     }
 
     public Page<AuditLog> list(String action, int page, int size) {
+        return list(action, null, page, size);
+    }
+
+    /** Bản có tìm kiếm (thanh tìm kiếm tab Audit): q khớp email / hành động / chi tiết / loại đối tượng. */
+    public Page<AuditLog> list(String action, String q, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size);
+        if (q != null && !q.isBlank()) {
+            return auditLogRepository.adminSearch(q.trim(), (action == null || action.isBlank()) ? null : action, pageable);
+        }
         return (action == null || action.isBlank())
                 ? auditLogRepository.findAllByOrderByCreatedAtDesc(pageable)
                 : auditLogRepository.findByActionOrderByCreatedAtDesc(action, pageable);

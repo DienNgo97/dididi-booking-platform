@@ -32,13 +32,15 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     /** Liệt kê bình luận cho admin: lọc tuỳ chọn theo trạng thái / tác giả / bài. Bao gồm cả REMOVED. */
     @Query(value = "SELECT * FROM social_comments WHERE (:status IS NULL OR status = :status) " +
             "AND (:authorId IS NULL OR author_user_id = :authorId) " +
-            "AND (:postId IS NULL OR post_id = :postId) ORDER BY id DESC",
+            "AND (:postId IS NULL OR post_id = :postId) " +
+            "AND (:q IS NULL OR LOWER(content) LIKE LOWER(CONCAT('%', :q, '%'))) ORDER BY id DESC",
             countQuery = "SELECT COUNT(*) FROM social_comments WHERE (:status IS NULL OR status = :status) " +
             "AND (:authorId IS NULL OR author_user_id = :authorId) " +
-            "AND (:postId IS NULL OR post_id = :postId)",
+            "AND (:postId IS NULL OR post_id = :postId) " +
+            "AND (:q IS NULL OR LOWER(content) LIKE LOWER(CONCAT('%', :q, '%')))",
             nativeQuery = true)
     Page<Comment> adminSearch(@Param("status") String status, @Param("authorId") Long authorId,
-                              @Param("postId") Long postId, Pageable pageable);
+                              @Param("postId") Long postId, @Param("q") String q, Pageable pageable);
 
     /** Đếm bình luận theo từng trạng thái (kể cả REMOVED). Trả [status, count]. */
     @Query(value = "SELECT status, COUNT(*) FROM social_comments GROUP BY status", nativeQuery = true)

@@ -15,6 +15,20 @@ import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+
+    /** Tìm kiếm admin theo email / họ tên / SĐT, kèm lọc role/status tuỳ chọn (thanh tìm kiếm tab Người dùng). */
+    @Query("""
+            SELECT u FROM User u
+            WHERE (lower(u.email) LIKE lower(concat('%', :q, '%'))
+                   OR lower(u.fullName) LIKE lower(concat('%', :q, '%'))
+                   OR u.phone LIKE concat('%', :q, '%'))
+              AND (:role IS NULL OR u.role = :role)
+              AND (:status IS NULL OR u.status = :status)
+            """)
+    Page<User> adminSearch(@Param("q") String q,
+                           @Param("role") Role role,
+                           @Param("status") UserStatus status,
+                           Pageable pageable);
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 

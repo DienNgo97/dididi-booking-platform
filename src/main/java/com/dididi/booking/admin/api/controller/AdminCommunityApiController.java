@@ -73,9 +73,10 @@ public class AdminCommunityApiController {
     @GetMapping("/reports")
     public ApiResponse<PagedResponse<AdminSocialReportDto>> reports(
             @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<ContentReport> pg = svc.listReports(status, page, size);
+        Page<ContentReport> pg = svc.listReports(status, q, page, size);
         Set<Long> ids = pg.getContent().stream().map(ContentReport::getReporterUserId).collect(Collectors.toSet());
         Map<Long, String> names = svc.userNames(ids);
         Page<AdminSocialReportDto> dto = pg.map(r -> AdminSocialReportDto.from(r, names.get(r.getReporterUserId())));
@@ -163,9 +164,10 @@ public class AdminCommunityApiController {
             @RequestParam(required = false) PostStatus status,
             @RequestParam(required = false) Long authorId,
             @RequestParam(required = false) Long postId,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<Comment> pg = svc.listComments(status, authorId, postId, page, size);
+        Page<Comment> pg = svc.listComments(status, authorId, postId, q, page, size);
         Set<Long> ids = pg.getContent().stream().map(Comment::getAuthorUserId).collect(Collectors.toSet());
         Map<Long, String> names = svc.userNames(ids);
         Page<AdminSocialCommentDto> dto = pg.map(c -> AdminSocialCommentDto.from(c, names.get(c.getAuthorUserId())));

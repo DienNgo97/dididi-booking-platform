@@ -17,6 +17,19 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
+
+    /** Tìm kiếm admin theo mã đơn / tiêu đề, kèm lọc status/cancelStatus tuỳ chọn (thanh tìm kiếm tab Đơn đặt). */
+    @Query("""
+            SELECT b FROM Booking b
+            WHERE (lower(b.publicCode) LIKE lower(concat('%', :q, '%'))
+                   OR lower(b.title) LIKE lower(concat('%', :q, '%')))
+              AND (:status IS NULL OR b.status = :status)
+              AND (:cancelStatus IS NULL OR b.cancelStatus = :cancelStatus)
+            """)
+    Page<Booking> adminSearch(@Param("q") String q,
+                              @Param("status") BookingStatus status,
+                              @Param("cancelStatus") CancelStatus cancelStatus,
+                              Pageable pageable);
     Optional<Booking> findByPublicCode(String publicCode);
     List<Booking> findByUserIdOrderByCreatedAtDesc(Long userId);
     List<Booking> findByGroupIdOrderByCreatedAtAsc(Long groupId);
