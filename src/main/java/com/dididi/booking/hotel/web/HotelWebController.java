@@ -38,6 +38,7 @@ public class HotelWebController {
     private final HotelRepository hotelRepository;
     private final PmsApiAdapter pmsAdapter;
     private final RoomTypeRepository roomTypeRepository;
+    private final com.dididi.booking.hotel.repository.RoomInventoryRepository roomInventoryRepository;
     private final ReviewService reviewService;
     private final ReviewImageService reviewImageService;
     private final HotelImageService hotelImageService;
@@ -50,7 +51,9 @@ public class HotelWebController {
                               ReviewImageService reviewImageService,
                               HotelImageService hotelImageService, WishlistService wishlistService,
                               CurrentUser currentUser,
-                              com.dididi.booking.search.HotelSearchService hotelSearchService) {
+                              com.dididi.booking.search.HotelSearchService hotelSearchService,
+                              com.dididi.booking.hotel.repository.RoomInventoryRepository roomInventoryRepository) {
+        this.roomInventoryRepository = roomInventoryRepository;
         this.hotelRepository = hotelRepository;
         this.pmsAdapter = pmsAdapter;
         this.roomTypeRepository = roomTypeRepository;
@@ -297,9 +300,19 @@ public class HotelWebController {
         if (hotel.getSource() == HotelSource.DIRECT) {
             // Khach san vendor tu quan: lay loai phong tu DB noi bo, map sang RoomTypeItem
             // de tai dung dung template + form dat phong.
+            // TC-C-04: giá/đêm HIỂN THỊ phải khớp giá sẽ TÍNH TIỀN. Vendor đặt giá riêng theo ngày
+            // (RoomInventory.price) — trước đây trang này in basePrice tĩnh nên khách chọn đúng ngày
+            // đổi giá vẫn thấy giá cũ, tới bước thanh toán mới lộ giá mới. Giờ tính trung bình/đêm
+            // cho đúng khoảng ngày khách chọn, cùng công thức inv.price ?? basePrice của BookingService.
+            final String ciEff, coEff;
+            if ("day".equals(stay) && date != null && !date.isBlank()) {
+                String co2;
+                try { co2 = java.time.LocalDate.parse(date).plusDays(1).toString(); } catch (Exception e) { co2 = null; }
+                ciEff = date; coEff = co2;
+            } else { ciEff = checkIn; coEff = checkOut; }
             rooms = roomTypeRepository.findByHotelIdOrderByBasePrice(hotel.getId()).stream()
                     .map(rt -> new RoomTypeItem(rt.getId(), rt.getHotelId(), rt.getName(), rt.getDescription(),
-                            rt.getCapacity(), rt.getBasePrice(), rt.getCurrency(), rt.getTotalRooms()))
+                            rt.getCapacity(), displayNightlyPrice(rt, ciEff, coEff), rt.getCurrency(), rt.getTotalRooms()))
                     .toList();
         } else if (hotel.getExternalId() != null) {
             try {
@@ -350,5 +363,29 @@ public class HotelWebController {
         Long uid = currentUser.idOrNull(auth);
         model.addAttribute("wishlisted", uid != null && wishlistService.isWishlisted(uid, hotel.getId()));
         return "hotels/detail";
+    }
+
+    /** Giá/đêm hiệu dụng cho khoảng ngày đã chọn: trung bình các đêm theo RoomInventory override
+     *  (cùng quy tắc tính tiền của BookingService). Thiếu ngày/parse lỗi -> basePrice như cũ. */
+    private java.math.BigDecimal displayNightlyPrice(com.dididi.booking.hotel.domain.entity.RoomType rt,
+                                                     String checkInStr, String checkOutStr) {
+        try {
+            if (checkInStr == null || checkInStr.isBlank() || checkOutStr == null || checkOutStr.isBlank()) {
+                return rt.getBasePrice();
+            }
+            java.time.LocalDate ci = java.time.LocalDate.parse(checkInStr);
+            java.time.LocalDate co = java.time.LocalDate.parse(checkOutStr);
+            long nights = java.time.temporal.ChronoUnit.DAYS.between(ci, co);
+            if (nights <= 0 || rt.getBasePrice() == null) return rt.getBasePrice();
+            java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+            for (java.time.LocalDate d = ci; d.isBefore(co); d = d.plusDays(1)) {
+                var inv = roomInventoryRepository.findByRoomTypeIdAndDate(rt.getId(), d).orElse(null);
+                java.math.BigDecimal night = (inv != null && inv.getPrice() != null) ? inv.getPrice() : rt.getBasePrice();
+                total = total.add(night);
+            }
+            return total.divide(java.math.BigDecimal.valueOf(nights), 0, java.math.RoundingMode.HALF_UP);
+        } catch (Exception e) {
+            return rt.getBasePrice();
+        }
     }
 }

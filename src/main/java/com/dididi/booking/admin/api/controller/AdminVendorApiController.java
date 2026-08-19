@@ -35,13 +35,15 @@ public class AdminVendorApiController {
 
     private final UserRepository userRepository;
     private final HotelRepository hotelRepository;
+    private final com.dididi.booking.search.HotelSearchIndexer searchIndexer;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final ApplicationEventPublisher events;
 
     public AdminVendorApiController(UserRepository userRepository, HotelRepository hotelRepository,
                                     PasswordEncoder passwordEncoder, EmailService emailService,
-                                    ApplicationEventPublisher events) {
+                                    ApplicationEventPublisher events, com.dididi.booking.search.HotelSearchIndexer searchIndexer) {
+        this.searchIndexer = searchIndexer;
         this.userRepository = userRepository;
         this.hotelRepository = hotelRepository;
         this.passwordEncoder = passwordEncoder;
@@ -90,6 +92,7 @@ public class AdminVendorApiController {
         hotel.setSource(HotelSource.DIRECT);
         hotel.setVendorId(vendor.getId());
         hotelRepository.save(hotel);
+        searchIndexer.indexOne(hotel);   // TC-C-03: KS vua duyet hien ngay trong tim kiem
 
         return ApiResponse.ok(toDto(vendor), "Vendor created");
     }
@@ -104,6 +107,7 @@ public class AdminVendorApiController {
         hotelRepository.findByVendorId(userId).ifPresent(h -> {
             h.setActive(true);
             hotelRepository.save(h);
+            searchIndexer.indexOne(h);
         });
         emailService.sendVendorApproved(u.getId(),
                 hotelRepository.findByVendorId(userId).map(Hotel::getName).orElse(null), LocaleContextHolder.getLocale());
@@ -126,6 +130,7 @@ public class AdminVendorApiController {
         hotelRepository.findByVendorId(userId).ifPresent(h -> {
             h.setActive(false);
             hotelRepository.save(h);
+            searchIndexer.indexOne(h);
         });
         emailService.sendVendorRejected(u.getId(), LocaleContextHolder.getLocale());
         events.publishEvent(new AuditEvent(Long.valueOf(auth.getName()), "REJECT_VENDOR", "USER", userId, "Từ chối vendor"));
@@ -145,6 +150,7 @@ public class AdminVendorApiController {
         hotelRepository.findByVendorId(userId).ifPresent(h -> {
             h.setActive(false);
             hotelRepository.save(h);
+            searchIndexer.indexOne(h);
         });
         String reason = req != null ? req.reason() : null;
         events.publishEvent(new AuditEvent(Long.valueOf(auth.getName()), "BAN_VENDOR", "USER", userId,
@@ -163,6 +169,7 @@ public class AdminVendorApiController {
         hotelRepository.findByVendorId(userId).ifPresent(h -> {
             h.setActive(true);
             hotelRepository.save(h);
+            searchIndexer.indexOne(h);
         });
         events.publishEvent(new AuditEvent(Long.valueOf(auth.getName()), "UNBAN_VENDOR", "USER", userId,
                 "Gỡ ban vendor " + u.getEmail()));

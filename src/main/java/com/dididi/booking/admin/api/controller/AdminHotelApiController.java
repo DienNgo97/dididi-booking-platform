@@ -28,9 +28,11 @@ import java.util.List;
 public class AdminHotelApiController {
 
     private final HotelRepository hotelRepository;
+    private final com.dididi.booking.search.HotelSearchIndexer searchIndexer;
     private final ApplicationEventPublisher events;
 
-    public AdminHotelApiController(HotelRepository hotelRepository, ApplicationEventPublisher events) {
+    public AdminHotelApiController(HotelRepository hotelRepository, ApplicationEventPublisher events, com.dididi.booking.search.HotelSearchIndexer searchIndexer) {
+        this.searchIndexer = searchIndexer;
         this.hotelRepository = hotelRepository;
         this.events = events;
     }
@@ -55,6 +57,7 @@ public class AdminHotelApiController {
         // (Mac dinh entity = CHANNEL -> detail() di tim phong o hotel-pms -> "Chua lay duoc loai phong" -> khong dat duoc.)
         h.setSource(com.dididi.booking.hotel.domain.enums.HotelSource.DIRECT);
         hotelRepository.save(h);
+        searchIndexer.indexOne(h);   // TC-C-03: hien ngay trong tim kiem, khong doi re-index 15p
         return ApiResponse.ok(HotelApiDto.from(h), "Created");
     }
 
@@ -67,6 +70,7 @@ public class AdminHotelApiController {
                 .map(h -> {
                     apply(h, req);
                     hotelRepository.save(h);
+        searchIndexer.indexOne(h);   // TC-C-03: hien ngay trong tim kiem, khong doi re-index 15p
                     return ResponseEntity.ok(ApiResponse.ok(HotelApiDto.from(h), "Updated"));
                 })
                 .orElse(ResponseEntity.notFound().build());
