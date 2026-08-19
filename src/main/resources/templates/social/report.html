@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Báo cáo nội dung - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.report}">Báo cáo nội dung - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
@@ -10,27 +10,27 @@
     <div th:replace="~{fragments/site :: flash}"></div>
 
     <div class="sx-single">
-        <h1>Báo cáo nội dung</h1>
-        <p class="muted">Báo cáo của bạn được ẩn danh với người đăng và giúp đội ngũ giữ Cộng đồng an toàn.</p>
+        <h1 th:text="#{community.report.title}">Báo cáo nội dung</h1>
+        <p class="muted" th:text="#{community.report.sub}">Báo cáo ẩn danh.</p>
         <form class="sx-compose" th:action="@{/community/report}" method="post">
             <input type="hidden" name="type" th:value="${targetType}"/>
             <input type="hidden" name="id" th:value="${targetId}"/>
-            <label>Lý do báo cáo
+            <label><span th:text="#{community.report.reason}">Lý do báo cáo</span>
                 <select name="reason">
-                    <option value="SPAM">Spam / quảng cáo</option>
-                    <option value="HARASSMENT">Quấy rối / xúc phạm</option>
-                    <option value="NUDITY">Ảnh khoả thân / nhạy cảm</option>
-                    <option value="VIOLENCE">Bạo lực</option>
-                    <option value="MISINFO">Thông tin sai lệch</option>
-                    <option value="OTHER">Khác</option>
+                    <option value="SPAM" th:text="#{community.report.spam}">Spam</option>
+                    <option value="HARASSMENT" th:text="#{community.report.harass}">Quấy rối</option>
+                    <option value="NUDITY" th:text="#{community.report.nudity}">Nhạy cảm</option>
+                    <option value="VIOLENCE" th:text="#{community.report.violence}">Bạo lực</option>
+                    <option value="MISINFO" th:text="#{community.report.misinfo}">Sai lệch</option>
+                    <option value="OTHER" th:text="#{community.report.other}">Khác</option>
                 </select>
             </label>
-            <label>Mô tả thêm (tuỳ chọn)
-                <textarea name="note" rows="3" maxlength="500" placeholder="Cho biết thêm chi tiết…"></textarea>
+            <label><span th:text="#{community.report.note}">Mô tả thêm (tuỳ chọn)</span>
+                <textarea name="note" rows="3" maxlength="500" th:placeholder="#{community.report.notePh}"></textarea>
             </label>
             <div class="sx-form-actions">
-                <a href="/community" class="btn ghost">Huỷ</a>
-                <button type="submit" class="btn">Gửi báo cáo</button>
+                <a href="/community" class="btn ghost" th:text="#{community.action.cancel}">Huỷ</a>
+                <button type="submit" class="btn" th:text="#{community.report.submit}">Gửi báo cáo</button>
             </div>
         </form>
     </div>

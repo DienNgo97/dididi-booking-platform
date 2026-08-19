@@ -1,5 +1,7 @@
 package com.dididi.booking.booking.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.service.BookingService;
 import com.dididi.booking.flight.domain.entity.Flight;
@@ -148,10 +150,10 @@ public class BookingWebController {
                 ra.addAttribute("depart", tripDepart);
                 ra.addAttribute("ret", tripReturn);
                 if ("outbound".equalsIgnoreCase(tripLeg)) {
-                    ra.addFlashAttribute("message", "Đã đặt vé chiều đi (chờ thanh toán). Tiếp tục chọn vé chiều về.");
+                    ra.addFlashAttribute("message", I18nSupport.msg("flash.f41", "Đã đặt vé chiều đi (chờ thanh toán). Tiếp tục chọn vé chiều về."));
                     return "redirect:/trip-planner/inbound";
                 }
-                ra.addFlashAttribute("message", "Đã đặt vé chiều về (chờ thanh toán). Tiếp tục chọn khách sạn.");
+                ra.addFlashAttribute("message", I18nSupport.msg("flash.f40", "Đã đặt vé chiều về (chờ thanh toán). Tiếp tục chọn khách sạn."));
                 return "redirect:/trip-planner/stay";
             }
             return "redirect:/payment/" + b.getPublicCode();

@@ -1,5 +1,7 @@
 package com.dididi.booking.loyalty.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.loyalty.service.LoyaltyService;
 import com.dididi.booking.voucher.domain.Voucher;
@@ -40,8 +42,10 @@ public class LoyaltyWebController {
     public String redeem(@RequestParam int points, Authentication auth, RedirectAttributes ra) {
         try {
             Voucher v = loyaltyService.redeemForVoucher(currentUser.id(auth), points);
-            ra.addFlashAttribute("message", "Đã đổi " + points + " điểm. Mã giảm giá của bạn: " + v.getCode()
-                    + " (giảm " + v.getDiscountValue().toBigInteger() + "đ, dùng 1 lần). Nhập mã này khi thanh toán.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f48",
+                    "Đã đổi " + points + " điểm. Mã giảm giá của bạn: " + v.getCode()
+                    + " (giảm " + v.getDiscountValue().toBigInteger() + "đ, dùng 1 lần). Nhập mã này khi thanh toán.",
+                    points, v.getCode(), v.getDiscountValue().toBigInteger()));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }

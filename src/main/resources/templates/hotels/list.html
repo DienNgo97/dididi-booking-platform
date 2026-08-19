@@ -27,71 +27,73 @@
     <div class="hsearch-layout">
     <aside class="hfilter">
         <form class="hfilter-form" id="hfilterForm" onsubmit="return false">
-            <div class="hf-head"><b>Bộ lọc</b><button type="button" class="hf-clear" id="hfClear">Xoá lọc</button></div>
+            <!-- TC-B-29: toàn bộ nhãn bộ lọc chuyển sang i18n; tên enum (loại chỗ ở/tag/tiện nghi)
+                 tra theo khoá động #{'hotel.type|tag|amenity.' + name()} thay vì viName cứng tiếng Việt. -->
+            <div class="hf-head"><b th:text="#{hotels.filter.title}">Bộ lọc</b><button type="button" class="hf-clear" id="hfClear" th:text="#{hotels.filter.clear}">Xoá lọc</button></div>
 
             <div class="hf-sec">
-                <div class="hf-title">Giá mỗi đêm (đ)</div>
+                <div class="hf-title" th:text="#{hotels.filter.pricePerNight}">Giá mỗi đêm (đ)</div>
                 <div class="hf-price">
-                    <input type="number" name="priceMin" min="0" step="100000" placeholder="Tối thiểu" th:value="${fPriceMin}"/>
+                    <input type="number" name="priceMin" min="0" step="100000" th:placeholder="#{hotels.filter.priceMin}" th:value="${fPriceMin}"/>
                     <span>–</span>
-                    <input type="number" name="priceMax" min="0" step="100000" placeholder="Tối đa" th:value="${fPriceMax}"/>
+                    <input type="number" name="priceMax" min="0" step="100000" th:placeholder="#{hotels.filter.priceMax}" th:value="${fPriceMax}"/>
                 </div>
             </div>
 
             <div class="hf-sec">
-                <div class="hf-title">Hạng sao</div>
+                <div class="hf-title" th:text="#{hotels.filter.stars}">Hạng sao</div>
                 <label class="hf-opt" th:each="s : ${ {5,4,3} }">
                     <input type="checkbox" name="stars" th:value="${s}" th:checked="${fStars.contains(s)}"/>
-                    <span th:text="${s} + ' sao'">5 sao</span>
+                    <span th:text="${s} + ' ' + #{hotels.filter.starsUnit}">5 sao</span>
                 </label>
             </div>
 
             <div class="hf-sec">
-                <div class="hf-title">Điểm đánh giá</div>
-                <label class="hf-opt"><input type="radio" name="minRating" value="4.5" th:checked="${fMinRating != null and fMinRating == 4.5}"/> <span>Từ 4.5 ★</span></label>
-                <label class="hf-opt"><input type="radio" name="minRating" value="4"   th:checked="${fMinRating != null and fMinRating == 4}"/> <span>Từ 4.0 ★</span></label>
-                <label class="hf-opt"><input type="radio" name="minRating" value="3.5" th:checked="${fMinRating != null and fMinRating == 3.5}"/> <span>Từ 3.5 ★</span></label>
-                <label class="hf-opt"><input type="radio" name="minRating" value=""    th:checked="${fMinRating == null}"/> <span>Tất cả</span></label>
+                <div class="hf-title" th:text="#{hotels.filter.rating}">Điểm đánh giá</div>
+                <label class="hf-opt"><input type="radio" name="minRating" value="4.5" th:checked="${fMinRating != null and fMinRating == 4.5}"/> <span th:text="#{hotels.filter.ratingFrom('4.5')}">Từ 4.5 ★</span></label>
+                <label class="hf-opt"><input type="radio" name="minRating" value="4"   th:checked="${fMinRating != null and fMinRating == 4}"/> <span th:text="#{hotels.filter.ratingFrom('4.0')}">Từ 4.0 ★</span></label>
+                <label class="hf-opt"><input type="radio" name="minRating" value="3.5" th:checked="${fMinRating != null and fMinRating == 3.5}"/> <span th:text="#{hotels.filter.ratingFrom('3.5')}">Từ 3.5 ★</span></label>
+                <label class="hf-opt"><input type="radio" name="minRating" value=""    th:checked="${fMinRating == null}"/> <span th:text="#{hotels.filter.all}">Tất cả</span></label>
             </div>
 
             <div class="hf-sec">
-                <div class="hf-title">Loại chỗ ở</div>
+                <div class="hf-title" th:text="#{hotels.filter.type}">Loại chỗ ở</div>
                 <label class="hf-opt" th:each="t : ${allTypes}">
                     <input type="checkbox" name="types" th:value="${t.name()}" th:checked="${fTypes.contains(t.name())}"/>
-                    <span th:text="${t.viName}">Khách sạn</span>
+                    <span th:text="#{'hotel.type.' + ${t.name()}}">Khách sạn</span>
                 </label>
             </div>
 
             <div class="hf-sec">
-                <div class="hf-title">Nổi bật</div>
+                <div class="hf-title" th:text="#{hotels.filter.featured}">Nổi bật</div>
                 <label class="hf-opt" th:each="t : ${allTags}">
                     <input type="checkbox" name="tags" th:value="${t.name()}" th:checked="${fTags.contains(t.name())}"/>
-                    <span th:text="${t.viName}">Sát biển</span>
+                    <span th:text="#{'hotel.tag.' + ${t.name()}}">Sát biển</span>
                 </label>
             </div>
 
             <div class="hf-sec">
-                <div class="hf-title">Tiện nghi</div>
+                <div class="hf-title" th:text="#{hotels.filter.amenities}">Tiện nghi</div>
                 <label class="hf-opt" th:each="a : ${allAmenities}">
                     <input type="checkbox" name="amenities" th:value="${a.name()}" th:checked="${fAmenities.contains(a.name())}"/>
-                    <span th:text="${a.viName}">Wifi</span>
+                    <span th:text="#{'hotel.amenity.' + ${a.name()}}">Wifi</span>
                 </label>
             </div>
 
-            <p class="hf-hint">Bộ lọc áp dụng ngay khi bạn chọn — không cần tải lại trang.</p>
+            <p class="hf-hint" th:text="#{hotels.filter.hint}">Bộ lọc áp dụng ngay khi bạn chọn — không cần tải lại trang.</p>
         </form>
     </aside>
     <div class="hresults">
     <h1><span th:text="#{hotels.title}">Khách sạn</span><span class="muted" th:if="${city}"> · <span th:text="${city}"></span></span></h1>
     <div class="hresult-bar">
-        <span class="hresult-count"><b id="hcount">…</b> chỗ ở</span>
-        <label class="hresult-sort">Sắp xếp:
+        <span class="hresult-count"><b id="hcount">…</b> <span th:text="#{hotels.count.unit}">chỗ ở</span></span>
+        <label class="hresult-sort"><span th:text="#{hotels.sort.label}">Sắp xếp:</span>
             <select id="hsort">
-                <option value=""           th:selected="${fSort == null or fSort == ''}">Đề xuất</option>
-                <option value="price_asc"  th:selected="${fSort == 'price_asc'}">Giá: thấp → cao</option>
-                <option value="price_desc" th:selected="${fSort == 'price_desc'}">Giá: cao → thấp</option>
-                <option value="rating_desc"th:selected="${fSort == 'rating_desc'}">Đánh giá cao nhất</option>
-                <option value="stars_desc" th:selected="${fSort == 'stars_desc'}">Hạng sao cao nhất</option>
+                <option value=""           th:selected="${fSort == null or fSort == ''}" th:text="#{hotels.sort.suggested}">Đề xuất</option>
+                <option value="price_asc"  th:selected="${fSort == 'price_asc'}" th:text="#{hotels.sort.priceAsc}">Giá: thấp → cao</option>
+                <option value="price_desc" th:selected="${fSort == 'price_desc'}" th:text="#{hotels.sort.priceDesc}">Giá: cao → thấp</option>
+                <option value="rating_desc"th:selected="${fSort == 'rating_desc'}" th:text="#{hotels.sort.ratingDesc}">Đánh giá cao nhất</option>
+                <option value="stars_desc" th:selected="${fSort == 'stars_desc'}" th:text="#{hotels.sort.starsDesc}">Hạng sao cao nhất</option>
             </select>
         </label>
     </div>
@@ -107,7 +109,7 @@
     <div class="hlist" id="hlist"></div>
     <nav class="pager" id="hpager"></nav>
     <p class="muted" id="hempty" style="display:none" th:text="#{hotels.empty}">Không có khách sạn phù hợp.</p>
-    <p class="muted" id="hloading" style="display:none">Đang tải…</p>
+    <p class="muted" id="hloading" style="display:none" th:text="#{common.loading}">Đang tải…</p>
     </div><!-- /.hresults -->
     </div><!-- /.hsearch-layout -->
 </div>

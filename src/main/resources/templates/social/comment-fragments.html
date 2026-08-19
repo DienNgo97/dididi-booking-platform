@@ -17,16 +17,16 @@
         </div>
         <div class="sx-cm-meta">
             <button type="button" class="sx-clike" th:classappend="${c.liked} ? 'is-on' : ''"
-                    th:attr="data-comment-id=${c.id}" aria-label="Thích">
+                    th:attr="data-comment-id=${c.id}" th:aria-label="#{community.action.like}">
                 <svg th:replace="~{fragments/icons :: i('heart', ${c.liked} ? 'ic-fill' : '')}"></svg>
                 <span class="sx-clike-count" th:text="${c.likeCount > 0 ? c.likeCount : ''}"></span>
             </button>
             <span class="sx-time" th:attr="data-ts=${c.createdAtMs}"></span>
             <a th:if="${c.parentId == null}" href="#" class="sx-reply-toggle"
-               th:attr="data-id=${c.id},data-name=${c.author.handle != null ? '@' + c.author.handle : c.author.name}">Trả lời</a>
+               th:attr="data-id=${c.id},data-name=${c.author.handle != null ? '@' + c.author.handle : c.author.name}" th:text="#{community.comment.reply}">Trả lời</a>
             <form th:if="${c.canDelete}" th:action="@{'/community/comments/' + ${c.id} + '/delete'}" method="post" style="display:inline">
                 <input type="hidden" name="postId" th:value="${c.postId}"/>
-                <button type="submit" class="sx-linklike" data-confirm="Xoá bình luận này?">Xoá</button>
+                <button type="submit" class="sx-linklike" th:attr="data-confirm=#{community.comment.deleteConfirm}" th:text="#{community.action.delete}">Xoá</button>
             </form>
         </div>
         <div th:if="${c.parentId == null}" class="sx-cm-replies" th:attr="data-replies-for=${c.id}">

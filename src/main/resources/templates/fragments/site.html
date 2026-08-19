@@ -13,18 +13,18 @@
         <a href="/community"><svg th:replace="~{fragments/icons :: i('compass','')}"></svg> <span th:text="#{nav.community}">Cộng đồng</span></a>
         <span class="sp"></span>
         <span sec:authorize="isAuthenticated()" class="dd dd-bell" id="ddBell">
-            <button class="dd-btn dd-bell-btn" type="button" aria-label="Thông báo" title="Thông báo">
+            <button class="dd-btn dd-bell-btn" type="button" th:attr="aria-label=#{nav.notifBell},title=#{nav.notifBell}">
                 <svg th:replace="~{fragments/icons :: i('bell','')}"></svg>
                 <span class="dd-badge" th:if="${notifUnread != null and notifUnread > 0}"
                       th:text="${notifUnread > 99 ? '99+' : notifUnread}">0</span>
             </button>
             <div class="dd-menu dd-notif">
                 <div class="dd-notif-head">
-                    <b>Thông báo</b>
-                    <a href="/notifications">Xem tất cả</a>
+                    <b th:text="#{nav.notifBell}">Thông báo</b>
+                    <a href="/notifications" th:text="#{nav.notifViewAll}">Xem tất cả</a>
                 </div>
                 <div class="dd-notif-list" id="ddNotifList">
-                    <div class="dd-notif-empty">Đang tải…</div>
+                    <div class="dd-notif-empty" th:text="#{common.loading}">Đang tải…</div>
                 </div>
             </div>
         </span>
@@ -82,6 +82,9 @@
         toastOk: /*[[#{toast.ok}]]*/ 'Thành công',
         toastErr: /*[[#{toast.err}]]*/ 'Không thể hoàn tất',
         toastClose: /*[[#{toast.close}]]*/ 'Đóng',
+            notifLoading: /*[[#{common.loading}]]*/ 'Đang tải…',
+            notifEmpty: /*[[#{nav.notifEmpty}]]*/ 'Chưa có thông báo nào',
+            notifFail: /*[[#{nav.notifFail}]]*/ 'Không tải được',
         avatarYou: /*[[#{chat.avatarYou}]]*/ 'Bạn',
         avatarAgent: /*[[#{chat.avatarAgent}]]*/ 'NV',
         greeting: /*[[#{chat.greeting}]]*/ 'Chào bạn',
@@ -109,7 +112,7 @@
         function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
         function ic(id){ return '<svg class="ic"><use href="#'+(id||'ic-bell')+'"></use></svg>'; }
         function render(items){
-            if(!items||!items.length){ listEl.innerHTML='<div class="dd-notif-empty">Chưa có thông báo nào</div>'; return; }
+            if(!items||!items.length){ listEl.innerHTML='<div class="dd-notif-empty"></div>', listEl.firstChild.textContent=((window.DD_T&&DD_T.notifEmpty)||'Chưa có thông báo nào'); return; }
             listEl.innerHTML=items.map(function(n){
                 return '<a class="dd-notif-item'+(n.read?'':' is-unread')+'" href="'+esc(n.url||'/notifications')+'">'
                     +'<span class="dd-notif-ic">'+ic(n.icon)+'</span>'
@@ -119,10 +122,10 @@
         btn.addEventListener('click', function(){
             setTimeout(function(){
                 if(bell.classList.contains('open') && !loaded){
-                    loaded=true; listEl.innerHTML='<div class="dd-notif-empty">Đang tải…</div>';
+                    loaded=true; listEl.innerHTML='<div class="dd-notif-empty"></div>', listEl.firstChild.textContent=((window.DD_T&&DD_T.notifLoading)||'Đang tải…');
                     fetch('/notifications/recent',{headers:{'Accept':'application/json'}})
                         .then(function(r){return r.json();}).then(render)
-                        .catch(function(){ listEl.innerHTML='<div class="dd-notif-empty">Không tải được</div>'; loaded=false; });
+                        .catch(function(){ listEl.innerHTML='<div class="dd-notif-empty"></div>', listEl.firstChild.textContent=((window.DD_T&&DD_T.notifFail)||'Không tải được'); loaded=false; });
                 }
             },0);
         });
@@ -183,7 +186,7 @@
             t.className = 'toast ' + (ok ? 'toast-ok' : 'toast-err');
             t.innerHTML = '<span class="toast-ico" aria-hidden="true">' + (ok ? '\u2713' : '!') + '</span>'
                 + '<div class="toast-body"><div class="toast-title"></div><div class="toast-msg"></div></div>'
-                + '<button type="button" class="toast-x" aria-label="Đóng">\u00d7</button>'
+                + '<button type="button" class="toast-x" aria-label="'+(((window.DD_T&&DD_T.toastClose)||'Đóng').replace(/"/g,''))+'">\u00d7</button>'
                 + '<span class="toast-bar"></span>';
             t.querySelector('.toast-title').textContent = title || (ok ? ((window.DD_T&&DD_T.toastOk)||'Thành công') : ((window.DD_T&&DD_T.toastErr)||'Không thể hoàn tất'));
             t.querySelector('.toast-msg').textContent = message || '';
@@ -204,8 +207,8 @@
             <a href="/trip-planner">Trip Planner</a> ·
             <a href="/trip-guide" th:text="#{nav.tripGuide}">AI Hướng dẫn viên</a> ·
             <a href="/support" th:text="#{footer.support}">Hỗ trợ</a> ·
-            <a href="/legal/terms" th:text="#{footer.terms}">Điều khoản</a> ·
-            <a href="/legal/privacy" th:text="#{footer.privacy}">Bảo mật</a>
+            <a href="/terms" th:text="#{footer.terms}">Điều khoản</a> ·
+            <a href="/privacy" th:text="#{footer.privacy}">Bảo mật</a>
         </p>
         <p style="opacity:.65" th:text="#{footer.copyright}">© 2026 Dididi · Đồ án demo, không phải dịch vụ thương mại thật.</p>
     </footer>

@@ -18,22 +18,22 @@
     <div class="support-faq">
         <button type="button" onclick="DididiSupport.ask('Làm sao huỷ đơn khách sạn hoặc vé máy bay?')"
                 th:utext="#{support.faqCancel} + '<span>' + #{support.faqCancelSub} + '</span>'">
-            Huỷ đơn thế nào?<span>Chính sách huỷ &amp; mốc 48 giờ</span></button>
+            <span th:text="#{support.faq.cancel}">Huỷ đơn thế nào?</span><span th:text="#{support.faq.cancelSub}">Chính sách huỷ &amp; mốc 48 giờ</span></button>
         <button type="button" onclick="DididiSupport.ask('Chính sách hoàn tiền thế nào?')"
                 th:utext="#{support.faqRefund} + '<span>' + #{support.faqRefundSub} + '</span>'">
-            Hoàn tiền<span>Khi nào được hoàn, bao lâu có tiền</span></button>
+            <span th:text="#{support.faq.refund}">Hoàn tiền</span><span th:text="#{support.faq.refundSub}">Khi nào được hoàn</span></button>
         <button type="button" onclick="DididiSupport.ask('Tôi đổi ngày hoặc sửa đơn được không?')"
                 th:utext="#{support.faqReschedule} + '<span>' + #{support.faqRescheduleSub} + '</span>'">
-            Đổi lịch / sửa đơn<span>Thay đổi ngày, giờ, số phòng</span></button>
+            <span th:text="#{support.faq.change}">Đổi lịch / sửa đơn</span><span th:text="#{support.faq.changeSub}">Thay đổi ngày, giờ</span></button>
         <button type="button" onclick="DididiSupport.ask('Dididi hỗ trợ thanh toán bằng cách nào?')"
                 th:utext="#{support.faqPayment} + '<span>' + #{support.faqPaymentSub} + '</span>'">
-            Thanh toán<span>VNPay, thẻ, QR</span></button>
+            <span th:text="#{support.faq.payment}">Thanh toán</span><span th:text="#{support.faq.paymentSub}">VNPay, thẻ, QR</span></button>
         <button type="button" onclick="DididiSupport.ask('Điểm thưởng và hạng thành viên hoạt động ra sao?')"
                 th:utext="#{support.faqPoints} + '<span>' + #{support.faqPointsSub} + '</span>'">
-            Điểm thưởng<span>Tích điểm, đổi voucher, hạng</span></button>
+            <span th:text="#{support.faq.points}">Điểm thưởng</span><span th:text="#{support.faq.pointsSub}">Tích điểm, đổi voucher</span></button>
         <button type="button" onclick="DididiSupport.ask('Hành lý và suất ăn khi đặt vé máy bay?')"
                 th:utext="#{support.faqBaggage} + '<span>' + #{support.faqBaggageSub} + '</span>'">
-            Hành lý &amp; suất ăn<span>Phụ phí dịch vụ chuyến bay</span></button>
+            <span th:text="#{support.faq.baggage}">Hành lý &amp; suất ăn</span><span th:text="#{support.faq.baggageSub}">Phụ phí chuyến bay</span></button>
     </div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:26px">

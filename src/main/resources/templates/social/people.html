@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Mọi người - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.people}">Mọi người - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
@@ -16,24 +16,24 @@
         <div th:replace="~{social/fragments :: railLeft('people')}"></div>
         <main class="sx-main">
         <div class="sx-pagehead">
-            <h1>Mọi người</h1>
-            <p>Tìm và kết nối với cộng đồng du lịch Dididi.</p>
+            <h1 th:text="#{community.nav.people}">Mọi người</h1>
+            <p th:text="#{community.people.sub}">Tìm và kết nối.</p>
         </div>
         <form class="sx-people-search" method="get" action="/community/people" role="search">
             <svg th:replace="~{fragments/icons :: i('search','')}"></svg>
             <input id="sxPeopleSearch" type="search" name="q" th:value="${query}"
-                   placeholder="Tìm theo tên hoặc @handle…" autocomplete="off"/>
+                   th:placeholder="#{community.people.searchPh}" autocomplete="off"/>
         </form>
 
         <p class="sx-people-hint" id="sxPeopleHint"
-           th:text="${query != null and !#strings.isEmpty(query)} ? 'Kết quả cho “' + ${query} + '”' : 'Gợi ý kết nối cho bạn'">Gợi ý kết nối cho bạn</p>
+           th:text="${query != null and !#strings.isEmpty(query)} ? #{community.people.resultsFor(${query})} : #{community.people.suggest}">Gợi ý kết nối cho bạn</p>
 
         <div id="sxPeopleResults">
             <!-- ===== fragment danh sach nguoi dung (dung cho ca SSR & live-search) ===== -->
             <div th:fragment="results">
                 <div th:if="${#lists.isEmpty(people)}" class="sx-empty">
                     <svg th:replace="~{fragments/icons :: i('users','')}"></svg>
-                    <p>Không tìm thấy ai phù hợp. Thử từ khoá khác nhé.</p>
+                    <p th:text="#{community.people.empty}">Không tìm thấy ai phù hợp.</p>
                 </div>
                 <div class="sx-userlist" th:unless="${#lists.isEmpty(people)}">
                     <div th:each="card : ${people}" class="sx-usercard">
@@ -52,15 +52,15 @@
                                     th:classappend="${card.followState == 'ACTIVE'} ? 'is-following' : ''"
                                     th:attr="data-type='USER',data-id=${card.userId},data-state=${card.followState}">
                                 <span class="sx-follow-text"
-                                      th:text="${card.followState == 'ACTIVE'} ? 'Đang theo dõi' : (${card.followState == 'PENDING'} ? 'Đã gửi yêu cầu' : 'Theo dõi')">Theo dõi</span>
+                                      th:text="${card.followState == 'ACTIVE'} ? #{community.follow.following} : (${card.followState == 'PENDING'} ? #{community.follow.requested} : #{community.follow.follow})">Theo dõi</span>
                             </button>
                             <form th:action="@{/community/messages/start}" method="post">
                                 <input type="hidden" name="toUserId" th:value="${card.userId}"/>
-                                <button type="submit" class="btn ghost sx-iconlabel" title="Nhắn tin">
+                                <button type="submit" class="btn ghost sx-iconlabel" th:title="#{community.dm.message}">
                                     <svg th:replace="~{fragments/icons :: i('mail','')}"></svg></button>
                             </form>
                         </div>
-                        <span class="sx-user-actions sx-you" th:if="${card.self}">Đây là bạn</span>
+                        <span class="sx-user-actions sx-you" th:if="${card.self}" th:text="#{community.people.itsYou}">Đây là bạn</span>
                     </div>
                 </div>
             </div>
@@ -71,7 +71,9 @@
 </div>
 <div th:replace="~{fragments/site :: footer}"></div>
 <div th:replace="~{social/fragments :: scripts}"></div>
-<script>
+<script th:inline="javascript">
+    /* i18n cho chuoi sinh tu JS (TC-B-29) */
+    var PL = { resultsPre: /*[[#{community.people.resultsPre}]]*/ 'Kết quả cho “', resultsPost: /*[[#{community.people.resultsPost}]]*/ '”', suggest: /*[[#{community.people.suggest}]]*/ 'Gợi ý kết nối cho bạn' };
     (function () {
         var input = document.getElementById('sxPeopleSearch');
         var box = document.getElementById('sxPeopleResults');
@@ -87,7 +89,7 @@
         function run(q) {
             if (q === lastQ) return;
             lastQ = q;
-            if (hint) hint.textContent = q && q.trim() ? 'Kết quả cho “' + q.trim() + '”' : 'Gợi ý kết nối cho bạn';
+            if (hint) hint.textContent = q && q.trim() ? PL.resultsPre + q.trim() + PL.resultsPost : PL.suggest;
             fetch('/community/people/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
                 .then(function (r) { return r.text(); })
                 .then(function (html) {

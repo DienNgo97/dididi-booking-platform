@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Tin nhắn - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.messages}">Tin nhắn - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
@@ -18,13 +18,13 @@
             <div class="dm-layout dm-inbox-mode">
                 <aside class="dm-list">
                     <div class="dm-list-head">
-                        <h2>Tin nhắn</h2>
-                        <a href="/community/people" class="sx-iconbtn" title="Nhắn tin mới"><svg th:replace="~{fragments/icons :: i('pencil','')}"></svg></a>
+                        <h2 th:text="#{community.nav.messages}">Tin nhắn</h2>
+                        <a href="/community/people" class="sx-iconbtn" th:title="#{community.dm.new}"><svg th:replace="~{fragments/icons :: i('pencil','')}"></svg></a>
                     </div>
                     <div class="dm-list-body">
                         <div th:if="${#lists.isEmpty(conversations)}" class="dm-list-empty">
-                            <p>Chưa có cuộc trò chuyện nào.</p>
-                            <a href="/community/people" class="btn ghost">Tìm người để nhắn</a>
+                            <p th:text="#{community.dm.emptyList}">Chưa có cuộc trò chuyện nào.</p>
+                            <a href="/community/people" class="btn ghost" th:text="#{community.dm.findPeople}">Tìm người để nhắn</a>
                         </div>
                         <a th:each="c : ${conversations}" th:href="${c.url}" class="dm-conv" th:classappend="${c.unread > 0} ? 'unread' : ''">
                             <span class="sx-ava" aria-hidden="true">
@@ -36,7 +36,7 @@
                                     <b th:text="${c.other.name}">Tên</b>
                                     <span class="sx-time" th:attr="data-ts=${c.lastMessageAtMs}"></span>
                                 </div>
-                                <span class="dm-conv-preview" th:text="${c.preview != null ? c.preview : 'Bắt đầu trò chuyện…'}">tin nhắn cuối</span>
+                                <span class="dm-conv-preview" th:text="${c.preview != null ? c.preview : #messages.msg('community.dm.start')}">tin nhắn cuối</span>
                             </div>
                             <span class="dm-unread" th:if="${c.unread > 0}" th:text="${c.unread}">0</span>
                         </a>
@@ -46,9 +46,9 @@
                 <section class="dm-thread dm-empty">
                     <div class="dm-empty-inner">
                         <span class="dm-empty-ic"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></span>
-                        <h3>Tin nhắn của bạn</h3>
-                        <p>Chọn một cuộc trò chuyện ở bên trái để xem, hoặc mở trang cá nhân của ai đó và bấm <b>Nhắn tin</b> để bắt đầu.</p>
-                        <a href="/community/people" class="btn sx-dm-start">Tìm người để nhắn tin</a>
+                        <h3 th:text="#{community.dm.yourMessages}">Tin nhắn của bạn</h3>
+                        <p th:utext="#{community.dm.pickHint}">Chọn một cuộc trò chuyện.</p>
+                        <a href="/community/people" class="btn sx-dm-start" th:text="#{community.dm.findPeopleLong}">Tìm người để nhắn tin</a>
                     </div>
                 </section>
             </div>

@@ -1,5 +1,7 @@
 package com.dididi.booking.booking.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.domain.enums.BookingType;
@@ -130,7 +132,7 @@ public class AccountController {
             } else {
                 bookingService.editDirectOvernight(code, currentUser.id(auth), checkIn, checkOut, rooms);
             }
-            ra.addFlashAttribute("message", "Đã cập nhật đơn. Vui lòng kiểm tra lại số tiền rồi thanh toán.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f16", "Đã cập nhật đơn. Vui lòng kiểm tra lại số tiền rồi thanh toán."));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -147,7 +149,7 @@ public class AccountController {
             if (images != null && images.length > 0) {
                 reviewImageService.attachReviewImages(r.getId(), currentUser.id(auth), images);
             }
-            ra.addFlashAttribute("message", "Cảm ơn bạn đã đánh giá!");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f08", "Cảm ơn bạn đã đánh giá!"));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
