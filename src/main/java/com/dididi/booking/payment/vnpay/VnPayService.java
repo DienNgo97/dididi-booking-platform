@@ -52,6 +52,23 @@ public class VnPayService {
     }
 
     /** Tao URL VNPay voi so tien + noi dung tuy y (dung cho thanh toan gop ca nhom). */
+    /**
+     * VNPay chỉ chấp nhận vnp_IpAddr dạng IPv4. Chạy localhost thì Tomcat trả về loopback IPv6
+     * ("0:0:0:0:0:0:0:1"), và khách dùng mạng IPv6 cũng cho ra chuỗi có dấu ":" — gửi nguyên
+     * sang cổng là sai định dạng. Quy đổi loopback về 127.0.0.1, mọi IPv6 khác về 0.0.0.0
+     * (giá trị hợp lệ, không giả mạo địa chỉ thật của ai).
+     */
+    static String normalizeIpv4(String raw) {
+        String ip = (raw == null) ? "" : raw.trim();
+        if (ip.isEmpty()) return "127.0.0.1";
+        int slash = ip.indexOf('%');                       // bỏ zone id kiểu fe80::1%en0
+        if (slash > 0) ip = ip.substring(0, slash);
+        if ("::1".equals(ip) || "0:0:0:0:0:0:0:1".equals(ip)) return "127.0.0.1";
+        if (ip.startsWith("::ffff:")) ip = ip.substring(7); // IPv4 bọc trong IPv6
+        if (ip.indexOf(':') >= 0) return "0.0.0.0";        // IPv6 thật -> không có IPv4 tương đương
+        return ip;
+    }
+
     public String createPaymentUrl(BigDecimal amount, String txnRef, String orderInfo, String clientIp) {
         LocalDateTime now = LocalDateTime.now(ZONE);
         // VNPay: amount x 100, khong thap phan
@@ -69,7 +86,7 @@ public class VnPayService {
         p.put("vnp_OrderType", orderType);
         p.put("vnp_Locale", (locale == null || locale.isBlank()) ? "vn" : locale);
         p.put("vnp_ReturnUrl", gateway.returnUrl());
-        p.put("vnp_IpAddr", (clientIp == null || clientIp.isBlank()) ? "127.0.0.1" : clientIp);
+        p.put("vnp_IpAddr", normalizeIpv4(clientIp));
         p.put("vnp_CreateDate", now.format(FMT));
         p.put("vnp_ExpireDate", now.plusMinutes(15).format(FMT));
 
