@@ -197,7 +197,15 @@ public class ReviewService {
 
     // ---------- Admin kiem duyet ----------
     public Page<Review> listForAdmin(ReviewStatus status, int page, int size) {
+        return listForAdmin(status, null, page, size);
+    }
+
+    /** Bản có tìm kiếm (thanh tìm kiếm tab Đánh giá): q khớp tên khách / nội dung / phản hồi vendor. */
+    public Page<Review> listForAdmin(ReviewStatus status, String q, int page, int size) {
         PageRequest pageable = PageRequest.of(page, size);
+        if (q != null && !q.isBlank()) {
+            return reviewRepository.adminSearch(q.trim(), status, pageable);
+        }
         return (status == null)
                 ? reviewRepository.findAllByOrderByCreatedAtDesc(pageable)
                 : reviewRepository.findByStatusOrderByCreatedAtDesc(status, pageable);

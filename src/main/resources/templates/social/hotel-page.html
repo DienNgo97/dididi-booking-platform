@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="${page.name} + ' - Cộng đồng Dididi'">Trang khách sạn</title>
+    <title th:text="${page.name} + ' - ' + #{community.brand}">Trang khách sạn</title>
     <link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
@@ -22,15 +22,15 @@
                 <div class="sx-pmeta">
                     <h1>
                         <span th:text="${page.name}">Khách sạn</span>
-                        <span class="sx-badge-hotel">Trang khách sạn</span>
+                        <span class="sx-badge-hotel" th:text="#{community.hotel.badge}">Trang khách sạn</span>
                     </h1>
                     <div class="sx-handle">
                         <span th:if="${page.city}" th:text="${page.city}">Thành phố</span>
                         <span th:if="${page.star != null}" th:text="' · ' + ${page.star} + ' sao'"></span>
                     </div>
                     <div class="sx-stats">
-                        <span><b th:text="${page.postsCount}">0</b> bài</span>
-                        <span><b th:attr="data-followers='HOTEL:' + ${page.hotelId}" th:text="${page.followersCount}">0</b> người theo dõi</span>
+                        <span><b th:text="${page.postsCount}">0</b> <span th:text="#{community.stat.posts}">bài</span></span>
+                        <span><b th:attr="data-followers='HOTEL:' + ${page.hotelId}" th:text="${page.followersCount}">0</b> <span th:text="#{community.stat.followers}">người theo dõi</span></span>
                     </div>
                 </div>
                 <div class="sx-pactions">
@@ -38,17 +38,17 @@
                             th:classappend="${page.followState == 'ACTIVE'} ? 'is-following' : ''"
                             th:attr="data-type='HOTEL',data-id=${page.hotelId},data-state=${page.followState}">
                         <span class="sx-follow-text"
-                              th:text="${page.followState == 'ACTIVE'} ? 'Đang theo dõi' : 'Theo dõi'">Theo dõi</span>
+                              th:text="${page.followState == 'ACTIVE'} ? #{community.follow.following} : #{community.follow.follow}">Theo dõi</span>
                     </button>
-                    <a th:href="${page.hotelUrl}" class="btn ghost">Trang đặt phòng</a>
-                    <a th:if="${page.canPost}" href="/community/compose" class="btn ghost">Đăng bài</a>
+                    <a th:href="${page.hotelUrl}" class="btn ghost" th:text="#{community.hotel.bookingPage}">Trang đặt phòng</a>
+                    <a th:if="${page.canPost}" href="/community/compose" class="btn ghost" th:text="#{community.nav.compose}">Đăng bài</a>
                 </div>
             </div>
         </section>
 
         <div th:if="${#lists.isEmpty(posts)}" class="sx-empty">
             <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
-            <p>Khách sạn này chưa đăng bài nào.</p>
+            <p th:text="#{community.hotel.empty}">Khách sạn này chưa đăng bài nào.</p>
         </div>
         <div id="sxFeed">
             <div th:replace="~{social/fragments :: cards(${posts})}"></div>

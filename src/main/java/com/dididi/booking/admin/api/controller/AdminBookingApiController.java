@@ -61,10 +61,14 @@ public class AdminBookingApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) BookingStatus status,
-            @RequestParam(required = false) CancelStatus cancelStatus) {
+            @RequestParam(required = false) CancelStatus cancelStatus,
+            @RequestParam(required = false) String q) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<Booking> result;
-        if (cancelStatus != null) {
+        if (q != null && !q.isBlank()) {
+            // Thanh tìm kiếm tab Đơn đặt: mã đơn / tiêu đề, vẫn tôn trọng lọc status/cancelStatus.
+            result = bookingRepository.adminSearch(q.trim(), status, cancelStatus, pageable);
+        } else if (cancelStatus != null) {
             result = bookingRepository.findByCancelStatus(cancelStatus, pageable);
         } else if (status != null) {
             result = bookingRepository.findByStatus(status, pageable);

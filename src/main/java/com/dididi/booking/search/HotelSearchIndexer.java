@@ -46,6 +46,25 @@ public class HotelSearchIndexer {
         reindex();
     }
 
+    /**
+     * Index NGAY một khách sạn vừa tạo/sửa (QA TC-C-03): trước đây chỉ re-index định kỳ 15 phút,
+     * nên KS admin/vendor vừa thêm bị "tàng hình" với tìm kiếm theo tên tới 15 phút — người test
+     * tìm ra bản ghi khác và tưởng ảnh không hiện. Best-effort: Meili lỗi/tắt thì bỏ qua,
+     * đợt re-index định kỳ sẽ bắt kịp.
+     */
+    public void indexOne(Hotel h) {
+        if (!searchService.isEnabled() || h == null) {
+            return;
+        }
+        try {
+            if (h.isActive()) {
+                searchService.putDocuments(List.of(toDoc(h)));
+            }
+        } catch (Exception e) {
+            log.warn("[search] Không index được KS {} ({}): {}", h.getId(), h.getName(), e.getMessage());
+        }
+    }
+
     public void reindex() {
         if (!searchService.isEnabled()) {
             return;

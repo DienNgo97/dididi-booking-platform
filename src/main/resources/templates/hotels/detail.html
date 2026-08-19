@@ -50,17 +50,25 @@
     <!-- Vị trí, loại hình & tiện ích (Nhóm 1 + Nhóm 2) -->
     <div class="card" style="margin-top:12px">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
-            <span class="badge" th:if="${hotel.propertyType != null}" th:text="${hotel.propertyType.viName}">Khách sạn</span>
-            <span class="chip" th:each="tg : ${hotel.tags}" th:text="${tg.viName}">Đặc điểm</span>
+            <span class="badge" th:if="${hotel.propertyType != null}" th:text="#{'hotel.type.' + ${hotel.propertyType.name()}}">Khách sạn</span>
+            <span class="chip" th:each="tg : ${hotel.tags}" th:text="#{'hotel.tag.' + ${tg.name()}}">Đặc điểm</span>
         </div>
         <div class="muted" style="margin-bottom:10px">
             <svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg>
             <span th:text="${hotel.address}">địa chỉ</span>
         </div>
+        <!-- QA TC-B-34: trang cộng đồng KS (/community/hotel/{id}) tồn tại từ P1 nhưng KHÔNG có
+             lối vào nào trên UI — đây là điểm vào chính, đặt ngay trang chi tiết khách sạn. -->
+        <div style="margin-bottom:10px">
+            <a class="btn ghost" th:href="@{'/community/hotel/' + ${hotel.id}}">
+                <svg th:replace="~{fragments/icons :: i('users','')}"></svg>
+                <span th:text="#{hotels.communityPage}">Trang cộng đồng</span>
+            </a>
+        </div>
         <div th:if="${hotel.amenities != null and !hotel.amenities.isEmpty()}" class="amenities">
             <span class="amenity" th:each="am : ${hotel.amenities}">
                 <svg th:replace="~{fragments/icons :: i('check','ic-brand')}"></svg>
-                <span th:text="${am.viName}">Tiện ích</span>
+                <span th:text="#{'hotel.amenity.' + ${am.name()}}">Tiện ích</span>
             </span>
         </div>
         <div th:if="${hotel.hasGeo()}" id="hotelMap" class="hotel-map" style="margin-top:12px"></div>

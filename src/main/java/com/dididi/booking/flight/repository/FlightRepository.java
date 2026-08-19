@@ -10,8 +10,29 @@ import java.util.List;
 import java.util.Optional;
 
 public interface FlightRepository extends JpaRepository<Flight, Long> {
+
+    /** Tìm kiếm admin theo số hiệu / sân bay đi / đến (thanh tìm kiếm tab Chuyến bay). */
+    @org.springframework.data.jpa.repository.Query("""
+            SELECT f FROM Flight f
+            WHERE lower(f.flightNumber) LIKE lower(concat('%', :q, '%'))
+               OR lower(f.fromAirport) LIKE lower(concat('%', :q, '%'))
+               OR lower(f.toAirport) LIKE lower(concat('%', :q, '%'))
+            """)
+    org.springframework.data.domain.Page<Flight> adminSearch(
+            @org.springframework.data.repository.query.Param("q") String q,
+            org.springframework.data.domain.Pageable pageable);
     Optional<Flight> findByExternalId(Long externalId);
     List<Flight> findAllByOrderByDepartureTime();
+
+    /**
+     * CHỈ chuyến ĐỒNG BỘ TỪ FLIGHT-PROVIDER (externalId &lt; base, tức &lt; 900000).
+     * Chỉ những chuyến này có sơ đồ ghế (getSeatMap) nên khách chọn được chỗ ngồi.
+     * Chuyến demo CỤC BỘ (externalId &gt;= 900000: DemoDataSeeder + seeder ×5) KHÔNG có sơ đồ ghế
+     * -> loại khỏi mọi danh sách/tìm kiếm cho khách để không lọt vé "không chọn được ghế".
+     * externalId = null cũng bị loại (điều kiện &lt; không khớp null) — an toàn.
+     * Vẫn tra bằng findById được, nên đơn cũ tham chiếu chuyến cục bộ không gãy.
+     */
+    List<Flight> findByExternalIdLessThanOrderByDepartureTime(Long externalId);
 
     /**
      * Tru ghe nguyen tu cho ve cuc bo (BP-BK-01): chi tru khi con du ghe.

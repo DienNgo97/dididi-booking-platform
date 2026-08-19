@@ -51,7 +51,8 @@ public class TripPlannerService {
 
         List<Flight> flights = (destAirport == null)
                 ? List.of()
-                : flightRepository.findAllByOrderByDepartureTime().stream()
+                : flightRepository.findByExternalIdLessThanOrderByDepartureTime(
+                        com.dididi.booking.booking.service.BookingService.LOCAL_FLIGHT_EXTERNAL_ID_BASE).stream()
                 .filter(f -> destAirport.equalsIgnoreCase(f.getToAirport()))
                 .filter(f -> fromAirport == null || fromAirport.isBlank()
                         || fromAirport.equalsIgnoreCase(f.getFromAirport()))
@@ -68,7 +69,8 @@ public class TripPlannerService {
     /** Chuyen bay CON TRONG (con ghe) tu 'from' -> 'to' dung NGAY 'date'. */
     public List<Flight> availableFlights(String from, String to, LocalDate date) {
         if (from == null || from.isBlank() || to == null || to.isBlank() || date == null) return List.of();
-        return flightRepository.findAllByOrderByDepartureTime().stream()
+        return flightRepository.findByExternalIdLessThanOrderByDepartureTime(
+                        com.dididi.booking.booking.service.BookingService.LOCAL_FLIGHT_EXTERNAL_ID_BASE).stream()
                 .filter(f -> to.equalsIgnoreCase(f.getToAirport()))
                 .filter(f -> from.equalsIgnoreCase(f.getFromAirport()))
                 .filter(f -> f.getDepartureTime() != null && date.equals(f.getDepartureTime().toLocalDate()))

@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Bài viết - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.post}">Bài viết - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
@@ -36,7 +36,7 @@
                     </a>
                 </div>
                 <form th:if="${post.canDelete}" th:action="@{'/community/posts/' + ${post.id} + '/delete'}" method="post" class="sx-del">
-                    <button type="submit" class="sx-iconbtn" data-confirm="Xoá bài viết này?" title="Xoá" aria-label="Xoá">
+                    <button type="submit" class="sx-iconbtn" th:attr="data-confirm=#{community.post.deleteConfirm},title=#{community.action.delete},aria-label=#{community.action.delete}">
                         <svg th:replace="~{fragments/icons :: i('x','')}"></svg>
                     </button>
                 </form>
@@ -50,17 +50,17 @@
             </div>
 
             <div class="sx-actions">
-                <button type="button" class="sx-like" th:classappend="${post.liked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Thích">
+                <button type="button" class="sx-like" th:classappend="${post.liked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" th:aria-label="#{community.action.like}">
                     <svg th:replace="~{fragments/icons :: i('heart', ${post.liked} ? 'ic-fill' : '')}"></svg>
                     <span class="sx-like-count" th:text="${post.likeCount}">0</span>
                 </button>
                 <span class="sx-actbtn"><svg th:replace="~{fragments/icons :: i('message','')}"></svg> <span id="sxCommentCount" th:text="${post.commentCount}">0</span></span>
-                <button type="button" class="sx-repost" th:classappend="${post.reposted} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Đăng lại">
+                <button type="button" class="sx-repost" th:classappend="${post.reposted} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" th:aria-label="#{community.action.repost}">
                     <svg th:replace="~{fragments/icons :: i('repeat','')}"></svg>
                     <span class="sx-repost-count" th:text="${post.repostCount}">0</span>
                 </button>
                 <span class="sx-spacer"></span>
-                <button type="button" class="sx-bookmark" th:classappend="${post.bookmarked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Lưu">
+                <button type="button" class="sx-bookmark" th:classappend="${post.bookmarked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" th:aria-label="#{community.action.save}">
                     <svg th:replace="~{fragments/icons :: i('bookmark', ${post.bookmarked} ? 'ic-fill' : '')}"></svg>
                 </button>
             </div>
@@ -74,15 +74,15 @@
         <form class="sx-cform" id="cmForm" th:action="@{'/community/posts/' + ${post.id} + '/comments'}" method="post"
               th:attr="data-post-id=${post.id}">
             <input type="hidden" name="parentId" id="cmParent" value=""/>
-            <input type="text" name="content" id="cmInput" placeholder="Viết bình luận…" autocomplete="off" required/>
-            <button type="submit" class="sx-iconbtn" aria-label="Gửi"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></button>
+            <input type="text" name="content" id="cmInput" th:placeholder="#{community.comment.ph}" autocomplete="off" required/>
+            <button type="submit" class="sx-iconbtn" th:aria-label="#{community.action.send}"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></button>
         </form>
         <div id="cmReplyHint" class="sx-reply-hint" hidden>
-            Đang trả lời <b id="cmReplyTo"></b> · <a href="#" id="cmReplyCancel">huỷ</a>
+            <span th:text="#{community.comment.replyingTo}">Đang trả lời</span> <b id="cmReplyTo"></b> · <a href="#" id="cmReplyCancel" th:text="#{community.comment.cancelLow}">huỷ</a>
         </div>
 
         <div class="sx-comments" id="sxComments" th:attr="data-post-id=${post.id}">
-            <p id="sxNoComments" th:if="${#lists.isEmpty(comments)}" class="muted">Chưa có bình luận. Hãy là người đầu tiên!</p>
+            <p id="sxNoComments" th:if="${#lists.isEmpty(comments)}" class="muted" th:text="#{community.comment.empty}">Chưa có bình luận.</p>
             <th:block th:each="c : ${comments}">
                 <div th:replace="~{social/comment-fragments :: node(${c})}"></div>
             </th:block>
@@ -169,10 +169,16 @@
         var cancel = document.getElementById('cmReplyCancel');
         if (cancel) cancel.addEventListener('click', function (e) { e.preventDefault(); parent.value = ''; hint.hidden = true; });
         // Polling bình luận mới (giống cơ chế tin nhắn)
-        setInterval(function () {
+        var cmtPollTimer = setInterval(function () {
             if (document.hidden) return;
             fetch('/community/posts/' + postId + '/comments/poll?afterId=' + lastId(), { credentials: 'same-origin' })
-                .then(function (r) { return r.ok ? r.text() : null; })
+                .then(function (r) {
+                    // Bi redirect ve /login (khach vang lai / het phien): NGUNG poll im lang.
+                    // Khong chuyen trang — trang bai viet cho phep khach xem, ep sang /login la sai UX.
+                    // Truoc day r.ok cua trang login van la true -> ingest() nhai HTML trang login moi 4s.
+                    if (r.redirected && r.url.indexOf('/login') >= 0) { clearInterval(cmtPollTimer); return null; }
+                    return r.ok ? r.text() : null;
+                })
                 .then(function (html) { if (html) ingest(html); }).catch(function () {});
         }, 4000);
     })();

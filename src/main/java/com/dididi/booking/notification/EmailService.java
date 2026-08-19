@@ -90,6 +90,19 @@ public class EmailService {
                 m(loc, "email.vendorApproved.plain") + (hotelName != null ? " " + m(loc, "email.label.hotel") + ": " + hotelName : ""));
     }
 
+    /** Email xác nhận ĐÃ NHẬN hồ sơ đăng ký bán phòng — chờ admin duyệt (QA TC-C-01).
+     *  Gửi ngay lúc nộp form; khi admin quyết sẽ có tiếp sendVendorApproved/Rejected. */
+    @Async
+    public void sendVendorRegistered(String to, String hotelName, Locale locale) {
+        Locale loc = loc(locale);
+        String inner = p(m(loc, "email.vendorRegistered.body1"))
+                + (hotelName != null ? infoBox("<b>" + m(loc, "email.label.hotel") + ":</b> " + hotelName) : "")
+                + p(m(loc, "email.vendorRegistered.body2"));
+        sendHtml(to, m(loc, "email.vendorRegistered.subject"),
+                htmlShell(m(loc, "email.vendorRegistered.heading"), inner, loc),
+                m(loc, "email.vendorRegistered.plain"));
+    }
+
     @Async
     public void sendVendorRejected(Long userId, Locale locale) {
         Locale loc = loc(locale);

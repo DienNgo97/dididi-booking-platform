@@ -10,6 +10,19 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
+    /** Tìm kiếm admin theo tên khách / nội dung / phản hồi vendor, kèm lọc status (thanh tìm kiếm tab Đánh giá). */
+    @Query("""
+            SELECT r FROM Review r
+            WHERE (lower(r.reviewerName) LIKE lower(concat('%', :q, '%'))
+                   OR lower(r.comment) LIKE lower(concat('%', :q, '%'))
+                   OR lower(r.vendorReply) LIKE lower(concat('%', :q, '%')))
+              AND (:status IS NULL OR r.status = :status)
+            ORDER BY r.createdAt DESC
+            """)
+    Page<Review> adminSearch(@org.springframework.data.repository.query.Param("q") String q,
+                             @org.springframework.data.repository.query.Param("status") ReviewStatus status,
+                             Pageable pageable);
+
     boolean existsByBookingId(Long bookingId);
 
     java.util.Optional<Review> findByBookingId(Long bookingId);

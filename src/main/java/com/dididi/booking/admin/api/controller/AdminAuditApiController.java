@@ -26,11 +26,12 @@ public class AdminAuditApiController {
     @GetMapping
     public ApiResponse<PagedResponse<AuditLogDto>> list(
             @RequestParam(required = false) String action,
+            @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "30") int size,
             Authentication authentication) {
         RoleUtils.requireSuperAdmin(authentication);
-        Page<AuditLogDto> p = auditService.list(action, page, size).map(AuditLogDto::from);
+        Page<AuditLogDto> p = auditService.list(action, q, page, size).map(AuditLogDto::from);
         return ApiResponse.ok(PagedResponse.of(p));
     }
 }

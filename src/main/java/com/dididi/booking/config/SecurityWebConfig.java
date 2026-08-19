@@ -51,6 +51,12 @@ public class SecurityWebConfig {
                                 "/notifications/**").authenticated()
                         .anyRequest().permitAll()
                 )
+                // KHONG luu request AJAX/poll vao request-cache. Mac dinh Spring luu "trang dang dinh vao"
+                // de dang nhap xong quay lai dung cho — nhung voi trang co POLLING (DM /poll moi 3s),
+                // cu poll sau khi dang xuat se bi luu thay cho trang that. Dang nhap lai -> bi dua thang
+                // toi endpoint du lieu (vd /community/messages/5/poll?afterId=19&continue) -> TRANG TRANG
+                // (QA TC-B-17). Endpoint du lieu khong bao gio la "trang" de quay lai -> loai khoi cache.
+                .requestCache(rc -> rc.requestCache(pageOnlyRequestCache()))
                 .formLogin(f -> f
                         .loginPage("/login")
                         .defaultSuccessUrl("/", false)
@@ -83,6 +89,26 @@ public class SecurityWebConfig {
             }
             response.sendRedirect(request.getContextPath() + target);
         };
+    }
+
+    /**
+     * Request-cache chi luu DIEU HUONG TRANG that su; loai endpoint du lieu:
+     *  - duong dan ket thuc -ajax hoac /poll (like/comment/follow + polling cua Cong dong),
+     *  - header X-Requested-With: XMLHttpRequest,
+     *  - Accept: application/json.
+     * Cac request nay khong khop matcher -> khong duoc luu -> dang nhap xong ve defaultSuccessUrl "/"
+     * (hoac trang that gan nhat neu co), khong bao gio bi nem vao endpoint du lieu.
+     */
+    private org.springframework.security.web.savedrequest.RequestCache pageOnlyRequestCache() {
+        var cache = new org.springframework.security.web.savedrequest.HttpSessionRequestCache();
+        cache.setRequestMatcher(request -> {
+            String uri = request.getRequestURI();
+            if (uri != null && (uri.endsWith("-ajax") || uri.endsWith("/poll"))) return false;
+            if ("XMLHttpRequest".equals(request.getHeader("X-Requested-With"))) return false;
+            String accept = request.getHeader("Accept");
+            return accept == null || !accept.contains("application/json");
+        });
+        return cache;
     }
 
     /** Theo doi phien dang nhap (web) de co the het han tat ca phien cua 1 user khi doi mat khau. */

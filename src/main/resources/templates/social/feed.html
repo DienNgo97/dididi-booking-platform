@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Cộng đồng - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.feed}">Cộng đồng - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
@@ -21,15 +21,14 @@
                     <img th:if="${me.avatarUrl}" th:src="${me.avatarUrl}" alt=""/>
                     <span th:unless="${me.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(me.name,0,1))}">D</span>
                 </span>
-                <span class="sx-composer-ph">Chia sẻ chuyến đi của bạn…</span>
+                <span class="sx-composer-ph" th:text="#{community.feed.composerPh}">Chia sẻ chuyến đi của bạn…</span>
                 <span class="sx-composer-act"><svg th:replace="~{fragments/icons :: i('image','')}"></svg></span>
                 <span class="sx-composer-act"><svg th:replace="~{fragments/icons :: i('map-pin','')}"></svg></span>
             </a>
 
             <div th:if="${#lists.isEmpty(posts)}" class="sx-empty">
                 <svg th:replace="~{fragments/icons :: i('compass','')}"></svg>
-                <p>Bảng tin còn trống. Hãy <a href="/community/explore">khám phá</a> và theo dõi người dùng / khách sạn,
-                    hoặc <a href="/community/compose">đăng bài đầu tiên</a> của bạn.</p>
+                <p th:utext="#{community.feed.empty}">Bảng tin còn trống.</p>
             </div>
 
             <div id="sxFeed">

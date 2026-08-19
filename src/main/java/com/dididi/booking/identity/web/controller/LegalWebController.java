@@ -7,12 +7,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class LegalWebController {
 
-    @GetMapping("/terms")
+    @GetMapping({"/terms", "/legal/terms"})   // footer cu tro /legal/... -> alias de khong 404
     public String terms() {
         return "legal/terms";
     }
 
-    @GetMapping("/privacy")
+    @GetMapping({"/privacy", "/legal/privacy"})
     public String privacy() {
         return "legal/privacy";
     }

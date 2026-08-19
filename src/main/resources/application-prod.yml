@@ -29,3 +29,8 @@ logging:
     root: WARN
     com.dididi.booking: INFO
     org.hibernate.SQL: WARN
+
+# Thanh toan thu TUYET DOI khong duoc bat o production.
+app:
+  payment:
+    mock-enabled: false

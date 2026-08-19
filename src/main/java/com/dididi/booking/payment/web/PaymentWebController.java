@@ -1,5 +1,7 @@
 package com.dididi.booking.payment.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.repository.BookingRepository;
@@ -77,6 +79,16 @@ public class PaymentWebController {
         this.paymentAttemptRepository = paymentAttemptRepository;
     }
 
+    /**
+     * Cho phép "Thanh toán thử" — xác nhận đơn mà KHÔNG qua cổng thanh toán.
+     * Mặc định TẮT. Chỉ bật ở môi trường phát triển/kiểm thử để đợt kiểm thử không bị chặn
+     * khi cổng VNPay sandbox trục trặc (đã xảy ra 16/8: VNPay trả code 71 "website chưa được
+     * phê duyệt", làm đứng toàn bộ các bước sau thanh toán).
+     * KHÔNG BAO GIỜ được bật ở production — xem application-prod.yml.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.payment.mock-enabled:false}")
+    private boolean mockPayEnabled;
+
     /** Ghi nhật ký 1 lần VNPay gọi về (return/IPN) để đối soát. Lỗi ghi log KHÔNG được chặn thanh toán. */
     private void recordAttempt(String direction, Map<String, String> params, boolean signatureValid) {
         try {
@@ -110,19 +122,48 @@ public class PaymentWebController {
             return "redirect:/account/bookings/" + code;            // da thanh toan roi
         }
         if (b.getStatus() != BookingStatus.PENDING_PAYMENT) {
-            ra.addFlashAttribute("error", "Đơn này không còn ở trạng thái chờ thanh toán.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f07", "Đơn này không còn ở trạng thái chờ thanh toán."));
             return "redirect:/account/bookings";
         }
         if (bookingService.isPaymentExpired(b)) {                   // qua 20' -> het han
             bookingService.markPaymentExpired(b);
-            ra.addFlashAttribute("error", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f06", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng."));
             return "redirect:/";
         }
         model.addAttribute("booking", b);
         model.addAttribute("remainingSeconds", bookingService.remainingHoldSeconds(b));
+        model.addAttribute("mockPayEnabled", mockPayEnabled);
         companyService.forUser(currentUser.id(auth))
                 .ifPresent(c -> model.addAttribute("company", CompanyDto.from(c)));
         return "payment/pay";
+    }
+
+    /**
+     * Thanh toán thử: đánh dấu đơn đã trả tiền mà không gọi cổng nào cả.
+     * Dùng để kiểm thử các bước SAU thanh toán (đơn của tôi, hoá đơn, điểm thưởng, huỷ/hoàn tiền)
+     * khi cổng thật không dùng được. Guard giống hệt luồng VNPay: chỉ đơn đang chờ thanh toán và
+     * chưa quá hạn giữ chỗ. Tắt cờ thì trả 404 như thể endpoint không tồn tại.
+     */
+    @PostMapping("/payment/{code}/mock")
+    @Transactional   // ghi Payment + đổi trạng thái Booking phải cùng một giao dịch, giống luồng vnpay-return
+    public String payMock(@PathVariable String code, Authentication auth, RedirectAttributes ra) {
+        if (!mockPayEnabled) {
+            throw new BusinessException("NOT_FOUND", "Không tìm thấy", org.springframework.http.HttpStatus.NOT_FOUND);
+        }
+        Booking b = bookingService.getForUserOrGroupOrganizer(code, currentUser.id(auth));
+        if (b.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f07", "Đơn này không còn ở trạng thái chờ thanh toán."));
+            return "redirect:/account/bookings/" + code;
+        }
+        if (bookingService.isPaymentExpired(b)) {
+            bookingService.markPaymentExpired(b);
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f06", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng."));
+            return "redirect:/";
+        }
+        paymentService.pay(b);            // ghi Payment method=MOCK, status=PAID
+        bookingService.markConfirmed(b);  // idempotent: cộng điểm, gửi mail, đẩy thông báo
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f30", "Đã thanh toán thử thành công (không qua cổng thanh toán)."));
+        return "redirect:/account/bookings/" + code;
     }
 
     /** Ap ma giam gia cho don. */
@@ -132,7 +173,7 @@ public class PaymentWebController {
         try {
             Booking b = bookingService.getForUser(code, currentUser.id(auth));
             voucherService.apply(voucherCode, b, currentUser.id(auth));
-            ra.addFlashAttribute("message", "Đã áp dụng mã giảm giá.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f37", "Đã áp dụng mã giảm giá."));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -144,7 +185,7 @@ public class PaymentWebController {
     public String removeVoucher(@PathVariable String code, Authentication auth, RedirectAttributes ra) {
         Booking b = bookingService.getForUser(code, currentUser.id(auth));
         voucherService.remove(b);
-        ra.addFlashAttribute("message", "Đã gỡ mã giảm giá.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f20", "Đã gỡ mã giảm giá."));
         return "redirect:/payment/" + code;
     }
 
@@ -165,7 +206,7 @@ public class PaymentWebController {
             } else {
                 bookingService.editDirectOvernight(code, currentUser.id(auth), checkIn, checkOut, rooms);
             }
-            ra.addFlashAttribute("message", "Đã cập nhật thông tin đặt phòng. Vui lòng kiểm tra lại số tiền.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f14", "Đã cập nhật thông tin đặt phòng. Vui lòng kiểm tra lại số tiền."));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -178,7 +219,7 @@ public class PaymentWebController {
         Booking b = bookingService.getForUser(code, currentUser.id(auth));
         if (bookingService.isPaymentExpired(b)) {
             bookingService.markPaymentExpired(b);
-            ra.addFlashAttribute("error", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f06", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng."));
             return "redirect:/";
         }
         try {
@@ -188,7 +229,7 @@ public class PaymentWebController {
                 ra.addFlashAttribute("message",
                         "Đã gửi yêu cầu phê duyệt (đơn vượt ngưỡng duyệt của công ty). Đơn sẽ được xác nhận sau khi được duyệt.");
             } else {
-                ra.addFlashAttribute("message", "Đã thanh toán bằng ngân sách công ty. Đơn đã được xác nhận.");
+                ra.addFlashAttribute("message", I18nSupport.msg("flash.f29", "Đã thanh toán bằng ngân sách công ty. Đơn đã được xác nhận."));
             }
             return "redirect:/account/bookings/" + code;
         } catch (BusinessException ex) {
@@ -204,7 +245,7 @@ public class PaymentWebController {
         Booking b = bookingService.getForUserOrGroupOrganizer(code, currentUser.id(auth));
         if (bookingService.isPaymentExpired(b)) {
             bookingService.markPaymentExpired(b);
-            ra.addFlashAttribute("error", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f06", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng."));
             return "redirect:/";
         }
         Payment p = paymentService.initiateVnpay(b);
@@ -229,13 +270,13 @@ public class PaymentWebController {
         boolean validSig = vnPayService.isValid(params);
         recordAttempt("RETURN", params, validSig);
         if (!validSig) {
-            ra.addFlashAttribute("error", "Chu ky VNPay khong hop le. Vui long thu lai.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f01", "Chu ky VNPay khong hop le. Vui long thu lai."));
             return (publicCode == null || publicCode.isEmpty()) ? "redirect:/account/bookings"
                     : "redirect:/account/bookings/" + publicCode;
         }
         Optional<Payment> op = paymentService.findByTxnRef(txnRef);
         if (op.isEmpty()) {
-            ra.addFlashAttribute("error", "Khong tim thay giao dich.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f03", "Khong tim thay giao dich."));
             return "redirect:/account/bookings";
         }
         Payment p = op.get();
@@ -247,7 +288,7 @@ public class PaymentWebController {
             // BP-PAY-01: so tien tra phai khop so tien giao dich da khoi tao.
             if (ok && !amountMatches(p, params)) {
                 String token = (groupId != null) ? groupService.tokenOf(groupId) : "";
-                ra.addFlashAttribute("error", "Số tiền thanh toán không khớp giao dịch. Đơn KHÔNG được xác nhận.");
+                ra.addFlashAttribute("error", I18nSupport.msg("flash.f05", "Số tiền thanh toán không khớp giao dịch. Đơn KHÔNG được xác nhận."));
                 return token.isEmpty() ? "redirect:/account/bookings" : "redirect:/g/" + token;
             }
             if (ok) {
@@ -256,14 +297,14 @@ public class PaymentWebController {
                             params.get("vnp_BankCode"), responseCode, params.get("vnp_PayDate"));
                 }
                 String token = (groupId != null) ? groupService.confirmGroupBookings(groupId) : "";
-                ra.addFlashAttribute("message", "Thanh toan VNPay thanh cong! Da xac nhan cac phong da chon cua nhom.");
+                ra.addFlashAttribute("message", I18nSupport.msg("flash.f10", "Thanh toan VNPay thanh cong! Da xac nhan cac phong da chon cua nhom."));
                 return token.isEmpty() ? "redirect:/account/bookings" : "redirect:/g/" + token;
             } else {
                 if (p.getStatus() == PaymentStatus.PENDING) {
                     paymentService.markFailed(p, responseCode);
                 }
                 String token = (groupId != null) ? groupService.tokenOf(groupId) : "";
-                ra.addFlashAttribute("error", "Thanh toan khong thanh cong (ma " + responseCode + "). Ban co the thu lai.");
+                ra.addFlashAttribute("error", I18nSupport.msg("flash.f47", "Thanh toan khong thanh cong (ma " + responseCode + "). Ban co the thu lai.", responseCode));
                 return token.isEmpty() ? "redirect:/account/bookings" : "redirect:/g/" + token;
             }
         }
@@ -271,7 +312,7 @@ public class PaymentWebController {
         Booking b = bookingRepository.findById(p.getBookingId()).orElse(null);
         // BP-PAY-01: kiem tra so tien truoc khi xac nhan don thuong.
         if (ok && !amountMatches(p, params)) {
-            ra.addFlashAttribute("error", "Số tiền thanh toán không khớp giao dịch. Đơn KHÔNG được xác nhận.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f05", "Số tiền thanh toán không khớp giao dịch. Đơn KHÔNG được xác nhận."));
             String mcode = (b != null) ? b.getPublicCode() : publicCode;
             return (mcode == null || mcode.isEmpty()) ? "redirect:/account/bookings" : "redirect:/account/bookings/" + mcode;
         }
@@ -287,12 +328,12 @@ public class PaymentWebController {
                 }
                 bookingService.markConfirmed(b);
             }
-            ra.addFlashAttribute("message", "Thanh toan VNPay thanh cong! Don da duoc xac nhan.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f11", "Thanh toan VNPay thanh cong! Don da duoc xac nhan."));
         } else {
             if (p.getStatus() == PaymentStatus.PENDING) {
                 paymentService.markFailed(p, responseCode);
             }
-            ra.addFlashAttribute("error", "Thanh toan khong thanh cong (ma " + responseCode + "). Ban co the thu lai.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f47", "Thanh toan khong thanh cong (ma " + responseCode + "). Ban co the thu lai.", responseCode));
         }
         String code = (b != null) ? b.getPublicCode() : publicCode;
         // Trong luong Trip Planner: tra xong 1 don -> tu dong chuyen sang don ke tiep (ve di -> ve ve -> khach san).

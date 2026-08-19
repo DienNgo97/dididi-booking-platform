@@ -1,5 +1,7 @@
 package com.dididi.booking.trip.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.service.BookingService;
@@ -153,7 +155,7 @@ public class TripPlannerWebController {
             }
         }
         session.removeAttribute(TRIP_BOOKINGS);                              // het don -> ket thuc chuyen
-        ra.addFlashAttribute("message", "Đã thanh toán xong toàn bộ chuyến đi. Cảm ơn bạn!");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f31", "Đã thanh toán xong toàn bộ chuyến đi. Cảm ơn bạn!"));
         return "redirect:/account/bookings";
     }
 

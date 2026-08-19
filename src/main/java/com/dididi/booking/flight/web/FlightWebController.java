@@ -29,11 +29,15 @@ public class FlightWebController {
                        @RequestParam(required = false) String to,
                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                        @RequestParam(required = false) String cabin,
+                       @RequestParam(required = false) Integer passengers,
                        @RequestParam(defaultValue = "1") int page,
                        Model model) {
         // Chỉ hiện chuyến khởi hành SAU thời điểm hiện tại + 5 tiếng (đệm thời gian ra sân bay + boarding).
         LocalDateTime cutoff = LocalDateTime.now().plusHours(5);
-        List<Flight> all = flightRepository.findAllByOrderByDepartureTime().stream()
+        // CHỈ chuyến provider (có sơ đồ ghế -> khách chọn được chỗ). Chuyến demo cục bộ
+        // (externalId >= 900000) bị loại vì không có sơ đồ ghế. Lọc ở TRUY VẤN nên cũng nhẹ hơn.
+        List<Flight> all = flightRepository.findByExternalIdLessThanOrderByDepartureTime(
+                        com.dididi.booking.booking.service.BookingService.LOCAL_FLIGHT_EXTERNAL_ID_BASE).stream()
                 .filter(f -> f.getDepartureTime() != null && f.getDepartureTime().isAfter(cutoff))
                 .filter(f -> from == null || from.isBlank() || from.equalsIgnoreCase(f.getFromAirport()))
                 .filter(f -> to == null || to.isBlank() || to.equalsIgnoreCase(f.getToAirport()))
@@ -68,6 +72,9 @@ public class FlightWebController {
         model.addAttribute("to", to);
         model.addAttribute("date", date);
         model.addAttribute("cabin", cabin);
+        // Chỉ để hiển thị lại trên thanh tóm tắt điều kiện tìm; chặn số vô lý (0, âm, 99 khách).
+        model.addAttribute("passengers",
+                (passengers == null || passengers < 1) ? 1 : Math.min(passengers, 9));
         return "flights/list";
     }
 }

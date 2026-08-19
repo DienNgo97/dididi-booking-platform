@@ -1,5 +1,7 @@
 package com.dididi.booking.identity.web.controller;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.identity.domain.entity.User;
 import com.dididi.booking.identity.domain.enums.UserStatus;
@@ -56,7 +58,7 @@ public class ProfileWebController {
     public String updateName(@RequestParam String fullName, Authentication auth, RedirectAttributes ra) {
         try {
             profileService.updateName(currentUser.id(auth), fullName);
-            ra.addFlashAttribute("message", "Đã cập nhật tên hiển thị.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f15", "Đã cập nhật tên hiển thị."));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -75,7 +77,7 @@ public class ProfileWebController {
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         } catch (Exception ex) {
-            ra.addFlashAttribute("error", "Ngày sinh không hợp lệ.");
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f04", "Ngày sinh không hợp lệ."));
         }
         return "redirect:/account/profile";
     }
@@ -86,7 +88,7 @@ public class ProfileWebController {
     public String sendPhoneOtp(@RequestParam String phone, Authentication auth, RedirectAttributes ra) {
         try {
             profileService.startPhoneVerification(currentUser.id(auth), phone);
-            ra.addFlashAttribute("message", "Đã gửi mã OTP. Vui lòng nhập mã để xác thực số điện thoại.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f24", "Đã gửi mã OTP. Vui lòng nhập mã để xác thực số điện thoại."));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -97,7 +99,7 @@ public class ProfileWebController {
     public String confirmPhone(@RequestParam String code, Authentication auth, RedirectAttributes ra) {
         try {
             profileService.confirmPhone(currentUser.id(auth), code);
-            ra.addFlashAttribute("message", "Đã xác thực số điện thoại.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f36", "Đã xác thực số điện thoại."));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -116,7 +118,7 @@ public class ProfileWebController {
                 throw new BusinessException("PASSWORD_MISMATCH", "Mật khẩu xác nhận không khớp");
             }
             accountService.changePassword(currentUser.id(auth), currentPassword, newPassword, sessionId(req));
-            ra.addFlashAttribute("message", "Đã đổi mật khẩu. Các thiết bị khác đã được đăng xuất.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f42", "Đã đổi mật khẩu. Các thiết bị khác đã được đăng xuất."));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -129,7 +131,7 @@ public class ProfileWebController {
     public String unlinkGoogle(Authentication auth, RedirectAttributes ra) {
         try {
             profileService.unlinkGoogle(currentUser.id(auth));
-            ra.addFlashAttribute("message", "Đã gỡ liên kết Google.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f19", "Đã gỡ liên kết Google."));
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         }
@@ -141,7 +143,7 @@ public class ProfileWebController {
     @PostMapping("/account/profile/email/resend")
     public String resendVerification(Authentication auth, RedirectAttributes ra) {
         accountService.resendVerification(currentUser.id(auth));
-        ra.addFlashAttribute("message", "Đã gửi lại email kích hoạt (nếu tài khoản chưa xác thực).");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f23", "Đã gửi lại email kích hoạt (nếu tài khoản chưa xác thực)."));
         return "redirect:/account/profile";
     }
 
@@ -158,7 +160,7 @@ public class ProfileWebController {
     public String logoutOthers(Authentication auth, HttpServletRequest req, RedirectAttributes ra) {
         User u = currentUser.require(auth);
         int n = accountService.logoutOtherDevices(u.getId(), u.getEmail(), sessionId(req));
-        ra.addFlashAttribute("message", "Đã đăng xuất khỏi " + n + " thiết bị khác (và các phiên ứng dụng).");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f45", "Đã đăng xuất khỏi " + n + " thiết bị khác (và các phiên ứng dụng).", n));
         return "redirect:/account/profile/devices";
     }
 

@@ -1,5 +1,7 @@
 package com.dididi.booking.social.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.common.security.RoleUtils;
 import com.dididi.booking.hotel.domain.entity.Hotel;
@@ -132,6 +134,14 @@ public class CommunityWebController {
         Long uid = currentUser.idOrNull(auth);
         List<Post> posts = exploreService.trendingPosts(30);
         model.addAttribute("posts", viewService.toPostViews(posts, uid, isAdmin(auth)));
+        // "Xem thêm": endpoint /community/more/explore đã có từ đầu nhưng trang này quên nối
+        // (thiếu moreUrl + fragment nút) -> hết 30 bài trending là dừng, cuộn không ra gì (QA TC-B-02).
+        // Trending KHÔNG xếp theo id nên cursor phải là id NHỎ NHẤT đã hiện: trang sau lấy bài cũ hơn
+        // tất cả những gì đang thấy -> không trùng bài. (Không dùng nextCursor(posts) — helper đó
+        // lấy id phần tử cuối, chỉ đúng cho danh sách đã xếp mới->cũ.)
+        model.addAttribute("nextCursor", posts.isEmpty() ? null
+                : posts.stream().mapToLong(Post::getId).min().getAsLong());
+        model.addAttribute("moreUrl", "/community/more/explore");
         model.addAttribute("trendingTags", exploreService.trendingHashtags());
         if (uid != null) {
             model.addAttribute("me", actorService.userActor(uid));
@@ -329,14 +339,14 @@ public class CommunityWebController {
         }
         postService.createPost(uid, actorType, actorId, isAdmin(auth), caption, vis, checkin,
                 hotelId, null, null, null, null, files);
-        ra.addFlashAttribute("message", "Đã đăng bài lên Cộng đồng.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f39", "Đã đăng bài lên Cộng đồng."));
         return "redirect:/community";
     }
 
     @PostMapping("/community/posts/{id}/delete")
     public String deletePost(@PathVariable Long id, Authentication auth, RedirectAttributes ra) {
         postService.deletePost(currentUser.id(auth), isAdmin(auth), id);
-        ra.addFlashAttribute("message", "Đã xoá bài viết.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f33", "Đã xoá bài viết."));
         return "redirect:/community";
     }
 
@@ -437,14 +447,14 @@ public class CommunityWebController {
     @PostMapping("/community/requests/{followId}/accept")
     public String acceptRequest(@PathVariable Long followId, Authentication auth, RedirectAttributes ra) {
         followService.acceptRequest(currentUser.id(auth), followId);
-        ra.addFlashAttribute("message", "Đã chấp nhận yêu cầu theo dõi.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f12", "Đã chấp nhận yêu cầu theo dõi."));
         return "redirect:/community/requests";
     }
 
     @PostMapping("/community/requests/{followId}/reject")
     public String rejectRequest(@PathVariable Long followId, Authentication auth, RedirectAttributes ra) {
         followService.rejectRequest(currentUser.id(auth), followId);
-        ra.addFlashAttribute("message", "Đã từ chối yêu cầu.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f32", "Đã từ chối yêu cầu."));
         return "redirect:/community/requests";
     }
 
@@ -466,7 +476,7 @@ public class CommunityWebController {
                                @RequestParam(defaultValue = "false") boolean isPrivate,
                                Authentication auth, RedirectAttributes ra) {
         profileService.updateProfile(currentUser.id(auth), displayName, bio, link, isPrivate);
-        ra.addFlashAttribute("message", "Đã lưu hồ sơ.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f26", "Đã lưu hồ sơ."));
         return "redirect:/community/settings";
     }
 
@@ -474,7 +484,7 @@ public class CommunityWebController {
     public String changeHandle(@RequestParam String handle, Authentication auth, RedirectAttributes ra) {
         try {
             profileService.changeHandle(currentUser.id(auth), handle);
-            ra.addFlashAttribute("message", "Đã đổi tên định danh.");
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f43", "Đã đổi tên định danh."));
         } catch (BusinessException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }
@@ -485,7 +495,7 @@ public class CommunityWebController {
     public String uploadAvatar(@RequestParam MultipartFile file, Authentication auth, RedirectAttributes ra) {
         String key = mediaService.uploadAvatar(file);
         profileService.setAvatarKey(currentUser.id(auth), key);
-        ra.addFlashAttribute("message", "Đã cập nhật ảnh đại diện.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f18", "Đã cập nhật ảnh đại diện."));
         return "redirect:/community/settings";
     }
 
@@ -493,7 +503,7 @@ public class CommunityWebController {
     public String uploadCover(@RequestParam MultipartFile file, Authentication auth, RedirectAttributes ra) {
         String key = mediaService.uploadAvatar(file);
         profileService.setCoverKey(currentUser.id(auth), key);
-        ra.addFlashAttribute("message", "Đã cập nhật ảnh bìa.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f17", "Đã cập nhật ảnh bìa."));
         return "redirect:/community/settings";
     }
 
@@ -606,7 +616,7 @@ public class CommunityWebController {
             rr = ReportReason.OTHER;
         }
         reportService.submit(currentUser.id(auth), tt, id, rr, note);
-        ra.addFlashAttribute("message", "Đã gửi báo cáo. Cảm ơn bạn đã giúp giữ Cộng đồng an toàn.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f22", "Đã gửi báo cáo. Cảm ơn bạn đã giúp giữ Cộng đồng an toàn."));
         return "redirect:/community";
     }
 

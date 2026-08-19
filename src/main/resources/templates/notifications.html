@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Thông báo - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{notif.pageTitle}">Thông báo - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
@@ -10,15 +10,15 @@
     <div th:replace="~{fragments/site :: flash}"></div>
     <div class="notif-page">
         <div class="notif-top">
-            <h1>Thông báo</h1>
+            <h1 th:text="#{nav.notifBell}">Thông báo</h1>
             <form th:action="@{/notifications/read}" method="post" th:unless="${#lists.isEmpty(items)}">
-                <button class="btn ghost" type="submit">Đánh dấu đã đọc</button>
+                <button class="btn ghost" type="submit" th:text="#{notif.markRead}">Đánh dấu đã đọc</button>
             </form>
         </div>
 
         <div class="notif-empty" th:if="${#lists.isEmpty(items)}">
             <svg class="ic"><use href="#ic-bell"></use></svg>
-            <p>Chưa có thông báo nào</p>
+            <p th:text="#{nav.notifEmpty}">Chưa có thông báo nào</p>
         </div>
 
         <div class="notif-list" th:unless="${#lists.isEmpty(items)}">
@@ -36,15 +36,16 @@
     </div>
 </div>
 <div th:replace="~{fragments/site :: footer}"></div>
-<script>
+<script th:inline="javascript">
+    var NT = { justNow: /*[[#{community.time.justNow}]]*/ 'vừa xong', minAgo: /*[[#{notif.minAgo}]]*/ ' phút trước', hourAgo: /*[[#{notif.hourAgo}]]*/ ' giờ trước', dayAgo: /*[[#{notif.dayAgo}]]*/ ' ngày trước' };
 (function(){
     function rel(ms){
         if(!ms) return '';
         var s=Math.floor((Date.now()-ms)/1000);
-        if(s<60) return 'vừa xong';
-        var m=Math.floor(s/60); if(m<60) return m+' phút trước';
-        var h=Math.floor(m/60); if(h<24) return h+' giờ trước';
-        var d=Math.floor(h/24); if(d<30) return d+' ngày trước';
+        if(s<60) return NT.justNow;
+        var m=Math.floor(s/60); if(m<60) return m+NT.minAgo;
+        var h=Math.floor(m/60); if(h<24) return h+NT.hourAgo;
+        var d=Math.floor(h/24); if(d<30) return d+NT.dayAgo;
         return new Date(ms).toLocaleDateString('vi-VN');
     }
     document.querySelectorAll('.notif-time').forEach(function(el){

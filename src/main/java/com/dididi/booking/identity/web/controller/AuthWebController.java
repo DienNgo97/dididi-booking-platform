@@ -1,5 +1,7 @@
 package com.dididi.booking.identity.web.controller;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.common.exception.BusinessException;
 import com.dididi.booking.identity.security.LoginAuditService;
 import com.dididi.booking.identity.service.AccountService;
@@ -210,7 +212,7 @@ public class AuthWebController {
             model.addAttribute("error", "Liên kết không hợp lệ hoặc đã hết hạn. Vui lòng yêu cầu lại.");
             return "auth/reset-password";
         }
-        ra.addFlashAttribute("message", "Đặt lại mật khẩu thành công. Mời bạn đăng nhập.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f44", "Đặt lại mật khẩu thành công. Mời bạn đăng nhập."));
         return "redirect:/login?reset";
     }
 

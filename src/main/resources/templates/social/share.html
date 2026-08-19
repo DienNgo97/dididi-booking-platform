@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Gửi qua tin nhắn - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.share}">Gửi qua tin nhắn - Dididi</title><link rel="stylesheet" href="/css/site.css"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
@@ -10,7 +10,7 @@
     <div th:replace="~{fragments/site :: flash}"></div>
 
     <div class="sx-single">
-        <h1>Gửi bài viết qua tin nhắn</h1>
+        <h1 th:text="#{community.share.title}">Gửi bài viết qua tin nhắn</h1>
 
         <div class="sx-side-card dm-sharepost">
             <span class="sx-ava sm" aria-hidden="true">
@@ -19,13 +19,13 @@
             </span>
             <div>
                 <b th:text="${post.actor.name}">Tác giả</b>
-                <div class="muted" th:text="${post.caption != null ? post.caption : 'Bài viết'}">caption</div>
+                <div class="muted" th:text="${post.caption != null ? post.caption : #messages.msg('community.share.post')}">caption</div>
             </div>
         </div>
 
-        <h3 style="margin:18px 0 8px">Gửi tới</h3>
+        <h3 style="margin:18px 0 8px" th:text="#{community.share.sendTo}">Gửi tới</h3>
         <p th:if="${#lists.isEmpty(conversations)}" class="muted">
-            Bạn chưa có cuộc trò chuyện nào. Mở trang cá nhân của ai đó và bấm <b>Nhắn tin</b> trước nhé.</p>
+            <span th:utext="#{community.share.emptyHint}">Bạn chưa có cuộc trò chuyện nào.</span></p>
 
         <div class="dm-inbox">
             <form th:each="c : ${conversations}" th:action="@{/community/messages/share}" method="post" class="dm-sharerow">
@@ -37,7 +37,7 @@
                         <span th:unless="${c.other.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(c.other.name,0,1))}">D</span>
                     </span>
                     <div class="dm-conv-body"><b th:text="${c.other.name}">Tên</b></div>
-                    <span class="dm-sharego">Gửi</span>
+                    <span class="dm-sharego" th:text="#{community.action.send}">Gửi</span>
                 </button>
             </form>
         </div>

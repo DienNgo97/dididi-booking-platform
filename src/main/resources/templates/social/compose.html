@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Đăng bài - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.compose}">Đăng bài - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
 </head>
 <body>
 <div th:replace="~{fragments/site :: nav}"></div>
@@ -14,46 +14,46 @@
         <div th:replace="~{social/fragments :: railLeft('')}"></div>
         <main class="sx-main sx-formcol">
             <div class="sx-pagehead">
-                <h1>Đăng bài</h1>
-                <p>Chia sẻ một khoảnh khắc, một chuyến đi hay một địa điểm bạn yêu thích.</p>
+                <h1 th:text="#{community.nav.compose}">Đăng bài</h1>
+                <p th:text="#{community.compose.sub}">Chia sẻ một khoảnh khắc.</p>
             </div>
             <form class="sx-compose sx-card" th:action="@{/community/posts}" method="post" enctype="multipart/form-data">
-                <textarea name="caption" rows="4" placeholder="Bạn đang ở đâu? Chia sẻ trải nghiệm chuyến đi…  Dùng #hashtag và @tên để gắn thẻ."></textarea>
+                <textarea name="caption" rows="4" th:placeholder="#{community.compose.ph}"></textarea>
 
                 <label class="sx-filepick sx-file">
                     <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
-                    <span class="sx-filepick-name">Thêm ảnh / video</span>
+                    <span class="sx-filepick-name" th:text="#{community.compose.addMedia}">Thêm ảnh / video</span>
                     <input type="file" name="files" multiple accept="image/*,video/*" hidden/>
                 </label>
 
                 <div class="sx-form-row">
-                    <label>Đăng dưới danh nghĩa
+                    <label><span th:text="#{community.compose.postAs}">Đăng dưới danh nghĩa</span>
                         <select name="postAs">
-                            <option value="self">Cá nhân</option>
+                            <option value="self" th:text="#{community.compose.personal}">Cá nhân</option>
                             <option th:each="h : ${postAsHotels}" th:value="'hotel:' + ${h.id}" th:text="${h.name}"></option>
                         </select>
                     </label>
-                    <label>Quyền xem
+                    <label><span th:text="#{community.compose.visibility}">Quyền xem</span>
                         <select name="visibility">
-                            <option value="PUBLIC">Công khai</option>
-                            <option value="FOLLOWERS">Người theo dõi</option>
-                            <option value="PRIVATE">Chỉ mình tôi</option>
+                            <option value="PUBLIC" th:text="#{community.vis.public}">Công khai</option>
+                            <option value="FOLLOWERS" th:text="#{community.vis.followers}">Người theo dõi</option>
+                            <option value="PRIVATE" th:text="#{community.vis.private}">Chỉ mình tôi</option>
                         </select>
                     </label>
                 </div>
 
-                <label>Gắn khách sạn (tuỳ chọn)
+                <label><span th:text="#{community.compose.tagHotel}">Gắn khách sạn (tuỳ chọn)</span>
                     <input type="text" name="hotelKeyword" list="hotelList" autocomplete="off"
-                           placeholder="Gõ tên khách sạn để chọn gợi ý, VD: Pearl Resort"/>
+                           th:placeholder="#{community.compose.tagHotelPh}"/>
                     <datalist id="hotelList">
                         <option th:each="h : ${tagHotels}" th:value="${h.name}" th:text="${h.city}"></option>
                     </datalist>
                 </label>
-                <label class="sx-check"><input type="checkbox" name="checkin" value="true"/> <span>Check-in tại đây — hiển thị vị trí khách sạn trên bài.</span></label>
+                <label class="sx-check"><input type="checkbox" name="checkin" value="true"/> <span th:text="#{community.compose.checkin}">Check-in tại đây.</span></label>
 
                 <div class="sx-form-actions">
-                    <a href="/community" class="btn ghost">Huỷ</a>
-                    <button type="submit" class="btn">Đăng bài</button>
+                    <a href="/community" class="btn ghost" th:text="#{community.action.cancel}">Huỷ</a>
+                    <button type="submit" class="btn" th:text="#{community.nav.compose}">Đăng bài</button>
                 </div>
             </form>
         </main>

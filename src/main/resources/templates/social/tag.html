@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="'#' + ${tag} + ' - Cộng đồng Dididi'">Hashtag</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="'#' + ${tag} + ' - ' + #{community.brand}">Hashtag</title><link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
@@ -19,13 +19,13 @@
                 <span class="sx-taghash"><svg th:replace="~{fragments/icons :: i('tag','')}"></svg></span>
                 <div>
                     <h1 th:text="'#' + ${tag}">#tag</h1>
-                    <small class="muted" th:text="${postCount != null ? postCount + ' bài viết' : '0 bài viết'}">0 bài viết</small>
+                    <small class="muted" th:text="#{community.postsLongN(${postCount != null ? postCount : 0})}">0 bài viết</small>
                 </div>
             </div>
 
             <div th:if="${#lists.isEmpty(posts)}" class="sx-empty">
                 <span class="sx-empty-ic"><svg th:replace="~{fragments/icons :: i('tag','')}"></svg></span>
-                <p>Chưa có bài viết công khai nào với hashtag này.</p>
+                <p th:text="#{community.tag.empty}">Chưa có bài viết nào với hashtag này.</p>
             </div>
             <div id="sxFeed">
                 <div th:replace="~{social/fragments :: cards(${posts})}"></div>

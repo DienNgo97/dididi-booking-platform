@@ -46,10 +46,14 @@ public class AdminUserApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) Role role,
-            @RequestParam(required = false) UserStatus status) {
+            @RequestParam(required = false) UserStatus status,
+            @RequestParam(required = false) String q) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<User> result;
-        if (role != null && status != null) {
+        if (q != null && !q.isBlank()) {
+            // Thanh tìm kiếm tab Người dùng: email / họ tên / SĐT, vẫn tôn trọng lọc role/status.
+            result = userRepository.adminSearch(q.trim(), role, status, pageable);
+        } else if (role != null && status != null) {
             result = userRepository.findByRoleAndStatus(role, status, pageable);
         } else if (role != null) {
             result = userRepository.findByRole(role, pageable);

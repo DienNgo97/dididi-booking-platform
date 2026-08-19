@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Thông báo - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.notifications}">Thông báo - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
@@ -16,12 +16,12 @@
         <div th:replace="~{social/fragments :: railLeft('notif')}"></div>
         <main class="sx-main">
             <div class="sx-pagehead">
-                <h1>Thông báo</h1>
-                <p>Mọi hoạt động liên quan tới bạn — luôn được giữ lại, không tự xoá.</p>
+                <h1 th:text="#{community.nav.notifications}">Thông báo</h1>
+                <p th:text="#{community.notif.sub}">Mọi hoạt động liên quan tới bạn.</p>
             </div>
             <div th:if="${#lists.isEmpty(notifications)}" class="sx-empty">
                 <span class="sx-empty-ic"><svg th:replace="~{fragments/icons :: i('bell','')}"></svg></span>
-                <p>Chưa có thông báo nào. Tương tác với cộng đồng để nhận thông báo nhé!</p>
+                <p th:text="#{community.notif.empty}">Chưa có thông báo nào.</p>
             </div>
             <div class="sx-notiflist">
                 <a th:each="n : ${notifications}" th:href="${n.url}" class="sx-notif" th:classappend="${!n.read} ? 'unread' : ''">

@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Đã lưu - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.saved}">Đã lưu - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
@@ -16,12 +16,12 @@
         <div th:replace="~{social/fragments :: railLeft('bookmarks')}"></div>
         <main class="sx-main">
             <div class="sx-pagehead">
-                <h1>Đã lưu</h1>
-                <p>Những bài viết bạn lưu để xem lại sau.</p>
+                <h1 th:text="#{community.nav.saved}">Đã lưu</h1>
+                <p th:text="#{community.saved.sub}">Những bài viết bạn lưu để xem lại sau.</p>
             </div>
             <div th:if="${#lists.isEmpty(posts)}" class="sx-empty">
                 <span class="sx-empty-ic"><svg th:replace="~{fragments/icons :: i('bookmark','')}"></svg></span>
-                <p>Bạn chưa lưu bài viết nào. Bấm biểu tượng lưu trên bài để xem lại sau.</p>
+                <p th:text="#{community.saved.empty}">Bạn chưa lưu bài viết nào.</p>
             </div>
             <div id="sxFeed">
                 <div th:replace="~{social/fragments :: cards(${posts})}"></div>

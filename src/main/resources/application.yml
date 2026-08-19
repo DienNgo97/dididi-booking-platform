@@ -101,6 +101,11 @@ app:
     access-token-minutes: 60
     issuer: dididi-booking-platform
     refresh-token-days: 7
+  # ---- Thanh toan thu (dev/kiem thu): xac nhan don ma KHONG qua cong thanh toan ----
+  # Bat de dot kiem thu khong bi chan khi VNPay sandbox truc trac (16/8: VNPay tra code 71).
+  # BUOC PHAI la false o production -> da ep cung trong application-prod.yml.
+  payment:
+    mock-enabled: ${PAYMENT_MOCK_ENABLED:true}
   # ---- VNPay sandbox (Phase 8a). Lay tmn-code + hash-secret tu dang ky sandbox tai sandbox.vnpayment.vn ----
   vnpay:
     tmn-code: ${VNPAY_TMN_CODE:}
@@ -111,6 +116,11 @@ app:
     command: pay
     order-type: other
     locale: vn
+    # API truy van ket qua giao dich (querydr) — dung de DOI SOAT CHU DONG.
+    api-url: ${VNPAY_API_URL:https://sandbox.vnpayment.vn/merchant_webapi/api/transaction}
+    # Tu hoi VNPay ve cac giao dich con treo, thay vi ngoi cho VNPay goi vao.
+    # Chay duoc ca o localhost (chieu goi RA luon thong) -> khong phai doi config khi len production.
+    reconcile-enabled: ${VNPAY_RECONCILE_ENABLED:true}
   # ---- Integration (Phase 1.5): pull tu flight-provider + hotel-pms ----
   integration:
     flight-provider:
