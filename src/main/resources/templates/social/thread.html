@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="'Trò chuyện với ' + ${other.name} + ' - Dididi'">Tin nhắn</title>
+    <title th:text="#{community.dm.chatWith(${other.name})}">Tin nhắn</title>
     <link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
@@ -19,8 +19,8 @@
             <div class="dm-layout">
                 <aside class="dm-list">
                     <div class="dm-list-head">
-                        <h2>Tin nhắn</h2>
-                        <a href="/community/people" class="sx-iconbtn" title="Nhắn tin mới"><svg th:replace="~{fragments/icons :: i('pencil','')}"></svg></a>
+                        <h2 th:text="#{community.nav.messages}">Tin nhắn</h2>
+                        <a href="/community/people" class="sx-iconbtn" th:title="#{community.dm.new}"><svg th:replace="~{fragments/icons :: i('pencil','')}"></svg></a>
                     </div>
                     <div class="dm-list-body">
                         <a th:each="c : ${conversations}" th:href="${c.url}" class="dm-conv"
@@ -34,7 +34,7 @@
                                     <b th:text="${c.other.name}">Tên</b>
                                     <span class="sx-time" th:attr="data-ts=${c.lastMessageAtMs}"></span>
                                 </div>
-                                <span class="dm-conv-preview" th:text="${c.preview != null ? c.preview : 'Bắt đầu trò chuyện…'}">tin</span>
+                                <span class="dm-conv-preview" th:text="${c.preview != null ? c.preview : #messages.msg('community.dm.start')}">tin</span>
                             </div>
                         </a>
                     </div>
@@ -42,7 +42,7 @@
 
                 <section class="dm-thread">
                     <header class="dm-thread-head">
-                        <a href="/community/messages" class="sx-iconbtn dm-back" title="Hộp thư"><svg th:replace="~{fragments/icons :: i('arrow-left','')}"></svg></a>
+                        <a href="/community/messages" class="sx-iconbtn dm-back" th:title="#{community.dm.inbox}"><svg th:replace="~{fragments/icons :: i('arrow-left','')}"></svg></a>
                         <a th:href="${other.profileUrl}" class="sx-ava sm" aria-hidden="true">
                             <img th:if="${other.avatarUrl}" th:src="${other.avatarUrl}" alt=""/>
                             <span th:unless="${other.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(other.name,0,1))}">D</span>
@@ -55,12 +55,12 @@
                     </div>
 
                     <form id="dmComposer" class="dm-composer" enctype="multipart/form-data">
-                        <label class="sx-iconbtn" title="Gửi ảnh">
+                        <label class="sx-iconbtn" th:title="#{community.dm.sendImage}">
                             <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
                             <input type="file" name="image" accept="image/*" hidden/>
                         </label>
-                        <input type="text" name="content" autocomplete="off" placeholder="Nhắn tin…"/>
-                        <button type="submit" class="sx-iconbtn dm-send" aria-label="Gửi"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></button>
+                        <input type="text" name="content" autocomplete="off" th:placeholder="#{community.dm.inputPh}"/>
+                        <button type="submit" class="sx-iconbtn dm-send" th:aria-label="#{community.action.send}"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></button>
                     </form>
                 </section>
             </div>
@@ -96,8 +96,13 @@
             var fd = new FormData(form);
             var H = {}; if (csrf && csrfH) H[csrfH] = csrf;
             fetch('/community/messages/' + convId + '/send', { method: 'POST', body: fd, headers: H, credentials: 'same-origin' })
-                .then(function (r) { return r.text(); })
-                .then(function (h) { appendHtml(h); form.reset(); })
+                .then(function (r) {
+                    // Het phien (dang xuat o tab khac): fetch bi redirect ve /login -> chuyen han
+                    // sang trang dang nhap, KHONG append HTML trang login vao khung chat.
+                    if (sessionGone(r)) return null;
+                    return r.text();
+                })
+                .then(function (h) { if (h != null) { appendHtml(h); form.reset(); } })
                 .catch(function () {});
         });
         file.addEventListener('change', function () {
@@ -105,9 +110,22 @@
                 if (form.requestSubmit) form.requestSubmit(); else form.dispatchEvent(new Event('submit'));
             }
         });
-        setInterval(function () {
+        // Het phien -> dung poll + dua nguoi dung ve /login (QA TC-B-17: truoc day poll cu chay tiep,
+        // request cache luu URL poll, dang nhap lai bi nem vao endpoint du lieu -> trang trang).
+        function sessionGone(r) {
+            if (r.redirected && r.url.indexOf('/login') >= 0) {
+                clearInterval(pollTimer);
+                window.location = '/login';
+                return true;
+            }
+            return false;
+        }
+        var pollTimer = setInterval(function () {
             fetch('/community/messages/' + convId + '/poll?afterId=' + lastId, { credentials: 'same-origin' })
-                .then(function (r) { return r.text(); })
+                .then(function (r) {
+                    if (sessionGone(r)) return null;
+                    return r.text();
+                })
                 .then(function (h) { if (h && h.trim()) appendHtml(h); })
                 .catch(function () {});
         }, 3000);

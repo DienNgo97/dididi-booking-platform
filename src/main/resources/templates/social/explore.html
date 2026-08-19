@@ -2,7 +2,7 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Khám phá - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
+    <title th:text="#{community.title.explore}">Khám phá - Cộng đồng Dididi</title><link rel="stylesheet" href="/css/site.css"/>
     <meta name="_csrf" th:content="${_csrf.token}"/>
     <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
 </head>
@@ -16,16 +16,19 @@
         <div th:replace="~{social/fragments :: railLeft('explore')}"></div>
         <main class="sx-main">
             <div class="sx-pagehead">
-                <h1>Khám phá</h1>
-                <p>Những chuyến đi & khoảnh khắc đang được cộng đồng quan tâm nhất.</p>
+                <h1 th:text="#{community.nav.explore}">Khám phá</h1>
+                <p th:text="#{community.explore.sub}">Những chuyến đi nổi bật.</p>
             </div>
             <div th:if="${#lists.isEmpty(posts)}" class="sx-empty">
                 <span class="sx-empty-ic"><svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg></span>
-                <p>Chưa có bài viết công khai nào. Hãy là người <a href="/community/compose">đăng bài đầu tiên</a>!</p>
+                <p th:utext="#{community.explore.empty}">Chưa có bài viết công khai nào.</p>
             </div>
             <div id="sxFeed">
                 <div th:replace="~{social/fragments :: cards(${posts})}"></div>
             </div>
+            <!-- Nút "Xem thêm" (QA TC-B-02): trước đây trang này quên gắn nên hết 30 bài trending là dừng.
+                 Endpoint /community/more/explore + JS bindMore đã có sẵn trong fragments :: scripts. -->
+            <div th:replace="~{social/fragments :: more}"></div>
         </main>
         <div th:replace="~{social/fragments :: railRight}"></div>
     </div>

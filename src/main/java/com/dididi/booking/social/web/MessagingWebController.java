@@ -1,5 +1,7 @@
 package com.dididi.booking.social.web;
 
+import com.dididi.booking.common.i18n.I18nSupport;
+
 import com.dididi.booking.social.domain.entity.Conversation;
 import com.dididi.booking.social.domain.entity.Message;
 import com.dididi.booking.social.service.MessagingService;
@@ -116,7 +118,7 @@ public class MessagingWebController {
                         @RequestParam(required = false) String text, Authentication auth, RedirectAttributes ra) {
         Long uid = currentUser.id(auth);
         messagingService.sharePost(uid, convId, postId, text);
-        ra.addFlashAttribute("message", "Đã gửi bài viết qua tin nhắn.");
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f21", "Đã gửi bài viết qua tin nhắn."));
         return "redirect:/community/messages/" + convId;
     }
 

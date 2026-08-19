@@ -5,61 +5,61 @@
 <!-- ===== Thanh tab Cong dong (dung chung) ===== -->
 <div th:fragment="tabs(active)" class="sx-tabs">
     <a href="/community/search" th:classappend="${active == 'search'} ? 'is-active' : ''">
-        <svg th:replace="~{fragments/icons :: i('search','')}"></svg> <span>Tìm kiếm</span></a>
+        <svg th:replace="~{fragments/icons :: i('search','')}"></svg> <span th:text="#{community.nav.search}">Tìm kiếm</span></a>
     <a href="/community" th:classappend="${active == 'feed'} ? 'is-active' : ''">
-        <svg th:replace="~{fragments/icons :: i('compass','')}"></svg> <span>Bảng tin</span></a>
+        <svg th:replace="~{fragments/icons :: i('compass','')}"></svg> <span th:text="#{community.nav.feed}">Bảng tin</span></a>
     <a href="/community/explore" th:classappend="${active == 'explore'} ? 'is-active' : ''">
-        <svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg> <span>Khám phá</span></a>
+        <svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg> <span th:text="#{community.nav.explore}">Khám phá</span></a>
     <a href="/community/people" th:classappend="${active == 'people'} ? 'is-active' : ''">
-        <svg th:replace="~{fragments/icons :: i('users','')}"></svg> <span>Mọi người</span></a>
+        <svg th:replace="~{fragments/icons :: i('users','')}"></svg> <span th:text="#{community.nav.people}">Mọi người</span></a>
     <a href="/community/notifications" class="sx-belltab" th:classappend="${active == 'notif'} ? 'is-active' : ''">
-        <svg th:replace="~{fragments/icons :: i('bell','')}"></svg> <span>Thông báo</span>
+        <svg th:replace="~{fragments/icons :: i('bell','')}"></svg> <span th:text="#{community.nav.notifications}">Thông báo</span>
         <span class="sx-badge" th:if="${communityUnread != null and communityUnread > 0}" th:text="${communityUnread}">0</span></a>
     <a href="/community/messages" class="sx-belltab" th:classappend="${active == 'messages'} ? 'is-active' : ''">
-        <svg th:replace="~{fragments/icons :: i('mail','')}"></svg> <span>Tin nhắn</span>
+        <svg th:replace="~{fragments/icons :: i('mail','')}"></svg> <span th:text="#{community.nav.messages}">Tin nhắn</span>
         <span class="sx-badge" th:if="${communityDmUnread != null and communityDmUnread > 0}" th:text="${communityDmUnread}">0</span></a>
     <a href="/community/bookmarks" th:classappend="${active == 'bookmarks'} ? 'is-active' : ''">
-        <svg th:replace="~{fragments/icons :: i('bookmark','')}"></svg> <span>Đã lưu</span></a>
+        <svg th:replace="~{fragments/icons :: i('bookmark','')}"></svg> <span th:text="#{community.nav.saved}">Đã lưu</span></a>
     <a th:if="${pendingCount != null and pendingCount > 0}" href="/community/requests" class="sx-tab-badge">
-        <svg th:replace="~{fragments/icons :: i('user-check','')}"></svg> <span th:text="'Yêu cầu (' + ${pendingCount} + ')'">Yêu cầu</span></a>
+        <svg th:replace="~{fragments/icons :: i('user-check','')}"></svg> <span th:text="#{community.nav.requestsN(${pendingCount})}">Yêu cầu</span></a>
     <span class="sx-spacer"></span>
-    <a href="/community/compose" class="btn sx-newpost"><svg th:replace="~{fragments/icons :: i('plus','')}"></svg> <span>Đăng bài</span></a>
-    <a href="/community/settings" class="sx-iconbtn" title="Cài đặt"><svg th:replace="~{fragments/icons :: i('settings','')}"></svg></a>
+    <a href="/community/compose" class="btn sx-newpost"><svg th:replace="~{fragments/icons :: i('plus','')}"></svg> <span th:text="#{community.nav.compose}">Đăng bài</span></a>
+    <a href="/community/settings" class="sx-iconbtn" th:title="#{community.nav.settings}"><svg th:replace="~{fragments/icons :: i('settings','')}"></svg></a>
 </div>
 
 <!-- ===== Rail trái: điều hướng dọc (desktop) ===== -->
 <aside th:fragment="railLeft(active)" class="sx-rail">
     <form class="sx-railsearch" action="/community/search" method="get" role="search">
         <svg th:replace="~{fragments/icons :: i('search','')}"></svg>
-        <input type="search" name="q" th:value="${query}" placeholder="Tìm kiếm…" autocomplete="off"/>
+        <input type="search" name="q" th:value="${query}" th:placeholder="#{community.search.ph}" autocomplete="off"/>
     </form>
     <nav class="sx-railnav">
         <a th:if="${me != null}" href="/community" th:classappend="${active == 'feed'} ? 'is-active' : ''">
-            <svg th:replace="~{fragments/icons :: i('compass','')}"></svg><span>Bảng tin</span></a>
+            <svg th:replace="~{fragments/icons :: i('compass','')}"></svg><span th:text="#{community.nav.feed}">Bảng tin</span></a>
         <a href="/community/explore" th:classappend="${active == 'explore'} ? 'is-active' : ''">
-            <svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg><span>Khám phá</span></a>
+            <svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg><span th:text="#{community.nav.explore}">Khám phá</span></a>
         <a href="/community/people" th:classappend="${active == 'people'} ? 'is-active' : ''">
-            <svg th:replace="~{fragments/icons :: i('users','')}"></svg><span>Mọi người</span></a>
+            <svg th:replace="~{fragments/icons :: i('users','')}"></svg><span th:text="#{community.nav.people}">Mọi người</span></a>
         <a th:if="${me != null}" href="/community/notifications" th:classappend="${active == 'notif'} ? 'is-active' : ''">
-            <svg th:replace="~{fragments/icons :: i('bell','')}"></svg><span>Thông báo</span>
+            <svg th:replace="~{fragments/icons :: i('bell','')}"></svg><span th:text="#{community.nav.notifications}">Thông báo</span>
             <span class="sx-badge" th:if="${communityUnread != null and communityUnread > 0}" th:text="${communityUnread}">0</span></a>
         <a th:if="${me != null}" href="/community/messages" th:classappend="${active == 'messages'} ? 'is-active' : ''">
-            <svg th:replace="~{fragments/icons :: i('mail','')}"></svg><span>Tin nhắn</span>
+            <svg th:replace="~{fragments/icons :: i('mail','')}"></svg><span th:text="#{community.nav.messages}">Tin nhắn</span>
             <span class="sx-badge" th:if="${communityDmUnread != null and communityDmUnread > 0}" th:text="${communityDmUnread}">0</span></a>
         <a th:if="${me != null}" href="/community/bookmarks" th:classappend="${active == 'bookmarks'} ? 'is-active' : ''">
-            <svg th:replace="~{fragments/icons :: i('bookmark','')}"></svg><span>Đã lưu</span></a>
+            <svg th:replace="~{fragments/icons :: i('bookmark','')}"></svg><span th:text="#{community.nav.saved}">Đã lưu</span></a>
         <a th:if="${pendingCount != null and pendingCount > 0}" href="/community/requests"
            th:classappend="${active == 'requests'} ? 'is-active' : ''">
-            <svg th:replace="~{fragments/icons :: i('user-check','')}"></svg><span>Yêu cầu</span>
+            <svg th:replace="~{fragments/icons :: i('user-check','')}"></svg><span th:text="#{community.nav.requests}">Yêu cầu</span>
             <span class="sx-badge" th:text="${pendingCount}">0</span></a>
         <a th:if="${me != null}" href="/community/settings" th:classappend="${active == 'settings'} ? 'is-active' : ''">
-            <svg th:replace="~{fragments/icons :: i('settings','')}"></svg><span>Cài đặt</span></a>
+            <svg th:replace="~{fragments/icons :: i('settings','')}"></svg><span th:text="#{community.nav.settings}">Cài đặt</span></a>
     </nav>
-    <a th:if="${me != null}" href="/community/compose" class="sx-railpost"><svg th:replace="~{fragments/icons :: i('plus','')}"></svg><span>Đăng bài</span></a>
+    <a th:if="${me != null}" href="/community/compose" class="sx-railpost"><svg th:replace="~{fragments/icons :: i('plus','')}"></svg><span th:text="#{community.nav.compose}">Đăng bài</span></a>
     <div th:if="${me == null}" class="sx-railguest">
-        <p>Tham gia cộng đồng Dididi để đăng bài, theo dõi và trò chuyện.</p>
-        <a href="/login" class="sx-railpost"><svg th:replace="~{fragments/icons :: i('user','')}"></svg><span>Đăng nhập</span></a>
-        <a href="/register" class="sx-railguest-reg">Đăng ký miễn phí</a>
+        <p th:text="#{community.guest.hint}">Tham gia cộng đồng Dididi để đăng bài, theo dõi và trò chuyện.</p>
+        <a href="/login" class="sx-railpost"><svg th:replace="~{fragments/icons :: i('user','')}"></svg><span th:text="#{community.guest.login}">Đăng nhập</span></a>
+        <a href="/register" class="sx-railguest-reg" th:text="#{community.guest.register}">Đăng ký miễn phí</a>
     </div>
     <a th:if="${me != null}" class="sx-railme" th:href="${me.profileUrl}">
         <span class="sx-ava sm">
@@ -73,7 +73,7 @@
 <!-- ===== Sidebar phải: gợi ý kết nối + hashtag thịnh hành ===== -->
 <aside th:fragment="railRight" class="sx-side">
     <div class="sx-side-card sx-side-suggest" th:if="${sidebarSuggestions != null and !#lists.isEmpty(sidebarSuggestions)}">
-        <h3><svg th:replace="~{fragments/icons :: i('users','')}"></svg> Gợi ý kết nối</h3>
+        <h3><svg th:replace="~{fragments/icons :: i('users','')}"></svg> <span th:text="#{community.side.suggestions}">Gợi ý kết nối</span></h3>
         <div class="sx-side-person" th:each="u : ${sidebarSuggestions}">
             <a th:href="${u.actor.profileUrl}" class="sx-ava sm" aria-hidden="true">
                 <img th:if="${u.actor.avatarUrl}" th:src="${u.actor.avatarUrl}" alt=""/>
@@ -86,20 +86,20 @@
                     th:classappend="${u.followState == 'ACTIVE'} ? 'is-following' : ''"
                     th:attr="data-type='USER',data-id=${u.userId},data-state=${u.followState}">
                 <span class="sx-follow-text"
-                      th:text="${u.followState == 'ACTIVE'} ? 'Đang theo dõi' : (${u.followState == 'PENDING'} ? 'Đã gửi' : 'Theo dõi')">Theo dõi</span>
+                      th:text="${u.followState == 'ACTIVE'} ? #{community.follow.following} : (${u.followState == 'PENDING'} ? #{community.follow.requested} : #{community.follow.follow})">Theo dõi</span>
             </button>
         </div>
-        <a href="/community/people" class="sx-side-more">Xem tất cả →</a>
+        <a href="/community/people" class="sx-side-more" th:text="#{community.side.viewAll}">Xem tất cả →</a>
     </div>
     <div class="sx-side-card sx-side-trend" th:if="${sidebarTrending != null and !#lists.isEmpty(sidebarTrending)}">
-        <h3><svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg> Hashtag thịnh hành</h3>
+        <h3><svg th:replace="~{fragments/icons :: i('sparkles','')}"></svg> <span th:text="#{community.side.trending}">Hashtag thịnh hành</span></h3>
         <a th:each="t : ${sidebarTrending}" th:href="@{'/community/tag/' + ${t.tag}}" class="sx-trend">
             <span class="sx-trend-tag" th:text="'#' + ${t.tag}">#tag</span>
-            <span class="sx-trend-n" th:text="${t.postCount} + ' bài'">0 bài</span>
+            <span class="sx-trend-n" th:text="#{community.postsShortN(${t.postCount})}">0 bài</span>
         </a>
     </div>
     <div class="sx-side-foot">
-        <span>Dididi Community</span> · <a href="/community/explore">Khám phá</a> · <a href="/community/people">Mọi người</a>
+        <span>Dididi Community</span> · <a href="/community/explore" th:text="#{community.nav.explore}">Khám phá</a> · <a href="/community/people" th:text="#{community.nav.people}">Mọi người</a>
     </div>
 </aside>
 
@@ -113,7 +113,7 @@
     <div th:if="${post.repost}" class="sx-reposthead">
         <svg th:replace="~{fragments/icons :: i('repeat','')}"></svg>
         <a th:href="${post.actor.profileUrl}" class="sx-name" th:text="${post.actor.name}">Tên</a>
-        <span>đã đăng lại</span>
+        <span th:text="#{community.post.reposted}">đã đăng lại</span>
         <span class="sx-dot">·</span>
         <span class="sx-time" th:attr="data-ts=${post.createdAtMs}">vừa xong</span>
     </div>
@@ -124,7 +124,7 @@
         <div th:if="${post.original != null}" class="sx-embed">
             <div th:replace="~{social/fragments :: card(${post.original})}"></div>
         </div>
-        <div th:if="${post.original == null}" class="sx-removed">Bài gốc đã bị gỡ.</div>
+        <div th:if="${post.original == null}" class="sx-removed" th:text="#{community.post.originalRemoved}">Bài gốc đã bị gỡ.</div>
     </div>
 
     <!-- Bai thuong -->
@@ -149,12 +149,12 @@
                 </a>
             </div>
             <form th:if="${post.canDelete}" th:action="@{'/community/posts/' + ${post.id} + '/delete'}" method="post" class="sx-del">
-                <button type="submit" class="sx-iconbtn" data-confirm="Xoá bài viết này?" title="Xoá" aria-label="Xoá">
+                <button type="submit" class="sx-iconbtn" th:attr="data-confirm=#{community.post.deleteConfirm},title=#{community.action.delete},aria-label=#{community.action.delete}">
                     <svg th:replace="~{fragments/icons :: i('x','')}"></svg>
                 </button>
             </form>
             <a th:unless="${post.canDelete}" class="sx-iconbtn sx-del" th:href="@{/community/report(type='POST',id=${post.id})}"
-               title="Báo cáo" aria-label="Báo cáo">
+               th:attr="title=#{community.action.report},aria-label=#{community.action.report}">
                 <svg th:replace="~{fragments/icons :: i('flag','')}"></svg>
             </a>
         </header>
@@ -166,29 +166,29 @@
                     <a th:unless="${m.video}" th:href="${post.detailUrl}" tabindex="-1"><img th:src="${m.url}" alt="" loading="lazy"/></a>
                 </div>
             </div>
-            <button type="button" class="sx-car-prev" th:if="${post.media.size() > 1}" aria-label="Ảnh trước">&#8249;</button>
-            <button type="button" class="sx-car-next" th:if="${post.media.size() > 1}" aria-label="Ảnh sau">&#8250;</button>
+            <button type="button" class="sx-car-prev" th:if="${post.media.size() > 1}" th:aria-label="#{community.car.prev}">&#8249;</button>
+            <button type="button" class="sx-car-next" th:if="${post.media.size() > 1}" th:aria-label="#{community.car.next}">&#8250;</button>
             <span th:if="${post.media.size() > 1}" class="sx-mcount" th:text="'1/' + ${post.media.size()}">1/2</span>
             <div th:if="${post.media.size() > 1}" class="sx-car-dots"></div>
         </div>
 
         <div class="sx-actions">
-            <button type="button" class="sx-like" th:classappend="${post.liked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Thích">
+            <button type="button" class="sx-like" th:classappend="${post.liked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" th:aria-label="#{community.action.like}">
                 <svg th:replace="~{fragments/icons :: i('heart', ${post.liked} ? 'ic-fill' : '')}"></svg>
                 <span class="sx-like-count" th:text="${post.likeCount}">0</span>
             </button>
-            <a th:href="${post.detailUrl}" class="sx-actbtn" aria-label="Bình luận">
+            <a th:href="${post.detailUrl}" class="sx-actbtn" th:aria-label="#{community.action.comment}">
                 <svg th:replace="~{fragments/icons :: i('message','')}"></svg> <span class="sx-cm-count" th:text="${post.commentCount}">0</span>
             </a>
-            <button type="button" class="sx-repost" th:classappend="${post.reposted} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Đăng lại">
+            <button type="button" class="sx-repost" th:classappend="${post.reposted} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" th:aria-label="#{community.action.repost}">
                 <svg th:replace="~{fragments/icons :: i('repeat','')}"></svg>
                 <span class="sx-repost-count" th:text="${post.repostCount}">0</span>
             </button>
-            <a th:href="@{/community/messages/share(postId=${post.id})}" class="sx-actbtn" aria-label="Chia sẻ qua tin nhắn">
+            <a th:href="@{/community/messages/share(postId=${post.id})}" class="sx-actbtn" th:aria-label="#{community.action.shareDm}">
                 <svg th:replace="~{fragments/icons :: i('share','')}"></svg>
             </a>
             <span class="sx-spacer"></span>
-            <button type="button" class="sx-bookmark" th:classappend="${post.bookmarked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" aria-label="Lưu">
+            <button type="button" class="sx-bookmark" th:classappend="${post.bookmarked} ? 'is-on' : ''" th:attr="data-post-id=${post.id}" th:aria-label="#{community.action.save}">
                 <svg th:replace="~{fragments/icons :: i('bookmark', ${post.bookmarked} ? 'ic-fill' : '')}"></svg>
             </button>
         </div>
@@ -198,14 +198,14 @@
             <span th:utext="${post.captionHtml}">caption</span>
         </div>
         <a th:if="${post.commentCount > 0}" th:href="${post.detailUrl}" class="sx-viewcm"
-           th:text="'Xem ' + ${post.commentCount} + ' bình luận'">Xem bình luận</a>
+           th:text="#{community.post.viewCommentsN(${post.commentCount})}">Xem bình luận</a>
 
         <!-- Bình luận nhanh ngay trên feed (không rời trang) -->
         <div class="sx-inlinecmt" th:attr="data-post-id=${post.id}">
             <div class="sx-inlinecmt-list"></div>
             <form class="sx-inlinecmt-form" th:attr="data-post-id=${post.id}">
-                <input type="text" class="sx-inlinecmt-input" name="content" placeholder="Bình luận…" autocomplete="off"/>
-                <button type="submit" class="sx-iconbtn" aria-label="Gửi"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></button>
+                <input type="text" class="sx-inlinecmt-input" name="content" th:placeholder="#{community.comment.ph}" autocomplete="off"/>
+                <button type="submit" class="sx-iconbtn" th:aria-label="#{community.action.send}"><svg th:replace="~{fragments/icons :: i('send','')}"></svg></button>
             </form>
         </div>
     </th:block>
@@ -221,12 +221,24 @@
 <!-- ===== nut Xem them ===== -->
 <div th:fragment="more">
     <button th:if="${nextCursor != null}" id="sxMore" class="btn ghost sx-more"
-            th:attr="data-cursor=${nextCursor},data-url=${moreUrl}">Xem thêm</button>
+            th:attr="data-cursor=${nextCursor},data-url=${moreUrl}" th:text="#{community.more}">Xem thêm</button>
 </div>
 
 <!-- ===== JS chung cho Cong dong ===== -->
-<script th:fragment="scripts">
+<script th:fragment="scripts" th:inline="javascript">
     window.DDSocial = (function () {
+        /* Nhãn i18n cho chuỗi sinh từ JS (TC-B-29) — Thymeleaf inline bơm theo ngôn ngữ hiện tại. */
+        var L = {
+            justNow: /*[[#{community.time.justNow}]]*/ 'vừa xong',
+            min: /*[[#{community.time.minutes}]]*/ 'phút',
+            hour: /*[[#{community.time.hours}]]*/ 'giờ',
+            day: /*[[#{community.time.days}]]*/ 'ngày',
+            following: /*[[#{community.follow.following}]]*/ 'Đang theo dõi',
+            requested: /*[[#{community.follow.requested}]]*/ 'Đã gửi yêu cầu',
+            follow: /*[[#{community.follow.follow}]]*/ 'Theo dõi',
+            fileChosen: /*[[#{community.file.chosen}]]*/ 'Ảnh đã chọn ✓',
+            filesChosen: /*[[#{community.file.chosenN}]]*/ 'tệp đã chọn'
+        };
         var csrf = document.querySelector('meta[name=_csrf]');
         var csrfH = document.querySelector('meta[name=_csrf_header]');
         function headers() {
@@ -250,10 +262,10 @@
         }
         function rel(ms) {
             var s = Math.floor((Date.now() - ms) / 1000);
-            if (s < 60) return 'vừa xong';
-            var m = Math.floor(s / 60); if (m < 60) return m + ' phút';
-            var h = Math.floor(m / 60); if (h < 24) return h + ' giờ';
-            var d = Math.floor(h / 24); if (d < 7) return d + ' ngày';
+            if (s < 60) return L.justNow;
+            var m = Math.floor(s / 60); if (m < 60) return m + ' ' + L.min;
+            var h = Math.floor(m / 60); if (h < 24) return h + ' ' + L.hour;
+            var d = Math.floor(h / 24); if (d < 7) return d + ' ' + L.day;
             return new Date(ms).toLocaleDateString('vi-VN');
         }
         function times(root) {
@@ -343,14 +355,16 @@
         function applyFollowState(btn, state) {
             btn.setAttribute('data-state', state);
             btn.classList.toggle('is-following', state === 'ACTIVE');
-            var label = state === 'ACTIVE' ? 'Đang theo dõi' : (state === 'PENDING' ? 'Đã gửi yêu cầu' : 'Theo dõi');
+            var label = state === 'ACTIVE' ? L.following : (state === 'PENDING' ? L.requested : L.follow);
             var t = btn.querySelector('.sx-follow-text') || btn;
             t.textContent = label;
         }
         function bindMore() {
             var btn = document.getElementById('sxMore');
             if (!btn) return;
+            var io = null;   // observer cuộn-tự-nạp, cần tham chiếu để re-arm/disconnect
             btn.addEventListener('click', function () {
+                if (btn.disabled) return;   // đang nạp -> bỏ qua (chống click/observer bắn trùng)
                 var cur = btn.getAttribute('data-cursor'), url = btn.getAttribute('data-url');
                 btn.disabled = true;
                 fetch(url + '?cursor=' + cur, { credentials: 'same-origin' })
@@ -362,10 +376,29 @@
                         var next = batch.getAttribute('data-next');
                         while (batch.firstChild) box.appendChild(batch.firstChild);
                         init(box);
-                        if (next && next !== 'null' && next !== '') { btn.setAttribute('data-cursor', next); btn.disabled = false; }
-                        else { btn.style.display = 'none'; }
+                        if (next && next !== 'null' && next !== '') {
+                            btn.setAttribute('data-cursor', next); btn.disabled = false;
+                            // Lô vừa nạp có thể ngắn -> nút VẪN trong tầm nhìn nhưng observer không
+                            // bắn lại (trạng thái giao cắt không đổi). unobserve + observe ép nó
+                            // đánh giá lại ngay, nếu còn trong tầm thì nạp tiếp lô nữa.
+                            if (io) { io.unobserve(btn); io.observe(btn); }
+                        } else {
+                            btn.style.display = 'none';
+                            if (io) io.disconnect();   // hết bài -> thôi quan sát
+                        }
                     }).catch(function () { btn.disabled = false; });
             });
+            // CUỘN TỰ NẠP (kiểu Facebook): nút "Xem thêm" còn cách đáy màn hình 600px là tự bấm.
+            // Nút vẫn giữ nguyên làm fallback (trình duyệt cũ không có IntersectionObserver, hoặc
+            // fetch lỗi khiến observer dừng thì người dùng vẫn bấm tay được).
+            if ('IntersectionObserver' in window) {
+                io = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (e) {
+                        if (e.isIntersecting && !btn.disabled && btn.style.display !== 'none') btn.click();
+                    });
+                }, { rootMargin: '600px 0px' });
+                io.observe(btn);
+            }
         }
         function bindInlineComment(root) {
             root.querySelectorAll('.sx-inlinecmt-form:not([data-bound])').forEach(function (form) {
@@ -427,10 +460,10 @@
                                 }
                             }
                         }
-                        if (name) name.textContent = 'Ảnh đã chọn ✓';
+                        if (name) name.textContent = L.fileChosen;
                         lbl.classList.add('has-file');
                     } else {
-                        if (name) name.textContent = input.files.length > 1 ? (input.files.length + ' tệp đã chọn') : input.files[0].name;
+                        if (name) name.textContent = input.files.length > 1 ? (input.files.length + ' ' + L.filesChosen) : input.files[0].name;
                         lbl.classList.add('has-file');
                     }
                 });
