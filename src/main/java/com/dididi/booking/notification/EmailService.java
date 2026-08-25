@@ -131,17 +131,32 @@ public class EmailService {
         sendHtml(to, m(loc, "email.verify.subject"), html, plain);
     }
 
-    /** Email đặt lại mật khẩu. */
+    /**
+     * Email đặt lại mật khẩu.
+     *
+     * In RIÊNG mã token ngoài đường dẫn. Lý do: liên kết trỏ tới máy chủ web,
+     * mà người dùng mở thư trên điện thoại thì bấm vào thường không tới đâu
+     * (ở môi trường dev đường dẫn còn là localhost — vô dụng trên máy thật).
+     * App di động có sẵn ô "Token (trong email)", nhưng trước đây thư chỉ hiện
+     * đường dẫn nên người dùng phải tự bóc chuỗi token ra khỏi giữa URL.
+     * Phát hiện khi chạy TC-M-04 ngày 24/08/2026.
+     */
     @Async
-    public void sendPasswordReset(String to, String resetUrl, Locale locale) {
+    public void sendPasswordReset(String to, String resetUrl, String token, Locale locale) {
         Locale loc = loc(locale);
         String inner = p(m(loc, "email.reset.body"))
                 + btn(resetUrl, m(loc, "email.reset.button"))
                 + note(m(loc, "email.reset.fallback") + "<br/>"
                         + "<a href=\"" + resetUrl + "\" style=\"color:#3dac78;word-break:break-all\">" + resetUrl + "</a>")
+                + note(m(loc, "email.reset.tokenLabel"))
+                + "<div style=\"text-align:center;margin:6px 0 16px\">"
+                + "<span style=\"display:inline-block;background:#e7f5ee;border:1px solid #cce8da;border-radius:10px;"
+                + "padding:12px 18px;font-family:monospace;font-size:15px;font-weight:700;letter-spacing:1px;"
+                + "color:#2f8b60;word-break:break-all\">" + token + "</span>"
+                + "</div>"
                 + note(m(loc, "email.reset.expiry"));
         sendHtml(to, m(loc, "email.reset.subject"), htmlShell(m(loc, "email.reset.heading"), inner, loc),
-                m(loc, "email.reset.plain", resetUrl));
+                m(loc, "email.reset.plain", resetUrl) + "\n" + m(loc, "email.reset.tokenLabel") + " " + token);
     }
 
     /** Mã OTP đăng nhập (HTML có thương hiệu), hiệu lực 5 phút. */

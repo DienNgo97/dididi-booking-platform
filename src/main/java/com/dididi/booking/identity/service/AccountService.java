@@ -149,7 +149,8 @@ public class AccountService {
     public void requestPasswordReset(String email) {
         userRepository.findByEmail(email).ifPresent(u -> {
             String token = issue(u.getId(), TokenPurpose.RESET_PASSWORD, Duration.ofMinutes(resetTtlMinutes));
-            emailService.sendPasswordReset(email, baseUrl + "/reset-password?token=" + token, LocaleContextHolder.getLocale());
+            emailService.sendPasswordReset(email, baseUrl + "/reset-password?token=" + token, token,
+                    LocaleContextHolder.getLocale());
         });
     }
 
