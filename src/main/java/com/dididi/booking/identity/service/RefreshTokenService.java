@@ -210,15 +210,46 @@ public class RefreshTokenService {
         }
     }
 
-    /** Nhãn thiết bị suy từ User-Agent của request hiện tại (nếu có ngữ cảnh servlet). */
+    /**
+     * Nhãn thiết bị của request hiện tại.
+     *
+     * Ưu tiên header <code>X-Device-Name</code> do ỨNG DỤNG DI ĐỘNG tự khai
+     * (vd "Pixel 7 · Android 14"), vì nó nói đúng máy nào. Chỉ khi không có mới
+     * suy từ User-Agent — đủ dùng cho trình duyệt.
+     *
+     * Vì sao cần: Dio gửi User-Agent mặc định kiểu "Dart/3.9 (dart:io)". Chuỗi đó
+     * khớp "dart" nên phần ứng dụng ra đúng, nhưng KHÔNG chứa "android" hay
+     * "iphone" nên phần hệ điều hành rơi về giá trị mặc định. Kết quả là MỌI phiên
+     * từ app đều mang đúng một nhãn "Ứng dụng Dididi · Thiết bị", khiến danh sách
+     * "Thiết bị đăng nhập" mất tác dụng — người dùng không thể nhận ra phiên lạ để
+     * thu hồi. Phát hiện khi chạy TC-M-27 ngày 25/08/2026.
+     */
     private String currentDeviceLabel() {
         try {
             var attrs = RequestContextHolder.getRequestAttributes();
             if (attrs instanceof ServletRequestAttributes sra) {
+                String khai = sra.getRequest().getHeader("X-Device-Name");
+                if (khai != null && !khai.isBlank()) {
+                    return sanitizeDeviceLabel(khai);
+                }
                 return labelFromUserAgent(sra.getRequest().getHeader("User-Agent"));
             }
         } catch (Exception ignored) {}
         return "Thiết bị";
+    }
+
+    /**
+     * Làm sạch nhãn do client tự khai TRƯỚC KHI lưu.
+     *
+     * Đây là dữ liệu người dùng kiểm soát được và sẽ hiển thị lại trên màn hình,
+     * nên phải cắt ngắn và loại ký tự điều khiển. Không tin client.
+     */
+    private static String sanitizeDeviceLabel(String raw) {
+        String s = raw.replaceAll("[\\p{Cntrl}]", " ").trim().replaceAll("\\s{2,}", " ");
+        if (s.length() > 60) {
+            s = s.substring(0, 60).trim() + "…";
+        }
+        return s.isBlank() ? "Thiết bị" : s;
     }
 
     private static String labelFromUserAgent(String ua) {
