@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.text.Normalizer;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,16 @@ public class TripPlannerService {
                 ? List.of()
                 : hotelRepository.findByActiveTrueAndCityContainingIgnoreCase(city);
 
+        // Chỉ gợi ý chuyến CHƯA khởi hành và CÒN ghế.
+        //
+        // Trước ngày 25/08/2026 chỗ này không có điều kiện nào về thời gian. Truy vấn
+        // sắp xếp theo giờ khởi hành tăng dần nên những chuyến CŨ NHẤT luôn nổi lên
+        // đầu danh sách — người dùng được gợi ý các chuyến đã bay xong từ mấy tháng
+        // trước. Phát hiện khi chạy TC-M-22 trên máy ảo Android.
+        //
+        // Hàm availableFlights() ngay bên dưới vốn đã lọc đúng cả ngày lẫn số ghế;
+        // chỉ riêng nhánh gợi ý nhanh này bị bỏ sót.
+        final LocalDateTime bayGio = LocalDateTime.now();
         List<Flight> flights = (destAirport == null)
                 ? List.of()
                 : flightRepository.findByExternalIdLessThanOrderByDepartureTime(
@@ -56,6 +67,9 @@ public class TripPlannerService {
                 .filter(f -> destAirport.equalsIgnoreCase(f.getToAirport()))
                 .filter(f -> fromAirport == null || fromAirport.isBlank()
                         || fromAirport.equalsIgnoreCase(f.getFromAirport()))
+                .filter(f -> f.getDepartureTime() != null && f.getDepartureTime().isAfter(bayGio))
+                .filter(f -> f.getAvailableSeats() == null || f.getAvailableSeats() > 0)
+                .limit(20)
                 .toList();
 
         return new TripSuggestion(city, destAirport, flights, hotels);
