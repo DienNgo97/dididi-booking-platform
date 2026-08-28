@@ -73,6 +73,17 @@ public class BookingService {
     private final com.dididi.booking.notification.service.UserNotificationService userNotificationService;
     private final com.dididi.booking.ops.service.OpsAlertService opsAlerts;
 
+    /**
+     * S3 (finding QA-A): không bán vé cho chuyến ĐÃ CẤT CÁNH. Client chỉ hiển thị chuyến sắp bay,
+     * nhưng gọi thẳng API thì đặt được chuyến hôm qua — khách trả tiền cho thứ không tồn tại nữa.
+     */
+    private static void requireChuyenChuaKhoiHanh(Flight f) {
+        if (f.getDepartureTime() != null && f.getDepartureTime().isBefore(java.time.LocalDateTime.now())) {
+            throw new BusinessException("FLIGHT_DEPARTED",
+                    "Chuyến bay đã khởi hành, vui lòng chọn chuyến khác", HttpStatus.BAD_REQUEST);
+        }
+    }
+
     /** Timeout (đọc/kết nối) khác "PMS trả lỗi": timeout thì bên kia CÓ THỂ đã ghi nhận. */
     private static boolean laTimeout(Throwable ex) {
         for (Throwable t = ex; t != null; t = t.getCause()) {
@@ -113,6 +124,7 @@ public class BookingService {
                                        String passengersText, BigDecimal extras) {
         Flight f = flightRepository.findById(flightId)
                 .orElseThrow(() -> new BusinessException("FLIGHT_NOT_FOUND", "Không tìm thấy chuyến bay", HttpStatus.NOT_FOUND));
+        requireChuyenChuaKhoiHanh(f);
 
         String confirmation;
         BigDecimal amount;
@@ -179,6 +191,7 @@ public class BookingService {
                                                 String passengersText, BigDecimal extras) {
         Flight f = flightRepository.findById(flightId)
                 .orElseThrow(() -> new BusinessException("FLIGHT_NOT_FOUND", "Không tìm thấy chuyến bay", HttpStatus.NOT_FOUND));
+        requireChuyenChuaKhoiHanh(f);
         if (!isProviderFlight(f)) {
             throw new BusinessException("SEAT_UNSUPPORTED",
                     "Chuyến bay này chưa hỗ trợ chọn chỗ ngồi", HttpStatus.CONFLICT);
@@ -354,6 +367,13 @@ public class BookingService {
         if (checkIn == null || checkOut == null || !checkOut.isAfter(checkIn)) {
             throw new BusinessException("BAD_DATES", "Ngày trả phòng phải sau ngày nhận phòng", HttpStatus.BAD_REQUEST);
         }
+        // S3 (finding QA-A): trước đây chỉ input type=date phía client chặn ngày quá khứ — gọi thẳng
+        // API là đặt được phòng cho hôm qua. Đơn đó không ai phục vụ được, mà vẫn lọt vào doanh thu
+        // của một kỳ đối soát có thể đã đóng.
+        if (checkIn.isBefore(LocalDate.now())) {
+            throw new BusinessException("PAST_DATE",
+                    "Ngày nhận phòng đã qua, vui lòng chọn từ hôm nay trở đi", HttpStatus.BAD_REQUEST);
+        }
 
         if (h.getSource() == HotelSource.DIRECT) {
             return createDirectHotelBooking(userId, h, roomTypeId, roomName, checkIn, checkOut, rooms);
@@ -463,6 +483,12 @@ public class BookingService {
         }
         if (date == null || timeIn == null || timeOut == null || !timeOut.isAfter(timeIn)) {
             throw new BusinessException("BAD_TIMES", "Giờ trả phòng phải sau giờ nhận phòng", HttpStatus.BAD_REQUEST);
+        }
+        // S3: chặn cả ngày quá khứ lẫn khung giờ đã trôi qua trong hôm nay.
+        if (date.isBefore(LocalDate.now())
+                || (date.isEqual(LocalDate.now()) && timeIn.isBefore(LocalTime.now()))) {
+            throw new BusinessException("PAST_DATE",
+                    "Khung giờ đã qua, vui lòng chọn thời gian còn hiệu lực", HttpStatus.BAD_REQUEST);
         }
         if (rooms < 1) {
             throw new BusinessException("BAD_ROOMS", "Số phòng phải >= 1", HttpStatus.BAD_REQUEST);

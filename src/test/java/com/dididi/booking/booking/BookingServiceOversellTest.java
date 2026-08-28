@@ -135,15 +135,18 @@ class BookingServiceOversellTest {
         existing.setId(99L);
         existing.setRoomTypeId(50L);
         existing.setQuantity(1);
-        existing.setCheckIn(LocalDate.of(2026, 7, 1));
-        existing.setCheckOut(LocalDate.of(2026, 7, 3));
+        // Ngày TƯƠNG LAI: từ 28/08 server chặn đặt cho ngày đã qua (S3), mốc cứng sẽ vỡ theo thời gian.
+        LocalDate nhan = LocalDate.now().plusDays(10);
+        LocalDate tra = nhan.plusDays(2);
+        existing.setCheckIn(nhan);
+        existing.setCheckOut(tra);
         existing.setStatus(BookingStatus.CONFIRMED);
         when(bookingRepository.findActiveForRoomType(eq(50L), any(), any(), any()))
                 .thenReturn(List.of(existing));
 
         // Vao qua entry point public createHotelBooking -> DIRECT -> createDirectHotelBooking.
         assertThatThrownBy(() -> service.createHotelBooking(1L, 5L, 50L, "Deluxe", "Guest",
-                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 7, 3), 1))
+                nhan, tra, 1))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("code", "SOLD_OUT");
 

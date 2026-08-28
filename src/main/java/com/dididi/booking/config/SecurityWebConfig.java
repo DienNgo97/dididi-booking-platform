@@ -57,6 +57,14 @@ public class SecurityWebConfig {
                 // toi endpoint du lieu (vd /community/messages/5/poll?afterId=19&continue) -> TRANG TRANG
                 // (QA TC-B-17). Endpoint du lieu khong bao gio la "trang" de quay lai -> loai khoi cache.
                 .requestCache(rc -> rc.requestCache(pageOnlyRequestCache()))
+                // S4 (finding QA-A): request AJAX mà phiên đã hết -> trước đây Spring trả nguyên
+                // TRANG LOGIN (HTML, mã 200). JS đang chờ JSON nhận về mớ HTML: chỗ thì "lỗi không
+                // xác định", chỗ thì im lặng như thành công. Nay trả 401 rỗng để JS biết mà mời
+                // đăng nhập lại; điều hướng TRANG vẫn về /login như cũ.
+                .exceptionHandling(e -> e.defaultAuthenticationEntryPointFor(
+                        new org.springframework.security.web.authentication.HttpStatusEntryPoint(
+                                org.springframework.http.HttpStatus.UNAUTHORIZED),
+                        SecurityWebConfig::laRequestDuLieu))
                 .formLogin(f -> f
                         .loginPage("/login")
                         .defaultSuccessUrl("/", false)
@@ -99,6 +107,27 @@ public class SecurityWebConfig {
      * Cac request nay khong khop matcher -> khong duoc luu -> dang nhap xong ve defaultSuccessUrl "/"
      * (hoac trang that gan nhat neu co), khong bao gio bi nem vao endpoint du lieu.
      */
+    /**
+     * S4: nhận diện request LẤY DỮ LIỆU (fetch/XHR) để trả 401 thay vì trang login.
+     *
+     * <p>Ba dấu hiệu, chỉ cần trúng một:
+     * <ul>
+     *   <li>{@code Sec-Fetch-Dest: empty} — trình duyệt TỰ gửi cho fetch/XHR, còn điều hướng trang
+     *       là {@code document}. Không phải sửa JS ở hàng chục chỗ.</li>
+     *   <li>header {@code X-Requested-With: XMLHttpRequest} (jQuery/XHR cũ);</li>
+     *   <li>{@code Accept} xin JSON, hoặc đường dẫn kết thúc {@code -ajax}/{@code /poll}.</li>
+     * </ul>
+     */
+    private static boolean laRequestDuLieu(jakarta.servlet.http.HttpServletRequest request) {
+        String dest = request.getHeader("Sec-Fetch-Dest");
+        if ("empty".equalsIgnoreCase(dest)) return true;
+        if ("XMLHttpRequest".equals(request.getHeader("X-Requested-With"))) return true;
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("application/json")) return true;
+        String uri = request.getRequestURI();
+        return uri != null && (uri.endsWith("-ajax") || uri.endsWith("/poll"));
+    }
+
     private org.springframework.security.web.savedrequest.RequestCache pageOnlyRequestCache() {
         var cache = new org.springframework.security.web.savedrequest.HttpSessionRequestCache();
         cache.setRequestMatcher(request -> {
