@@ -42,15 +42,49 @@ public class PartnerSettlementService {
 
     private final PartnerSettlementRepository repository;
     private final CommissionService commissionService;
+    private final com.dididi.booking.settlement.repository.SettlementAdjustmentRepository adjustmentRepository;
 
     /** Phần nền tảng giữ lại trên mỗi vé máy bay (mô hình hoa hồng đại lý). */
     @Value("${app.settlement.flight-commission-rate:0.05}")
     private BigDecimal flightRate;
 
     public PartnerSettlementService(PartnerSettlementRepository repository,
-                                    CommissionService commissionService) {
+                                    CommissionService commissionService,
+                                    com.dididi.booking.settlement.repository.SettlementAdjustmentRepository adjustmentRepository) {
         this.repository = repository;
         this.commissionService = commissionService;
+        this.adjustmentRepository = adjustmentRepository;
+    }
+
+    /**
+     * P1-8: đơn thuộc kỳ ĐÃ CHỐT/ĐÃ TRẢ vừa bị hoàn tiền -> ghi bút toán điều chỉnh để trừ vào kỳ
+     * chốt kế tiếp. Không sửa số kỳ cũ (đã in, đã chuyển khoản), đúng cách kế toán ghi bù.
+     * Trả về true nếu có tạo điều chỉnh. Idempotent theo bookingId.
+     */
+    @Transactional
+    public boolean ghiDieuChinhNeuKyDaChot(Booking b, String partnerCode, YearMonth kyGoc) {
+        if (b == null || partnerCode == null || kyGoc == null) return false;
+        // Có bản ghi PartnerSettlement = kỳ ĐÃ chốt (enum chỉ có CLOSED/PAID). Chưa chốt thì số live
+        // tự động giảm khi đơn chuyển CANCELLED -> không cần bút toán bù.
+        if (repository.findByPartnerCodeAndPeriodYm(partnerCode, kyGoc.toString()).isEmpty()) {
+            return false;
+        }
+        if (adjustmentRepository.existsByBookingId(b.getId())) return false;
+
+        BigDecimal gross = b.getAmount() == null ? BigDecimal.ZERO : b.getAmount();
+        BigDecimal rate = HOTEL_PMS.equals(partnerCode) ? commissionService.rateForPeriod(kyGoc) : flightRate;
+        BigDecimal comm = gross.multiply(rate).setScale(0, RoundingMode.HALF_UP);
+
+        var adj = new com.dididi.booking.settlement.domain.SettlementAdjustment();
+        adj.setPartnerCode(partnerCode);
+        adj.setOriginPeriod(kyGoc.toString());
+        adj.setBookingId(b.getId());
+        adj.setBookingCode(b.getPublicCode());
+        adj.setGross(gross);
+        adj.setNetPayable(gross.subtract(comm));
+        adj.setReason("Hoàn tiền đơn " + b.getPublicCode() + " sau khi kỳ " + kyGoc + " đã chốt");
+        adjustmentRepository.save(adj);
+        return true;
     }
 
     // ================= VIEW MODEL =================
@@ -94,8 +128,13 @@ public class PartnerSettlementService {
         BigDecimal partnerGross = BigDecimal.ZERO;
 
         // --- HOTEL_PMS (KS CHANNEL) ---
+        // P1-9: tỷ lệ hoa hồng lấy theo KỲ, không lấy tỷ lệ hiện hành — đổi rate giữa chừng không
+        // được làm đổi công nợ của những ngày đã qua.
+        BigDecimal pmsRate = commissionService.rateForPeriod(ym);
         rows.add(buildRow(persisted.get(HOTEL_PMS), HOTEL_PMS, "Hotel PMS (khách sạn đồng bộ)", "PARTNER",
-                channel[0], vnd(channel[1]), commissionService.getDefaultRate(), closable));
+                channel[0], vnd(channel[1]), pmsRate, closable,
+                // P2: hoa hồng cộng từ TỪNG ĐƠN để khớp đúng file CSV gửi đối tác.
+                repository.sumCommissionChannelHotels(start, end, pmsRate)));
         partnerGross = partnerGross.add(vnd(channel[1]));
 
         // --- Từng hãng bay ---
@@ -104,7 +143,8 @@ public class PartnerSettlementService {
             long count = ((Number) r[1]).longValue();
             BigDecimal gross = r[2] == null ? BigDecimal.ZERO : (BigDecimal) r[2];
             rows.add(buildRow(persisted.get(code), code, Airlines.nameOf(code), "PARTNER",
-                    count, gross, flightRate, closable));
+                    count, gross, flightRate, closable,
+                    repository.sumCommissionFlights(code, startDt, endDt, flightRate)));
             partnerGross = partnerGross.add(gross);
         }
 
@@ -163,7 +203,15 @@ public class PartnerSettlementService {
         s.setNetPayable(live.netPayable());
         s.setStatus(PartnerSettlement.Status.CLOSED);
         s.setClosedBy(adminId);
-        return repository.save(s);   // unique (partner, period) chặn race chốt trùng
+        PartnerSettlement saved = repository.save(s);   // unique (partner, period) chặn race chốt trùng
+
+        // P1-8: kỳ này đã hấp thụ các khoản điều chỉnh treo (netPayable ở trên đã trừ) -> đóng chúng lại
+        // để kỳ sau không trừ lần hai.
+        for (var a : adjustmentRepository.findByPartnerCodeAndAppliedPeriodIsNullOrderByIdAsc(partnerCode)) {
+            a.setAppliedPeriod(periodYm);
+            adjustmentRepository.save(a);
+        }
+        return saved;
     }
 
     @Transactional
@@ -199,7 +247,7 @@ public class PartnerSettlementService {
         BigDecimal rate;
         List<Booking> bookings;
         if (HOTEL_PMS.equals(partnerCode)) {
-            rate = commissionService.getDefaultRate();
+            rate = commissionService.rateForPeriod(ym);   // P1-9: đúng tỷ lệ của kỳ, không phải rate hiện hành
             bookings = repository.channelHotelBookings(start, end);
         } else {
             rate = flightRate;
@@ -229,14 +277,36 @@ public class PartnerSettlementService {
 
     private Row buildRow(PartnerSettlement persisted, String code, String name, String kind,
                          long liveCount, BigDecimal liveGross, BigDecimal liveRate, boolean closable) {
+        return buildRow(persisted, code, name, kind, liveCount, liveGross, liveRate, closable, null);
+    }
+
+    /**
+     * @param commissionTheoTungDon hoa hồng cộng từ từng đơn (P2). Null thì rơi về cách cũ
+     *        (nhân trên tổng) — chỉ dùng cho dòng không phải đối tác.
+     */
+    private Row buildRow(PartnerSettlement persisted, String code, String name, String kind,
+                         long liveCount, BigDecimal liveGross, BigDecimal liveRate, boolean closable,
+                         BigDecimal commissionTheoTungDon) {
         if (persisted != null) {   // đã chốt -> số BẤT BIẾN lấy từ bản ghi
             return new Row(code, persisted.getPartnerName(), kind, persisted.getBookingCount(),
                     persisted.getGross(), persisted.getCommissionRate(), persisted.getCommissionAmount(),
                     persisted.getNetPayable(), persisted.getStatus().name(), false, persisted.getPaymentRef());
         }
-        BigDecimal comm = liveGross.multiply(liveRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal comm = (commissionTheoTungDon != null)
+                ? commissionTheoTungDon
+                : liveGross.multiply(liveRate).setScale(0, RoundingMode.HALF_UP);
+        BigDecimal net = liveGross.subtract(comm);
+
+        // P1-8: trừ các khoản đã thu thừa ở kỳ trước (đơn bị hoàn sau khi kỳ đó đã chốt).
+        BigDecimal treo = BigDecimal.ZERO;
+        if ("PARTNER".equals(kind)) {
+            for (var a : adjustmentRepository.findByPartnerCodeAndAppliedPeriodIsNullOrderByIdAsc(code)) {
+                treo = treo.add(a.getNetPayable());
+            }
+            net = net.subtract(treo);
+        }
         return new Row(code, name, kind, liveCount, liveGross, liveRate, comm,
-                liveGross.subtract(comm), "OPEN", closable && liveCount > 0, null);
+                net, "OPEN", closable && liveCount > 0, null);
     }
 
     /** Kỳ chốt được khi đã qua hết tháng + cửa sổ khiếu nại (mọi đơn trong kỳ hết đường hoàn). */

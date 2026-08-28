@@ -39,10 +39,13 @@ public class AdminCommissionApiController {
     @PutMapping("/config")
     public ApiResponse<CommissionConfigDto> setConfig(@RequestParam BigDecimal rate, Authentication auth) {
         RoleUtils.requireSuperAdmin(auth);
-        commissionService.setDefaultRate(rate);
-        events.publishEvent(new AuditEvent(Long.valueOf(auth.getName()),
-                "CHANGE_COMMISSION_DEFAULT", "COMMISSION", null, "rate=" + rate));
-        return ApiResponse.ok(new CommissionConfigDto(rate), "Đã cập nhật hoa hồng mặc định");
+        Long actor = Long.valueOf(auth.getName());
+        commissionService.setDefaultRate(rate, actor);
+        events.publishEvent(new AuditEvent(actor, "CHANGE_COMMISSION_DEFAULT", "COMMISSION", null,
+                "rate=" + rate + " — áp dụng cho đối soát từ kỳ "
+                        + java.time.YearMonth.now().plusMonths(1) + " (kỳ cũ giữ tỷ lệ đã thoả thuận)"));
+        return ApiResponse.ok(new CommissionConfigDto(rate),
+                "Đã cập nhật hoa hồng mặc định — có hiệu lực đối soát từ kỳ sau");
     }
 
     @Operation(summary = "Danh sách vendor có hoa hồng riêng")

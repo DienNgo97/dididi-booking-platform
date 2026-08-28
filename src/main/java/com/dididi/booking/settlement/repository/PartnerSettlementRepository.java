@@ -90,6 +90,34 @@ public interface PartnerSettlementRepository extends JpaRepository<PartnerSettle
             "order by b.id")
     List<com.dididi.booking.booking.domain.entity.Booking> undatableBookings();
 
+    /**
+     * P2 — HOA HỒNG CỘNG TỪ TỪNG ĐƠN (làm tròn mỗi đơn rồi cộng), đúng như file CSV gửi đối tác.
+     * Trước đây màn hình nhân tỷ lệ lên TỔNG kỳ rồi mới làm tròn: hai con số của cùng một kỳ lệch
+     * nhau vài trăm đồng, đối tác đối chiếu là thấy ngay.
+     */
+    @Query(value = """
+            select coalesce(sum(round(b.amount * :rate, 0)), 0)
+            from bookings b join hotels h on h.id = b.target_id
+            where b.type = 'HOTEL' and b.status = 'CONFIRMED'
+              and h.vendor_id is null and h.source = 'CHANNEL'
+              and b.check_out between :start and :end
+            """, nativeQuery = true)
+    java.math.BigDecimal sumCommissionChannelHotels(@Param("start") LocalDate start,
+                                                    @Param("end") LocalDate end,
+                                                    @Param("rate") BigDecimal rate);
+
+    @Query(value = """
+            select coalesce(sum(round(b.amount * :rate, 0)), 0)
+            from bookings b join flights f on f.id = b.target_id
+            where b.type = 'FLIGHT' and b.status = 'CONFIRMED'
+              and f.airline_code = :airline
+              and b.travel_date >= :start and b.travel_date < :end
+            """, nativeQuery = true)
+    java.math.BigDecimal sumCommissionFlights(@Param("airline") String airline,
+                                              @Param("start") LocalDateTime start,
+                                              @Param("end") LocalDateTime end,
+                                              @Param("rate") BigDecimal rate);
+
     /** Chi tiết đơn của 1 đối tác trong kỳ — cho file đối soát CSV. */
     @Query("select b from Booking b, com.dididi.booking.hotel.domain.entity.Hotel h " +
             "where h.id = b.targetId and b.type = com.dididi.booking.booking.domain.enums.BookingType.HOTEL " +
