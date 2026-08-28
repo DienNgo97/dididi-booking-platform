@@ -1,5 +1,6 @@
 package com.dididi.booking.booking;
 
+import com.dididi.booking.approval.service.ApprovalService;
 import com.dididi.booking.booking.domain.entity.Booking;
 import com.dididi.booking.booking.domain.enums.BookingStatus;
 import com.dididi.booking.booking.repository.BookingRepository;
@@ -9,6 +10,7 @@ import com.dididi.booking.payment.repository.PaymentRepository;
 import com.dididi.booking.payment.service.PaymentReconciliationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -32,14 +34,24 @@ public class PaymentExpiryScheduler {
     private final BookingService bookingService;
     private final PaymentRepository paymentRepository;
     private final PaymentReconciliationService reconciliationService;
+    private final ApprovalService approvalService;
+
+    /**
+     * P1-3: đơn B2B đang chờ duyệt ngân sách được giữ chỗ LÂU HƠN 20 phút của khách lẻ, vì quy trình
+     * duyệt của doanh nghiệp tính bằng giờ/ngày. Vẫn phải có TRẦN, nếu không phòng/ghế bị giam vô hạn.
+     */
+    @Value("${app.approval.hold-hours:72}")
+    private long approvalHoldHours;
 
     public PaymentExpiryScheduler(BookingRepository bookingRepository, BookingService bookingService,
                                   PaymentRepository paymentRepository,
-                                  PaymentReconciliationService reconciliationService) {
+                                  PaymentReconciliationService reconciliationService,
+                                  ApprovalService approvalService) {
         this.bookingRepository = bookingRepository;
         this.bookingService = bookingService;
         this.paymentRepository = paymentRepository;
         this.reconciliationService = reconciliationService;
+        this.approvalService = approvalService;
     }
 
     @Scheduled(fixedRate = 300_000)   // 5 phut
@@ -53,6 +65,21 @@ public class PaymentExpiryScheduler {
             var payment = paymentRepository.findByBookingId(b.getId()).orElse(null);
             boolean alreadyPaid = payment != null && payment.getStatus() == PaymentStatus.PAID;
             if (alreadyPaid) continue;
+
+            // P1-3: đơn B2B vượt ngưỡng đang CHỜ DUYỆT ngân sách. Người duyệt không thể phản hồi
+            // trong 20 phút, nên trước đây job này giết đơn và tính năng duyệt coi như vô dụng.
+            // Giữ chỗ thêm tới app.approval.hold-hours; quá hạn thì huỷ VÀ đóng luôn yêu cầu duyệt
+            // để danh sách chờ không còn đơn đã chết.
+            if (approvalService.isPendingApproval(b.getId())) {
+                Instant approvalCutoff = Instant.now().minus(Duration.ofHours(approvalHoldHours));
+                if (b.getCreatedAt() == null || b.getCreatedAt().isAfter(approvalCutoff)) {
+                    continue;
+                }
+                approvalService.expirePendingForBooking(b.getId(),
+                        "Tự đóng: quá " + approvalHoldHours + " giờ chưa được duyệt nên đơn đã hết hạn giữ chỗ.");
+                log.warn("Don B2B {} cho duyet qua {} gio — huy giu cho va dong yeu cau duyet",
+                        b.getPublicCode(), approvalHoldHours);
+            }
 
             // Co hoi cuoi cung truoc khi giet don: HOI THANG VNPay xem khach da tra tien chua.
             // Truong hop that: khach tra tien xong tat tab, VNPay khong goi IPN vao duoc (localhost/NAT)
