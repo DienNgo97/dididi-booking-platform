@@ -92,13 +92,21 @@ public class MockFlightProviderAdapter implements FlightDataSource {
                 .body(SeatHoldResult.class);
     }
 
-    /** Xac nhan ghe (HELD -> BOOKED) khi thanh toan thanh cong. */
-    public void confirmSeats(Long externalId, String holdRef) {
-        client.post()
+    /**
+     * Xac nhan ghe (HELD -&gt; BOOKED) khi thanh toan thanh cong.
+     *
+     * <p>P1-5: TRA VE ma xac nhan cua hang (provider dat vao o dau tien cua SeatHoldResponse).
+     * Truoc day dung {@code toBodilessEntity()} nen ma nay bi vut di — khong co ma thi khi khach huy
+     * ve, platform chi goi duoc {@code releaseSeats} (chi xoa ghe dang HELD), con ghe da BOOKED khong
+     * ai nha: ghe bien mat khoi kho ban vinh vien.</p>
+     */
+    public String confirmSeats(Long externalId, String holdRef) {
+        SeatHoldResult r = client.post()
                 .uri("/flights/{id}/seats/confirm", externalId)
                 .body(Map.of("holdRef", holdRef))
                 .retrieve()
-                .toBodilessEntity();
+                .body(SeatHoldResult.class);
+        return r == null ? null : r.holdRef();   // o dau tien = confirmationCode o nhanh confirm
     }
 
     /** Nha cac ghe dang giu theo holdRef (huy/het han thanh toan). */

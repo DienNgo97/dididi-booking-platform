@@ -14,6 +14,8 @@ import com.dididi.booking.payment.domain.entity.Payment;
 import com.dididi.booking.payment.domain.entity.Refund;
 import com.dididi.booking.payment.domain.enums.PaymentStatus;
 import com.dididi.booking.payment.domain.enums.RefundStatus;
+import com.dididi.booking.ops.domain.OpsAlert;
+import com.dididi.booking.ops.service.OpsAlertService;
 import com.dididi.booking.payment.repository.PaymentRepository;
 import com.dididi.booking.payment.repository.RefundRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,7 +47,13 @@ public class RefundService {
     private final com.dididi.booking.notification.service.UserNotificationService userNotificationService;
     private final com.dididi.booking.corporate.service.CompanyService companyService;
     private final com.dididi.booking.voucher.service.VoucherService voucherService;
+    private final OpsAlertService opsAlerts;
+    private final com.dididi.booking.settlement.service.PartnerSettlementService settlementService;
+    private final com.dididi.booking.hotel.repository.HotelRepository hotelRepository;
+    private final com.dididi.booking.flight.repository.FlightRepository flightRepository;
     private final BigDecimal superAdminThreshold;
+
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RefundService.class);
 
     // BP-PAY-02: default khop policy (5.000.000 VND ~ don lon thuong can SUPER_ADMIN duyet) va trung
     // y nghia voi gia tri trong application.yml. Neu key bi xoa, default nay van la mot nguong HOP LY
@@ -58,6 +66,10 @@ public class RefundService {
                          com.dididi.booking.notification.service.UserNotificationService userNotificationService,
                          com.dididi.booking.corporate.service.CompanyService companyService,
                          com.dididi.booking.voucher.service.VoucherService voucherService,
+                         OpsAlertService opsAlerts,
+                         com.dididi.booking.settlement.service.PartnerSettlementService settlementService,
+                         com.dididi.booking.hotel.repository.HotelRepository hotelRepository,
+                         com.dididi.booking.flight.repository.FlightRepository flightRepository,
                          @Value("${app.refund.super-admin-threshold:5000000}") BigDecimal superAdminThreshold) {
         this.bookingRepository = bookingRepository;
         this.bookingService = bookingService;
@@ -69,6 +81,10 @@ public class RefundService {
         this.userNotificationService = userNotificationService;
         this.companyService = companyService;
         this.voucherService = voucherService;
+        this.opsAlerts = opsAlerts;
+        this.settlementService = settlementService;
+        this.hotelRepository = hotelRepository;
+        this.flightRepository = flightRepository;
         this.superAdminThreshold = superAdminThreshold;
     }
 
@@ -115,13 +131,20 @@ public class RefundService {
         }
 
         // 1) Ghi nhan lan hoan tien (toan phan).
+        // P1-4: tien CO THAT SU ve tay khach chua? Chi hai truong hop la "xong ngay":
+        //   - COMPANY_BUDGET: khong co tien mat, chi tra lai han muc (da lam o buoc 3c);
+        //   - MOCK: moi truong dev, khong co dong nao roi khoi tai khoan ai.
+        // Con VNPAY: he thong KHONG goi API hoan cua cong -> tien van nam o Dididi, ke toan phai
+        // chuyen khoan tay. Danh dau COMPLETED va gui mail "da hoan tien" luc nay la NOI DOI voi khach.
+        boolean tienVeNgay = "COMPANY_BUDGET".equals(p.getMethod()) || "MOCK".equals(p.getMethod());
+
         Refund r = new Refund();
         r.setBookingId(b.getId());
         r.setPaymentId(p.getId());
         r.setAmount(p.getAmount());
         r.setCurrency(p.getCurrency());
         r.setReason(reason);
-        r.setStatus(RefundStatus.COMPLETED);
+        r.setStatus(tienVeNgay ? RefundStatus.COMPLETED : RefundStatus.PENDING_TRANSFER);
         r.setProcessedBy(adminUserId);
         refundRepository.save(r);
 
@@ -147,12 +170,110 @@ public class RefundService {
         // 3d) BP-VOU-03: trả voucher đã dùng cho đơn này -> khách có thể dùng lại mã cho lần sau.
         voucherService.releaseForBooking(b.getId());
 
+        // 3e) P1-8: nếu đơn thuộc kỳ đối soát ĐÃ CHỐT/ĐÃ TRẢ, ghi bút toán trừ vào kỳ sau —
+        // nếu không, đối tác giữ luôn phần đã nhận cho một đơn không còn tồn tại.
+        ghiDieuChinhDoiSoat(b);
+
         // 4) Audit qua event - ghi sau khi commit + bat dong bo.
         events.publishEvent(new AuditEvent(adminUserId, "REFUND", "BOOKING", b.getId(),
                 "Hoàn " + r.getAmount() + " " + r.getCurrency() + " cho đơn " + b.getPublicCode()
                         + (reason != null && !reason.isBlank() ? " — lý do: " + reason : "")));
 
-        emailService.sendRefunded(b, r.getAmount(), LocaleContextHolder.getLocale());   // email hoan tien (phong thu)
+        if (tienVeNgay) {
+            baoKhachDaHoanTien(b, r);
+        } else {
+            // Chua chuyen tien -> noi that voi khach, va tao VIEC cho ke toan (canh bao van hanh).
+            try {
+                userNotificationService.create(b.getUserId(),
+                        com.dididi.booking.notification.domain.UserNotificationType.REFUND_COMPLETED,
+                        "Đã tiếp nhận yêu cầu hoàn tiền",
+                        "Đơn " + b.getPublicCode() + " đã được huỷ. Khoản " + r.getAmount() + " "
+                                + r.getCurrency() + " sẽ được chuyển về tài khoản thanh toán của bạn"
+                                + " trong 3-5 ngày làm việc.",
+                        "/account/bookings", b.getId());
+            } catch (Exception ignored) { }
+            opsAlerts.raise(OpsAlert.Type.REFUND_PENDING_TRANSFER, OpsAlert.Severity.CRITICAL,
+                    b.getId(), b.getPublicCode(),
+                    "Đã huỷ đơn và ghi sổ hoàn " + r.getAmount() + " " + r.getCurrency()
+                            + " nhưng TIỀN CHƯA CHUYỂN — thanh toán qua " + p.getMethod()
+                            + ", hệ thống không tự hoàn qua cổng được.",
+                    "Kế toán chuyển khoản cho khách rồi vào Đơn & hoàn tiền bấm 'Đã chuyển tiền' kèm mã giao dịch.");
+        }
+        return r;
+    }
+
+    /**
+     * P1-4: đánh dấu ĐÃ CHUYỂN TIỀN cho một khoản hoàn đang chờ — đây mới là lúc khách được báo
+     * "đã hoàn tiền". Bắt buộc có mã giao dịch để còn đối chiếu sao kê.
+     */
+    @Transactional
+    public Refund markTransferred(Long refundId, Long adminUserId, String transactionRef) {
+        if (transactionRef == null || transactionRef.isBlank()) {
+            throw new BusinessException("TRANSFER_REF_REQUIRED",
+                    "Nhập mã giao dịch chuyển khoản để đối chiếu sao kê", HttpStatus.BAD_REQUEST);
+        }
+        Refund r = refundRepository.findById(refundId)
+                .orElseThrow(() -> new BusinessException("NOT_FOUND", "Không tìm thấy khoản hoàn", HttpStatus.NOT_FOUND));
+        if (r.getStatus() != RefundStatus.PENDING_TRANSFER) {
+            throw new BusinessException("REFUND_NOT_PENDING",
+                    "Khoản hoàn này không ở trạng thái chờ chuyển tiền (hiện tại: " + r.getStatus() + ")",
+                    HttpStatus.CONFLICT);
+        }
+        r.setStatus(RefundStatus.COMPLETED);
+        r.setGatewayRefundNo(transactionRef.trim());
+        r.setProcessedBy(adminUserId);
+        refundRepository.save(r);
+
+        Booking b = bookingRepository.findById(r.getBookingId()).orElse(null);
+        if (b != null) {
+            baoKhachDaHoanTien(b, r);
+            events.publishEvent(new AuditEvent(adminUserId, "REFUND_TRANSFERRED", "BOOKING", b.getId(),
+                    "Đã chuyển " + r.getAmount() + " " + r.getCurrency() + " cho đơn " + b.getPublicCode()
+                            + " — mã giao dịch " + r.getGatewayRefundNo()));
+        }
+        opsAlerts.autoResolve(OpsAlert.Type.REFUND_PENDING_TRANSFER, r.getBookingId(),
+                "Kế toán đã chuyển tiền, mã " + r.getGatewayRefundNo());
+        return r;
+    }
+
+    /** Khoản chờ chuyển tiền — danh sách việc của kế toán. */
+    @Transactional(readOnly = true)
+    public List<Refund> pendingTransfers() {
+        return refundRepository.findByStatusOrderByIdDesc(RefundStatus.PENDING_TRANSFER);
+    }
+
+    /**
+     * P1-8: quy đơn vừa hoàn về đúng đối tác + kỳ dịch vụ, rồi nhờ đối soát ghi bút toán bù nếu
+     * kỳ đó đã chốt. Khách sạn CHANNEL (không vendor) -> HOTEL_PMS; vé -> mã hãng. Các loại khác
+     * (KS tự doanh, KS có vendor) không phát sinh công nợ đối tác nên bỏ qua.
+     */
+    private void ghiDieuChinhDoiSoat(Booking b) {
+        try {
+            if (b.getType() == com.dididi.booking.booking.domain.enums.BookingType.HOTEL) {
+                if (b.getCheckOut() == null || b.getTargetId() == null) return;
+                var h = hotelRepository.findById(b.getTargetId()).orElse(null);
+                if (h == null || h.getVendorId() != null
+                        || h.getSource() == com.dididi.booking.hotel.domain.enums.HotelSource.DIRECT) {
+                    return;
+                }
+                settlementService.ghiDieuChinhNeuKyDaChot(b,
+                        com.dididi.booking.settlement.service.PartnerSettlementService.HOTEL_PMS,
+                        java.time.YearMonth.from(b.getCheckOut()));
+            } else if (b.getType() == com.dididi.booking.booking.domain.enums.BookingType.FLIGHT) {
+                if (b.getTravelDate() == null || b.getTargetId() == null) return;
+                var f = flightRepository.findById(b.getTargetId()).orElse(null);
+                if (f == null || f.getAirlineCode() == null) return;
+                settlementService.ghiDieuChinhNeuKyDaChot(b, f.getAirlineCode(),
+                        java.time.YearMonth.from(b.getTravelDate()));
+            }
+        } catch (Exception ex) {
+            // Không để lỗi ghi bù làm hỏng việc hoàn tiền cho khách; nhưng phải kêu to.
+            log.error("[ops] Không ghi được điều chỉnh đối soát cho đơn {}: {}", b.getPublicCode(), ex.toString());
+        }
+    }
+
+    private void baoKhachDaHoanTien(Booking b, Refund r) {
+        emailService.sendRefunded(b, r.getAmount(), LocaleContextHolder.getLocale());
         try {
             userNotificationService.create(b.getUserId(),
                     com.dididi.booking.notification.domain.UserNotificationType.REFUND_COMPLETED,
@@ -160,7 +281,6 @@ public class RefundService {
                     "Đã hoàn " + r.getAmount() + " " + r.getCurrency() + " cho đơn " + b.getPublicCode() + ".",
                     "/account/bookings", b.getId());
         } catch (Exception ignored) { }
-        return r;
     }
 
     /**

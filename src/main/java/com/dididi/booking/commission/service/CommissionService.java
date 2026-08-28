@@ -38,6 +38,7 @@ public class CommissionService {
     private final BookingRepository bookingRepository;
     private final HotelRepository hotelRepository;
     private final UserRepository userRepository;
+    private final com.dididi.booking.commission.repository.CommissionRateHistoryRepository rateHistoryRepository;
 
     @Value("${app.commission.default-rate:0.15}")
     private BigDecimal fallbackRate;
@@ -45,24 +46,53 @@ public class CommissionService {
     public CommissionService(CommissionConfigRepository configRepository,
                              VendorCommissionRateRepository vendorRateRepository,
                              BookingRepository bookingRepository, HotelRepository hotelRepository,
-                             UserRepository userRepository) {
+                             UserRepository userRepository,
+                             com.dididi.booking.commission.repository.CommissionRateHistoryRepository rateHistoryRepository) {
         this.configRepository = configRepository;
         this.vendorRateRepository = vendorRateRepository;
         this.bookingRepository = bookingRepository;
         this.hotelRepository = hotelRepository;
         this.userRepository = userRepository;
+        this.rateHistoryRepository = rateHistoryRepository;
     }
 
     public BigDecimal getDefaultRate() {
         return configRepository.findTopByOrderByIdAsc().map(CommissionConfig::getDefaultRate).orElse(fallbackRate);
     }
 
+    /**
+     * P1-9: tỷ lệ có hiệu lực CHO MỘT KỲ đối soát. Tỷ lệ đổi giữa chừng không được hồi tố lên kỳ
+     * đang chạy hay kỳ đã qua — đó là chỗ đối tác có cơ sở tranh chấp số công nợ.
+     */
+    public BigDecimal rateForPeriod(java.time.YearMonth ym) {
+        if (ym == null) return getDefaultRate();
+        return rateHistoryRepository
+                .findTopByEffectiveFromLessThanEqualOrderByEffectiveFromDescIdDesc(ym.atDay(1))
+                .map(com.dididi.booking.commission.domain.CommissionRateHistory::getRate)
+                .orElseGet(this::getDefaultRate);   // chưa có lịch sử -> dùng tỷ lệ hiện hành
+    }
+
     @Transactional
     public BigDecimal setDefaultRate(BigDecimal rate) {
+        return setDefaultRate(rate, null);
+    }
+
+    /**
+     * Đổi tỷ lệ mặc định. Ngoài việc lưu giá trị hiện hành, ghi thêm một mốc lịch sử có hiệu lực
+     * TỪ KỲ SAU để đối soát các kỳ cũ giữ nguyên số đã thoả thuận.
+     */
+    @Transactional
+    public BigDecimal setDefaultRate(BigDecimal rate, Long changedBy) {
         validate(rate);
         CommissionConfig c = configRepository.findTopByOrderByIdAsc().orElseGet(CommissionConfig::new);
         c.setDefaultRate(rate);
         configRepository.save(c);
+
+        var h = new com.dididi.booking.commission.domain.CommissionRateHistory();
+        h.setRate(rate);
+        h.setEffectiveFrom(java.time.YearMonth.now().plusMonths(1).atDay(1));
+        h.setChangedBy(changedBy);
+        rateHistoryRepository.save(h);
         return rate;
     }
 

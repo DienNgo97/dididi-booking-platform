@@ -35,6 +35,7 @@ public class PaymentExpiryScheduler {
     private final PaymentRepository paymentRepository;
     private final PaymentReconciliationService reconciliationService;
     private final ApprovalService approvalService;
+    private final com.dididi.booking.group.service.GroupBookingService groupBookingService;
 
     /**
      * P1-3: đơn B2B đang chờ duyệt ngân sách được giữ chỗ LÂU HƠN 20 phút của khách lẻ, vì quy trình
@@ -46,12 +47,14 @@ public class PaymentExpiryScheduler {
     public PaymentExpiryScheduler(BookingRepository bookingRepository, BookingService bookingService,
                                   PaymentRepository paymentRepository,
                                   PaymentReconciliationService reconciliationService,
-                                  ApprovalService approvalService) {
+                                  ApprovalService approvalService,
+                                  com.dididi.booking.group.service.GroupBookingService groupBookingService) {
         this.bookingRepository = bookingRepository;
         this.bookingService = bookingService;
         this.paymentRepository = paymentRepository;
         this.reconciliationService = reconciliationService;
         this.approvalService = approvalService;
+        this.groupBookingService = groupBookingService;
     }
 
     @Scheduled(fixedRate = 300_000)   // 5 phut
@@ -65,6 +68,13 @@ public class PaymentExpiryScheduler {
             var payment = paymentRepository.findByBookingId(b.getId()).orElse(null);
             boolean alreadyPaid = payment != null && payment.getStatus() == PaymentStatus.PAID;
             if (alreadyPaid) continue;
+
+            // P1-6: phòng của thành viên đang nằm trong giao dịch TRẢ GỘP của nhóm. Đơn kiểu này
+            // không có Payment riêng nên nhìn đâu cũng thấy "chưa trả tiền" — huỷ đi là khách trả
+            // đủ tiền mà mất phòng. Giữ trong một cửa sổ gấp đôi hạn thường rồi mới xét tiếp.
+            if (groupBookingService.dangTraGop(b, Duration.ofMinutes(BookingService.HOLD_MINUTES * 2L))) {
+                continue;
+            }
 
             // P1-3: đơn B2B vượt ngưỡng đang CHỜ DUYỆT ngân sách. Người duyệt không thể phản hồi
             // trong 20 phút, nên trước đây job này giết đơn và tính năng duyệt coi như vô dụng.

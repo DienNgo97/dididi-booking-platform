@@ -23,18 +23,25 @@ public class PaymentReconciliationScheduler {
     private static final Logger log = LoggerFactory.getLogger(PaymentReconciliationScheduler.class);
 
     private final PaymentReconciliationService service;
+    private final com.dididi.booking.ops.service.JobHealthService jobHealth;
 
-    public PaymentReconciliationScheduler(PaymentReconciliationService service) {
+    public PaymentReconciliationScheduler(PaymentReconciliationService service,
+                                          com.dididi.booking.ops.service.JobHealthService jobHealth) {
         this.service = service;
+        this.jobHealth = jobHealth;
     }
 
     @Scheduled(fixedRate = 120_000, initialDelay = 60_000)
     public void run() {
         try {
             service.sweep();
+            jobHealth.thanhCong("vnpay-reconcile");
         } catch (Exception ex) {
             // Không bao giờ để một lần đối soát hỏng làm chết luồng scheduler.
+            // P1-12: nhưng hỏng LIÊN TIẾP thì phải báo động — đối soát chết nghĩa là đơn đã trả tiền
+            // có thể bị job hết hạn giết mà không ai hay.
             log.warn("[Đối soát VNPay] vòng quét lỗi: {}", ex.toString());
+            jobHealth.thatBai("vnpay-reconcile", ex);
         }
     }
 }

@@ -152,8 +152,12 @@ public class PaymentReconciliationService {
      * Idempotent: gọi lại nhiều lần không cộng điểm hay gửi mail trùng (nhờ markConfirmed).
      */
     @Transactional
-    public Outcome reconcile(Payment p) {
-        if (!enabled || p.getStatus() != PaymentStatus.PENDING) return Outcome.UNKNOWN;
+    public Outcome reconcile(Payment payment) {
+        if (!enabled || payment == null) return Outcome.UNKNOWN;
+        // P2: đọc lại dòng KÈM KHOÁ. Hai luồng (đối soát + IPN, hoặc hai instance) cùng nhìn thấy
+        // PENDING rồi cùng xử lý là ghi nhận trùng; khoá xong đọc lại trạng thái mới là bản thật.
+        Payment p = paymentRepository.findByIdForUpdate(payment.getId()).orElse(null);
+        if (p == null || p.getStatus() != PaymentStatus.PENDING) return Outcome.UNKNOWN;
 
         String txnRef = p.getTransactionRef();
         if (txnRef == null || txnRef.isBlank()) return Outcome.UNKNOWN;

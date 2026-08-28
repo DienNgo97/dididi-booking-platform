@@ -59,9 +59,25 @@ public class HotelSearchIndexer {
         try {
             if (h.isActive()) {
                 searchService.putDocuments(List.of(toDoc(h)));
+            } else {
+                // P2: KS bị TẮT phải biến mất khỏi tìm kiếm NGAY. Trước đây chỉ ngừng được đưa vào
+                // đợt re-index sau, nên tới 15 phút khách vẫn thấy "kết quả ma" rồi bấm vào mới bị chặn.
+                removeOne(h.getId());
             }
         } catch (Exception e) {
             log.warn("[search] Không index được KS {} ({}): {}", h.getId(), h.getName(), e.getMessage());
+        }
+    }
+
+    /** Gỡ 1 khách sạn khỏi index (tắt hoặc xoá). Best-effort như indexOne. */
+    public void removeOne(Long hotelId) {
+        if (!searchService.isEnabled() || hotelId == null) {
+            return;
+        }
+        try {
+            searchService.deleteDocument(hotelId);
+        } catch (Exception e) {
+            log.warn("[search] Không gỡ được KS {} khỏi index: {}", hotelId, e.getMessage());
         }
     }
 

@@ -94,9 +94,13 @@ public class VoucherService {
             }
             // heldBooking == đơn hiện tại -> áp lại trên cùng đơn (idempotent), không làm gì thêm.
         } else {
-            if (v.getUsageLimit() != null
-                    && redemptionRepository.countByVoucherCode(v.getCode()) >= v.getUsageLimit()) {
-                throw new BusinessException("VOUCHER_USED_UP", "Mã giảm giá đã hết lượt sử dụng", HttpStatus.CONFLICT);
+            if (v.getUsageLimit() != null) {
+                // P1-13: khoá dòng voucher TRƯỚC khi đếm. Đếm-rồi-ghi mà không khoá thì hai khách
+                // cuối cùng đều thấy "còn suất" và cùng ghi -> phát vượt số lượng flash-sale.
+                voucherRepository.findByIdForUpdate(v.getId());
+                if (redemptionRepository.countByVoucherCode(v.getCode()) >= v.getUsageLimit()) {
+                    throw new BusinessException("VOUCHER_USED_UP", "Mã giảm giá đã hết lượt sử dụng", HttpStatus.CONFLICT);
+                }
             }
             try {
                 redemptionRepository.saveAndFlush(new VoucherRedemption(v.getCode(), userId, b.getId()));

@@ -71,6 +71,19 @@ public class BookingService {
     private final com.dididi.booking.loyalty.service.LoyaltyService loyaltyService;
 
     private final com.dididi.booking.notification.service.UserNotificationService userNotificationService;
+    private final com.dididi.booking.ops.service.OpsAlertService opsAlerts;
+
+    /** Timeout (đọc/kết nối) khác "PMS trả lỗi": timeout thì bên kia CÓ THỂ đã ghi nhận. */
+    private static boolean laTimeout(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof java.net.SocketTimeoutException
+                    || t instanceof java.util.concurrent.TimeoutException
+                    || (t.getMessage() != null && t.getMessage().toLowerCase().contains("timeout"))) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public BookingService(BookingRepository bookingRepository, FlightRepository flightRepository,
                           HotelRepository hotelRepository, MockFlightProviderAdapter flightAdapter,
@@ -78,7 +91,9 @@ public class BookingService {
                           RoomInventoryRepository roomInventoryRepository, EmailService emailService,
                           com.dididi.booking.loyalty.service.LoyaltyService loyaltyService,
                           GroupBookingRepository groupBookingRepository,
-                          com.dididi.booking.notification.service.UserNotificationService userNotificationService) {
+                          com.dididi.booking.notification.service.UserNotificationService userNotificationService,
+                          com.dididi.booking.ops.service.OpsAlertService opsAlerts) {
+        this.opsAlerts = opsAlerts;
         this.bookingRepository = bookingRepository;
         this.flightRepository = flightRepository;
         this.hotelRepository = hotelRepository;
@@ -231,7 +246,11 @@ public class BookingService {
                 return;
             }
             try {
-                flightAdapter.confirmSeats(f.getExternalId(), b.getPublicCode());
+                String maXacNhan = flightAdapter.confirmSeats(f.getExternalId(), b.getPublicCode());
+                // P1-5: giữ mã xác nhận của hãng — đây là thứ DUY NHẤT huỷ được ghế đã BOOKED.
+                if (maXacNhan != null && !maXacNhan.isBlank()) {
+                    b.setProviderConfirmation(maXacNhan);
+                }
                 b.setSeatsConfirmed(true);
             } catch (Exception ex) {
                 // P0-4: KHÔNG nuốt lỗi nữa. Tiền đã thu mà ghế bên hãng còn đang GIỮ — sẽ tự nhả
@@ -272,18 +291,27 @@ public class BookingService {
     public void releaseProviderInventory(Booking b) {
         if (b == null) return;
         if (b.getType() == BookingType.FLIGHT) {
-            // Ve co chon cho: nha ghe dang giu theo holdRef.
+            // Ve co chon cho MA CHUA thanh toan: ghe con dang HELD -> nha theo holdRef.
+            // (Ghe da BOOKED thi releaseSeats khong dung toi duoc, phai di duong cancelBooking ben duoi.)
             releaseFlightSeats(b);
             if (b.getTargetId() != null) {
                 flightRepository.findById(b.getTargetId()).ifPresent(f -> {
                     if (isProviderFlight(f)) {
-                        // Ve provider thuong (khong chon cho): huy booking theo confirmationCode.
+                        // Huy booking ben hang theo confirmationCode. Ap dung cho CA HAI loai:
+                        //  - ve thuong (khong chon cho): tra lai bo dem ghe;
+                        //  - P1-5: ve CO chon cho da xac nhan -> hang xoa cac dong ghe BOOKED.
+                        // Thieu nhanh nay thi ghe da ban bi giam vinh vien khoi kho.
                         if (b.getProviderConfirmation() != null && !b.getProviderConfirmation().isBlank()) {
                             try {
                                 flightAdapter.cancelBooking(f.getExternalId(), b.getProviderConfirmation());
                             } catch (Exception ex) {
                                 log.warn("Provider flight cancel failed for {}: {}", b.getPublicCode(), ex.toString());
                             }
+                        } else if (b.isSeatsConfirmed()) {
+                            // Đơn cũ (trước P1-5) không lưu mã xác nhận -> không có đường nhả ghế tự động.
+                            log.error("[ops] Đơn {} đã chốt ghế với hãng nhưng KHÔNG có mã xác nhận — "
+                                    + "ghế {} phải nhả thủ công bên hãng, nếu không sẽ mất khỏi kho bán.",
+                                    b.getPublicCode(), b.getSeatCodes());
                         }
                     } else if (b.getQuantity() > 0) {
                         // BP-BK-09: ve CUC BO da tru ghe NGUYEN TU luc dat -> PHAI cong ghe lai khi huy/het han/hoan tien.
@@ -339,6 +367,18 @@ public class BookingService {
         try {
             res = pmsAdapter.reserve(h.getExternalId(), roomTypeId, guestName, checkIn, checkOut, rooms);
         } catch (Exception ex) {
+            // P2: TIMEOUT khác hẳn "PMS từ chối". Timeout nghĩa là bên kia CÓ THỂ đã tạo reservation
+            // nhưng ta không nhận được mã -> phòng bị giữ bên PMS mà Dididi không có gì để huỷ.
+            // Khách vẫn nhận lỗi như cũ, nhưng người vận hành phải biết để đi dọn.
+            if (laTimeout(ex)) {
+                opsAlerts.raise(com.dididi.booking.ops.domain.OpsAlert.Type.PROVIDER_RESERVE_TIMEOUT,
+                        com.dididi.booking.ops.domain.OpsAlert.Severity.WARNING,
+                        null, "PMS:" + h.getExternalId() + ":" + checkIn + ":" + roomTypeId,
+                        "Gọi giữ phòng sang PMS bị timeout (KS " + h.getName() + ", nhận phòng " + checkIn
+                                + ", " + rooms + " phòng) — bên PMS có thể đã tạo booking mà Dididi không có mã.",
+                        "Kiểm tra danh sách reservation bên PMS quanh thời điểm này; thấy booking không khớp "
+                                + "đơn nào của Dididi thì huỷ để trả phòng về kho.");
+            }
             throw new BusinessException("PROVIDER_ERROR", "Không đặt được phòng (PMS lỗi): " + ex.getMessage(), HttpStatus.BAD_GATEWAY);
         }
         Booking b = new Booking();

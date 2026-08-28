@@ -42,10 +42,25 @@ public class FlightTargetBackfill {
 
     private final BookingRepository bookingRepository;
     private final FlightRepository flightRepository;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
-    public FlightTargetBackfill(BookingRepository bookingRepository, FlightRepository flightRepository) {
+    /**
+     * P1-14 — PHẠM VI SỬA. Job này ghi đè targetId của đơn THẬT nếu dữ liệu tình cờ khớp điều kiện,
+     * nên phải có hàng rào: chỉ đụng vào đơn phát sinh TRƯỚC mốc này (di sản seeder cũ).
+     * Để trống ("") thì tắt hàng rào — chỉ dùng khi cố ý chạy lại cho toàn bộ dữ liệu.
+     */
+    @org.springframework.beans.factory.annotation.Value("${app.settlement.backfill-before:2026-08-28}")
+    private String backfillBefore;
+
+    /** Chặn trần số đơn sửa mỗi lần khởi động: hỏng hàng loạt thì phải có người nhìn, không tự sửa im lặng. */
+    @org.springframework.beans.factory.annotation.Value("${app.settlement.backfill-max:1000}")
+    private int backfillMax;
+
+    public FlightTargetBackfill(BookingRepository bookingRepository, FlightRepository flightRepository,
+                                org.springframework.context.ApplicationEventPublisher events) {
         this.bookingRepository = bookingRepository;
         this.flightRepository = flightRepository;
+        this.events = events;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -55,6 +70,18 @@ public class FlightTargetBackfill {
             List<Booking> dangling = bookingRepository.findFlightBookingsWithDanglingTarget();
             List<Booking> mismatch = bookingRepository.findFlightBookingsWithAirlineMismatch();
             if (dangling.isEmpty() && mismatch.isEmpty()) {
+                return;
+            }
+            java.time.Instant moc = parseMoc();
+            if (moc != null) {
+                dangling = dangling.stream().filter(b -> truocMoc(b, moc)).toList();
+                mismatch = mismatch.stream().filter(b -> truocMoc(b, moc)).toList();
+                if (dangling.isEmpty() && mismatch.isEmpty()) return;
+            }
+            int tong = dangling.size() + mismatch.size();
+            if (tong > backfillMax) {
+                log.error("[settlement] {} đơn vé lệch liên kết — VƯỢT trần {} nên KHÔNG tự sửa. "
+                        + "Số này lớn bất thường, cần người xem trước khi đụng vào dữ liệu đơn.", tong, backfillMax);
                 return;
             }
             Map<String, Long> byNumber = new HashMap<>();   // cache số hiệu -> flightId
@@ -76,9 +103,34 @@ public class FlightTargetBackfill {
             }
             log.info("[settlement] Tự lành liên kết vé bay: nối lại {} đơn ({} treo + {} sai hãng), {} chưa xử lý được.",
                     fixed, dangling.size(), mismatch.size(), unfixable);
+            if (fixed > 0) {
+                // P1-14: job này SỬA dữ liệu đơn — phải để lại dấu vết, không sửa im lặng.
+                events.publishEvent(new com.dididi.booking.audit.event.AuditEvent(null,
+                        "FLIGHT_TARGET_BACKFILL", "BOOKING", null,
+                        "Tự nối lại targetId cho " + fixed + " đơn vé (" + dangling.size() + " treo, "
+                                + mismatch.size() + " sai hãng), " + unfixable + " không xử lý được"
+                                + (backfillBefore.isBlank() ? "" : "; chỉ áp cho đơn tạo trước " + backfillBefore)));
+            }
         } catch (Exception e) {
             log.warn("[settlement] Tự lành liên kết vé bay lỗi (sẽ thử lại lần khởi động sau): {}", e.getMessage());
         }
+    }
+
+    private java.time.Instant parseMoc() {
+        if (backfillBefore == null || backfillBefore.isBlank()) return null;   // tắt hàng rào
+        try {
+            return java.time.LocalDate.parse(backfillBefore.trim())
+                    .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant();
+        } catch (Exception e) {
+            log.warn("[settlement] app.settlement.backfill-before không hợp lệ ('{}') — bỏ qua hàng rào thời gian.",
+                    backfillBefore);
+            return null;
+        }
+    }
+
+    /** Đơn tạo trước mốc = di sản seeder cũ. createdAt null coi như dữ liệu cũ (đơn thật luôn có ngày tạo). */
+    private boolean truocMoc(Booking b, java.time.Instant moc) {
+        return b.getCreatedAt() == null || b.getCreatedAt().isBefore(moc);
     }
 
     /** Ưu tiên chuyến ĐÚNG SỐ HIỆU trong tiêu đề; không có thì chuyến CÙNG HÃNG (đối soát cần đúng hãng). */
