@@ -104,6 +104,11 @@ public class HotelSearchService {
         client.delete().uri("/indexes/" + INDEX + "/documents").retrieve().toBodilessEntity();
     }
 
+    /** P2: gỡ NGAY một khách sạn khỏi index khi bị tắt/xoá, không đợi đợt re-index 15 phút. */
+    void deleteDocument(Long hotelId) {
+        client.delete().uri("/indexes/" + INDEX + "/documents/" + hotelId).retrieve().toBodilessEntity();
+    }
+
     /** Cài đặt index: field nào tìm được / lọc được / sắp xếp được. Idempotent. */
     void applySettings() {
         Map<String, Object> settings = Map.of(

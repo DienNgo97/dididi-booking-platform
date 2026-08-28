@@ -69,6 +69,8 @@ public class AdminHotelApiController {
         return hotelRepository.findById(id)
                 .map(h -> {
                     apply(h, req);
+                    // P2: đánh dấu đã sửa tay -> job đồng bộ PMS không đè lại nội dung này nữa.
+                    h.setManualOverride(true);
                     hotelRepository.save(h);
         searchIndexer.indexOne(h);   // TC-C-03: hien ngay trong tim kiem, khong doi re-index 15p
                     return ResponseEntity.ok(ApiResponse.ok(HotelApiDto.from(h), "Updated"));
@@ -85,6 +87,7 @@ public class AdminHotelApiController {
             return ResponseEntity.notFound().build();
         }
         hotelRepository.deleteById(id);
+        searchIndexer.removeOne(id);   // P2: gỡ khỏi tìm kiếm ngay, đừng để kết quả "ma" tới 15 phút
         events.publishEvent(new AuditEvent(actorId(auth), "DELETE_HOTEL", "HOTEL", id,
                 "Xoá khách sạn: " + h.getName()));
         return ResponseEntity.ok(ApiResponse.ok(null, "Deleted"));

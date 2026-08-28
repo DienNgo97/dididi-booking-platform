@@ -77,6 +77,13 @@ public class Hotel extends BaseEntity {
     @Column(nullable = false)
     private boolean active = true;
 
+    /**
+     * P2 (28/08): admin đã sửa tay nội dung khách sạn này → job đồng bộ PMS KHÔNG được đè
+     * name/city/description/starRating nữa. Trước đây cứ 15 phút một lần, công sửa tay bị xoá sạch.
+     */
+    @Column(name = "manual_override", nullable = false)
+    private boolean manualOverride = false;
+
     /** CHANNEL = lay tu he thong ngoai (hotel-pms); DIRECT = vendor tu quan tren Dididi. */
     @Enumerated(EnumType.STRING)
     @Column(length = 10)
@@ -144,6 +151,8 @@ public class Hotel extends BaseEntity {
     public void setCurrency(String currency) { this.currency = currency; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public boolean isManualOverride() { return manualOverride; }
+    public void setManualOverride(boolean manualOverride) { this.manualOverride = manualOverride; }
     public HotelSource getSource() { return source; }
     public void setSource(HotelSource source) { this.source = source; }
     public Long getVendorId() { return vendorId; }

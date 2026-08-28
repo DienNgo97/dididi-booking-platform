@@ -97,6 +97,13 @@ public class SyncJobOrchestrator {
             Hotel h = hotelRepository.findByExternalId(it.id()).orElseGet(Hotel::new);
             boolean isNew = (h.getId() == null);
             h.setExternalId(it.id());
+
+            // P2: admin đã sửa tay khách sạn này -> KHÔNG đè nội dung hiển thị. Trước đây mỗi 15
+            // phút job này ghi đè name/city/description/starRating, xoá sạch công sửa tay của admin.
+            if (h.isManualOverride() && !isNew) {
+                hotelRepository.save(h);
+                continue;
+            }
             h.setName(it.name());
             h.setCity(it.city());
             // Địa chỉ: KHÔNG đè chuỗi thô của PMS lên KS đã có địa chỉ tách chuẩn hoá

@@ -259,7 +259,24 @@ public class EmailService {
     }
 
     /** Gửi email dạng HTML (kèm bản text thay thế) - vẫn phòng thủ, lỗi chỉ log. */
+    /**
+     * P2 (28/08): CHỜ COMMIT rồi mới gửi. Các phương thức gửi mail được gọi ngay giữa transaction
+     * nghiệp vụ (xác nhận đơn, hoàn tiền...). Nếu transaction rollback sau đó, thư "đơn đã xác nhận"
+     * vẫn nằm trong hộp thư khách trong khi hệ thống không có đơn nào — không rút lại được.
+     * Có transaction đang chạy thì hoãn tới sau commit; không có thì gửi ngay như cũ.
+     */
     private void sendHtml(String to, String subject, String html, String plainAlt) {
+        if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override public void afterCommit() { doSendHtml(to, subject, html, plainAlt); }
+                    });
+            return;
+        }
+        doSendHtml(to, subject, html, plainAlt);
+    }
+
+    private void doSendHtml(String to, String subject, String html, String plainAlt) {
         if (!enabled) { log.debug("Mail tat (app.mail.enabled=false), bo qua: {}", subject); return; }
         if (to == null || to.isBlank()) { log.warn("Khong co email nguoi nhan, bo qua: {}", subject); return; }
         try {
