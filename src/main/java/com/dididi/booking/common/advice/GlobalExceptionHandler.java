@@ -38,6 +38,22 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of("VALIDATION_ERROR", "Validation failed", fieldErrors));
     }
 
+    /**
+     * QA-B2: lỗi do CLIENT gửi sai (thiếu tham số bắt buộc, sai kiểu, thân request hỏng) phải là
+     * 400 — trước đây rơi hết vào nhánh Exception nên trả 500 "Something went wrong". Hậu quả:
+     * ai đọc log cũng tưởng server hỏng, còn lỗi thật thì lẫn trong đống 500 giả.
+     */
+    @ExceptionHandler({
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.http.converter.HttpMessageNotReadableException.class,
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class
+    })
+    public ResponseEntity<ErrorResponse> handleBadRequest(Exception ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of("BAD_REQUEST", "Yêu cầu không hợp lệ: " + ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex) {
         log.error("Unhandled exception (tra 500 INTERNAL_ERROR)", ex);   // truoc day nuot stacktrace -> kho debug
