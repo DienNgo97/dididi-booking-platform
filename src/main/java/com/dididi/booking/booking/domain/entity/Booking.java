@@ -52,6 +52,14 @@ public class Booking extends BaseEntity {
     @Column(name = "travel_date")
     private LocalDateTime travelDate;
 
+    /**
+     * P0-4 (28/08): đơn vé CÓ CHỌN GHẾ đã xác nhận được ghế với hãng chưa.
+     * false + đơn CONFIRMED = tiền đã thu nhưng ghế bên hãng vẫn chỉ đang GIỮ, sắp bị nhả
+     * -> watchdog thử lại rồi báo động cho admin (trước đây lỗi này bị nuốt im lặng).
+     */
+    @Column(name = "seats_confirmed", columnDefinition = "TINYINT(1) NOT NULL DEFAULT 0")
+    private boolean seatsConfirmed = false;
+
     /** Dat theo gio (cho o trong ngay). false = qua dem. */
     @Column(name = "day_use", nullable = false)
     private boolean dayUse = false;
@@ -147,6 +155,8 @@ public class Booking extends BaseEntity {
     public void setCheckIn(LocalDate checkIn) { this.checkIn = checkIn; }
     public LocalDate getCheckOut() { return checkOut; }
     public void setCheckOut(LocalDate checkOut) { this.checkOut = checkOut; }
+    public boolean isSeatsConfirmed() { return seatsConfirmed; }
+    public void setSeatsConfirmed(boolean seatsConfirmed) { this.seatsConfirmed = seatsConfirmed; }
     public LocalDateTime getTravelDate() { return travelDate; }
     public void setTravelDate(LocalDateTime travelDate) { this.travelDate = travelDate; }
     public boolean isDayUse() { return dayUse; }

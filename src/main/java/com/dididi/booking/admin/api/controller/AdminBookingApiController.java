@@ -98,8 +98,20 @@ public class AdminBookingApiController {
     public ResponseEntity<ApiResponse<AdminBookingDto>> cancel(@PathVariable Long id, Authentication auth) {
         return bookingRepository.findById(id)
                 .map(b -> {
-                    if (b.getStatus() == BookingStatus.PENDING_PAYMENT
-                            || b.getStatus() == BookingStatus.CONFIRMED) {
+                    // P0-2 (28/08): KHÔNG cho huỷ trắng đơn ĐÃ THANH TOÁN. Trước đây nhánh này nhận cả
+                    // CONFIRMED: đơn bị huỷ, trả phòng/ghế/voucher nhưng KHÔNG hoàn tiền khách, KHÔNG đảo
+                    // điểm, KHÔNG trả ngân sách công ty, Payment vẫn PAID — và không cứu được nữa vì
+                    // RefundService chỉ nhận đơn CONFIRMED. Nặng hơn từ khi có ví vendor: đơn CANCELLED
+                    // sẽ bị ghi bút toán ĐẢO, vendor mất doanh thu trong khi khách chưa nhận lại tiền.
+                    // Đơn đã thanh toán BẮT BUỘC đi đường hoàn tiền (POST /{id}/refund) để đủ 4 bước.
+                    if (b.getStatus() == BookingStatus.CONFIRMED) {
+                        throw new BusinessException("USE_REFUND_INSTEAD",
+                                com.dididi.booking.common.i18n.I18nSupport.msg("err.USE_REFUND_INSTEAD",
+                                        "Đơn đã thanh toán — hãy dùng chức năng Hoàn tiền để huỷ (hoàn tiền khách, "
+                                        + "đảo điểm, trả ngân sách công ty). Huỷ trắng sẽ làm mất tiền của khách."),
+                                HttpStatus.CONFLICT);
+                    }
+                    if (b.getStatus() == BookingStatus.PENDING_PAYMENT) {
                         bookingService.restoreDirectInventory(b);
                         bookingService.releaseProviderInventory(b);   // INT-01: tra ghe/phong ve provider
                     }

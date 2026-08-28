@@ -113,6 +113,22 @@ public class ApprovalService {
         return toDto(r);
     }
 
+    /**
+     * P1-3: đơn chờ duyệt đã quá hạn giữ chỗ -> đóng yêu cầu lại để danh sách chờ duyệt không còn
+     * rác, và để người duyệt biết vì sao bấm duyệt không được nữa. Trả về true nếu có đóng.
+     */
+    @Transactional
+    public boolean expirePendingForBooking(Long bookingId, String note) {
+        ApprovalRequest r = repository.findFirstByBookingIdOrderByIdDesc(bookingId).orElse(null);
+        if (r == null || r.getStatus() != ApprovalStatus.PENDING) {
+            return false;
+        }
+        r.setStatus(ApprovalStatus.REJECTED);
+        r.setDecisionNote(note);
+        repository.save(r);
+        return true;
+    }
+
     private ApprovalRequest getPending(Long id) {
         ApprovalRequest r = repository.findById(id)
                 .orElseThrow(() -> new BusinessException("NOT_FOUND", "Không tìm thấy yêu cầu", HttpStatus.NOT_FOUND));

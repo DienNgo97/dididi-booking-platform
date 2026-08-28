@@ -640,10 +640,16 @@ public class DataScale5xSeeder implements CommandLineRunner {
 
     private void spreadDates() {
         em.flush(); // đảm bảo mọi bản ghi đã xuống DB trước khi UPDATE native
-        // Đơn: created_at = 3..45 ngày trước ngày đi -> doanh thu rải ~10 tháng
+        // Đơn: created_at = 3..45 ngày trước ngày đi -> doanh thu rải ~10 tháng.
+        // Kẹp về QUÁ KHỨ: đơn của chuyến đi sắp tới vẫn phải được đặt trước hôm nay — không có đơn
+        // nào "được tạo ở tương lai". Thiếu cái kẹp này, watchdog vận hành coi đơn seed là đơn mới
+        // phát sinh và bắn cảnh báo CRITICAL lẻ cho từng đơn (đã gặp: 10 cảnh báo giả).
         em.createNativeQuery("""
                 UPDATE bookings SET
-                  created_at = TIMESTAMP(DATE_SUB(COALESCE(check_in, DATE(travel_date), CURRENT_DATE), INTERVAL FLOOR(3 + RAND()*42) DAY)),
+                  created_at = LEAST(
+                      TIMESTAMP(DATE_SUB(COALESCE(check_in, DATE(travel_date), CURRENT_DATE),
+                                         INTERVAL FLOOR(3 + RAND()*42) DAY)),
+                      TIMESTAMP(DATE_SUB(CURRENT_DATE, INTERVAL 1 + FLOOR(RAND()*30) DAY))),
                   updated_at = created_at
                 WHERE public_code LIKE 'X5%'""").executeUpdate();
         em.createNativeQuery("""
@@ -652,7 +658,8 @@ public class DataScale5xSeeder implements CommandLineRunner {
                 WHERE b.public_code LIKE 'X5%'""").executeUpdate();
         em.createNativeQuery("""
                 UPDATE reviews r JOIN bookings b ON r.booking_id = b.id
-                SET r.created_at = TIMESTAMP(DATE_ADD(b.check_out, INTERVAL 1 + FLOOR(RAND()*5) DAY)),
+                SET r.created_at = LEAST(NOW(),          -- không có đánh giá viết ở tương lai
+                        TIMESTAMP(DATE_ADD(b.check_out, INTERVAL 1 + FLOOR(RAND()*5) DAY))),
                     r.updated_at = r.created_at
                 WHERE b.public_code LIKE 'X5%'""").executeUpdate();
         // Bài viết của user seed: rải ~120 ngày; bình luận sau bài viết 10'..3 ngày (không vượt hiện tại)

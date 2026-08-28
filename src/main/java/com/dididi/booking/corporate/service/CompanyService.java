@@ -98,9 +98,15 @@ public class CompanyService {
         if (amount == null || amount.signum() <= 0) {
             throw new BusinessException("INVALID", "Số tiền nạp phải lớn hơn 0", HttpStatus.BAD_REQUEST);
         }
-        Company c = get(id);
+        Company c = lockCompany(id);     // nạp tiền cũng là cộng dồn trên số dư -> phải khoá dòng
         c.setBudgetTotal(c.getBudgetTotal().add(amount));
         return companyRepository.save(c);
+    }
+
+    /** Đọc công ty kèm khoá bi quan; không thấy thì báo lỗi giống {@link #get}. */
+    private Company lockCompany(Long id) {
+        return companyRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new BusinessException("NOT_FOUND", "Không tìm thấy công ty", HttpStatus.NOT_FOUND));
     }
 
     public List<User> listEmployees(Long companyId) {
@@ -140,10 +146,13 @@ public class CompanyService {
                 .filter(Company::isActive);
     }
 
-    /** Tru han muc cong ty; neu khong du -> chan (BUDGET_EXCEEDED). */
+    /**
+     * Tru han muc cong ty; neu khong du -> chan (BUDGET_EXCEEDED).
+     * P1-7: đọc dòng công ty bằng khoá bi quan để hai đơn cùng lúc không cùng thấy "còn đủ".
+     */
     @Transactional
     public void charge(Long companyId, BigDecimal amount, Long bookingId) {
-        Company c = get(companyId);
+        Company c = lockCompany(companyId);
         if (!c.isActive()) {
             throw new BusinessException("COMPANY_INACTIVE", "Công ty đang bị khoá", HttpStatus.CONFLICT);
         }
@@ -167,7 +176,8 @@ public class CompanyService {
     @Transactional
     public void release(Long companyId, BigDecimal amount, Long bookingId) {
         if (companyId == null || amount == null || amount.signum() <= 0) return;
-        Company c = companyRepository.findById(companyId).orElse(null);
+        // Khoá dòng như charge: hoàn hạn mức cũng là đọc-rồi-ghi trên cùng con số budgetUsed.
+        Company c = companyRepository.findByIdForUpdate(companyId).orElse(null);
         if (c == null) return;
         BigDecimal used = c.getBudgetUsed() == null ? BigDecimal.ZERO : c.getBudgetUsed();
         BigDecimal newUsed = used.subtract(amount);

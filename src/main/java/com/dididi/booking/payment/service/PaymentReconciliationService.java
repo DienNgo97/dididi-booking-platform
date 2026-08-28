@@ -134,7 +134,18 @@ public class PaymentReconciliationService {
      * đã làm đơn DD-543D3F bị huỷ lúc 10:04 ngày 17/08 trong khi VNPay đang từ chối trả lời —
      * đúng loại lỗi (giết đơn có thể đã trả tiền) mà lớp đối soát này sinh ra để chặn.
      */
-    public enum Outcome { CONFIRMED, FAILED, UNKNOWN, UNREACHABLE }
+    public enum Outcome {
+        /** VNPay xác nhận đã thu tiền. */
+        CONFIRMED,
+        /** VNPay xác nhận giao dịch hỏng/huỷ. */
+        FAILED,
+        /** Không có giao dịch nào (khách chưa từng bấm trả) hoặc số tiền lệch — xử lý như cũ. */
+        UNKNOWN,
+        /** Không HỎI được VNPay (cổng lỗi/chặn/chữ ký sai) — "chưa biết", tuyệt đối không suy ra chưa trả. */
+        UNREACHABLE,
+        /** Khách ĐANG thao tác trả tiền (mã 01/04) — không được huỷ đơn lúc này (P0-3). */
+        IN_PROGRESS
+    }
 
     /**
      * Hỏi VNPay về một giao dịch rồi cập nhật cho đúng.
@@ -186,8 +197,10 @@ public class PaymentReconciliationService {
             return Outcome.FAILED;
         }
 
-        // Còn lại là "01 - giao dịch chưa hoàn tất" hoặc "04 - giao dịch đảo": chưa ngã ngũ, hỏi lại sau.
-        return Outcome.UNKNOWN;
+        // "01 - giao dịch chưa hoàn tất" / "04 - giao dịch đảo": KHÁCH ĐANG THAO TÁC (nhập OTP...).
+        // P0-3: trước đây trả UNKNOWN nên scheduler huỷ đơn ngay giữa lúc khách đang trả tiền
+        // -> khách mất tiền, đơn FAILED, phòng bán cho người khác. Giờ tách riêng để hoãn huỷ.
+        return Outcome.IN_PROGRESS;
     }
 
     /**

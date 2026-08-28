@@ -110,6 +110,11 @@ app:
   # ---- Đối soát công nợ B2B với đối tác API (ST, 27/08) ----
   settlement:
     flight-commission-rate: 0.05   # nền tảng giữ 5% mỗi vé, phần còn lại là công nợ trả hãng
+  # ---- Duyệt chi ngân sách doanh nghiệp (P1-3, 28/08) ----
+  approval:
+    # Đơn B2B vượt ngưỡng phải chờ người duyệt, không thể xong trong 20' như khách lẻ.
+    # Giữ chỗ tối đa ngần này giờ; quá thì huỷ đơn VÀ tự đóng yêu cầu duyệt.
+    hold-hours: ${APPROVAL_HOLD_HOURS:72}
   payout:
     # Mock "ngân hàng" tự chi REQUESTED->PAID sau vài giây (dev/demo). Prod ÉP false -> admin xử lý tay.
     mock-enabled: ${PAYOUT_MOCK_ENABLED:true}
