@@ -80,18 +80,32 @@ public class StorageService {
                     "Định dạng tệp không được hỗ trợ (SVG/HTML bị chặn vì lý do bảo mật)", HttpStatus.BAD_REQUEST);
         }
         ensureBucket();
-        String key = folder + "/" + UUID.randomUUID() + extOf(file.getOriginalFilename());
-        try (InputStream in = file.getInputStream()) {
-            minio.putObject(PutObjectArgs.builder()
-                    .bucket(bucket).object(key)
-                    .stream(in, file.getSize(), -1)
-                    .contentType(contentType)
-                    .build());
+        try {
+            byte[] goc = file.getBytes();
+            // Thu nhỏ + nén trước khi lưu: ảnh điện thoại 4-6 MB không có lý do gì phải nằm nguyên
+            // trong kho và bắt khách tải về chỉ để xem thumbnail. Lỗi thì giữ nguyên bản gốc.
+            ImageOptimizer.Ket_qua kq = ImageOptimizer.toiUu(goc, contentType);
+            byte[] duLieu = kq.bytes();
+            String ctLuu = kq.contentType();
+            String ext = "image/jpeg".equals(ctLuu) && !contentType.toLowerCase().contains("jp")
+                    ? ".jpg"                                     // PNG đã được chuyển sang JPEG
+                    : extOf(file.getOriginalFilename());
+            String key = folder + "/" + UUID.randomUUID() + ext;
+            try (InputStream in = new java.io.ByteArrayInputStream(duLieu)) {
+                minio.putObject(PutObjectArgs.builder()
+                        .bucket(bucket).object(key)
+                        .stream(in, duLieu.length, -1)
+                        .contentType(ctLuu)
+                        .build());
+            }
+            if (duLieu.length < goc.length) {
+                log.debug("[storage] Nén ảnh {}: {} -> {} bytes", key, goc.length, duLieu.length);
+            }
+            return key;
         } catch (Exception e) {
             throw new BusinessException("UPLOAD_FAILED",
                     "Tải tệp lên thất bại (" + e.getMessage() + ")", HttpStatus.BAD_GATEWAY);
         }
-        return key;
     }
 
     /** Xoa 1 object (best-effort): loi xoa chi log, khong nem ra de van xoa duoc ban ghi DB. */
