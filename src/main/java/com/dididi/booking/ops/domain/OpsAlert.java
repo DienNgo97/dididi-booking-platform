@@ -31,7 +31,13 @@ public class OpsAlert extends BaseEntity {
         /** Payment đã PAID nhưng Booking không ở trạng thái CONFIRMED — khách mất tiền mà không có dịch vụ. */
         PAYMENT_BOOKING_MISMATCH,
         /** Đơn vé đã CONFIRMED nhưng chưa xác nhận được ghế với hãng — ghế có thể bị nhả cho người khác. */
-        FLIGHT_SEAT_UNCONFIRMED
+        FLIGHT_SEAT_UNCONFIRMED,
+        /** Đã ghi sổ hoàn tiền nhưng tiền chưa chuyển cho khách (P1-4) — việc của kế toán. */
+        REFUND_PENDING_TRANSFER,
+        /** Một job nền hỏng nhiều lần liên tiếp (P1-12) — trước đây chỉ log rồi thôi. */
+        JOB_FAILING,
+        /** Gọi giữ chỗ sang PMS bị timeout: bên kia có thể ĐÃ tạo phòng mà Dididi không có mã để huỷ. */
+        PROVIDER_RESERVE_TIMEOUT
     }
 
     public enum Severity { CRITICAL, WARNING }

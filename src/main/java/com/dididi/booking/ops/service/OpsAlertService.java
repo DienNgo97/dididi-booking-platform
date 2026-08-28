@@ -61,10 +61,20 @@ public class OpsAlertService {
         }
     }
 
+    /** Đóng cảnh báo theo khoá tự đặt (job, tiến trình...) thay vì theo bookingId. */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void autoResolveByKey(OpsAlert.Type type, String bookingCodeKey, String note) {
+        dongTheoKey(type.name() + ":" + bookingCodeKey, type, note);
+    }
+
     /** Vấn đề đã tự hết (vd: đơn được xác nhận lại) -> đóng cảnh báo, ghi rõ là tự khỏi. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void autoResolve(OpsAlert.Type type, Long bookingId, String note) {
         String key = type.name() + ":" + bookingId;
+        dongTheoKey(key, type, note);
+    }
+
+    private void dongTheoKey(String key, OpsAlert.Type type, String note) {
         repository.findByDedupeKey(key)
                 .filter(a -> a.getStatus() == OpsAlert.Status.OPEN)
                 .ifPresent(a -> {
@@ -72,7 +82,7 @@ public class OpsAlertService {
                     a.setResolvedAt(Instant.now());
                     a.setResolveNote(note);
                     repository.save(a);
-                    log.info("[ops] Cảnh báo {} cho đơn #{} đã tự khỏi: {}", type, bookingId, note);
+                    log.info("[ops] Cảnh báo {} ({}) đã tự khỏi: {}", type, key, note);
                 });
     }
 

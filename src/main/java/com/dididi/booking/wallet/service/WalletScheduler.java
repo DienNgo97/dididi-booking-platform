@@ -35,6 +35,7 @@ public class WalletScheduler {
 
     private final VendorWalletService walletService;
     private final PayoutRequestRepository payoutRepository;
+    private final com.dididi.booking.ops.service.JobHealthService jobHealth;
     private final Random random = new Random();
 
     @Value("${app.payout.mock-enabled:false}")
@@ -43,9 +44,11 @@ public class WalletScheduler {
     @Value("${app.payout.mock-fail-percent:5}")
     private int mockFailPercent;
 
-    public WalletScheduler(VendorWalletService walletService, PayoutRequestRepository payoutRepository) {
+    public WalletScheduler(VendorWalletService walletService, PayoutRequestRepository payoutRepository,
+                           com.dididi.booking.ops.service.JobHealthService jobHealth) {
         this.walletService = walletService;
         this.payoutRepository = payoutRepository;
+        this.jobHealth = jobHealth;
     }
 
     // ---------- 1) Ghi sổ ----------
@@ -75,8 +78,10 @@ public class WalletScheduler {
             if (earned > 0 || reversed > 0) {
                 log.info("[wallet] Ghi sổ: +{} EARNING, +{} REVERSAL.", earned, reversed);
             }
+            jobHealth.thanhCong("wallet-ledger");
         } catch (Exception e) {
-            log.warn("[wallet] Ghi sổ lỗi: {}", e.getMessage());
+            // P1-12: hỏng liên tiếp thì phải có người biết — ghi sổ ví đứng là vendor không thấy tiền.
+            jobHealth.thatBai("wallet-ledger", e);
         }
     }
 
