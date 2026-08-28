@@ -50,6 +50,7 @@ class ReleaseProviderInventoryTest {
     @Mock LoyaltyService loyaltyService;
     @Mock GroupBookingRepository groupBookingRepository;
     @Mock com.dididi.booking.notification.service.UserNotificationService userNotificationService;
+    @Mock com.dididi.booking.ops.service.OpsAlertService opsAlerts;
 
     BookingService service;
 
@@ -57,7 +58,7 @@ class ReleaseProviderInventoryTest {
     void setUp() {
         service = new BookingService(bookingRepository, flightRepository, hotelRepository, flightAdapter,
                 pmsAdapter, roomTypeRepository, roomInventoryRepository, emailService, loyaltyService,
-                groupBookingRepository, userNotificationService);
+                groupBookingRepository, userNotificationService, opsAlerts);
     }
 
     @Test
