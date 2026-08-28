@@ -84,6 +84,25 @@ public class AdminBookingApiController {
         return ApiResponse.ok(refundService.history().stream().map(RefundDto::from).toList());
     }
 
+    @Operation(summary = "Khoản hoàn ĐÃ ghi sổ nhưng chưa chuyển tiền (việc của kế toán)")
+    @GetMapping("/refunds/pending-transfer")
+    public ApiResponse<List<RefundDto>> pendingTransfers() {
+        return ApiResponse.ok(refundService.pendingTransfers().stream().map(RefundDto::from).toList());
+    }
+
+    public record TransferRequest(String transactionRef) {}
+
+    @Operation(summary = "Xác nhận ĐÃ chuyển tiền hoàn cho khách (kèm mã giao dịch)")
+    @PostMapping("/refunds/{refundId}/transferred")
+    public ApiResponse<RefundDto> markTransferred(@PathVariable Long refundId,
+                                                  @RequestBody(required = false) TransferRequest req,
+                                                  Authentication auth) {
+        Long adminId = auth == null ? null : Long.valueOf(auth.getName());
+        return ApiResponse.ok(RefundDto.from(
+                refundService.markTransferred(refundId, adminId, req == null ? null : req.transactionRef())),
+                "Đã ghi nhận chuyển tiền cho khách");
+    }
+
     @Operation(summary = "Chi tiết đơn theo id")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<AdminBookingDto>> get(@PathVariable Long id) {

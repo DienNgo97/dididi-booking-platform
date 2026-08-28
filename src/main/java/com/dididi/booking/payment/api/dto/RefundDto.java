@@ -14,11 +14,13 @@ public record RefundDto(
         String reason,
         String status,
         Long processedBy,
-        Instant createdAt) {
+        Instant createdAt,
+        /** Mã giao dịch chuyển khoản khi kế toán đã trả tiền cho khách (P1-4). */
+        String transferRef) {
 
     public static RefundDto from(Refund r) {
         return new RefundDto(r.getId(), r.getBookingId(), r.getPaymentId(), r.getAmount(),
                 r.getCurrency(), r.getReason(), r.getStatus().name(), r.getProcessedBy(),
-                r.getCreatedAt());
+                r.getCreatedAt(), r.getGatewayRefundNo());
     }
 }
