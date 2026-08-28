@@ -243,6 +243,13 @@ public class PaymentWebController {
     public String startVnpay(@PathVariable String code, Authentication auth, HttpServletRequest req,
                              RedirectAttributes ra) {
         Booking b = bookingService.getForUserOrGroupOrganizer(code, currentUser.id(auth));
+        // P1-1: guard giống payMock. Thiếu nó thì đơn ĐÃ THANH TOÁN vẫn mở được phiên VNPay mới:
+        // khách bấm nút cũ/back trình duyệt là trả tiền lần hai, và transactionRef mới ghi đè cái cũ
+        // khiến giao dịch đã thu thành mồ côi (đối soát không tìm ra để hoàn).
+        if (b.getStatus() != BookingStatus.PENDING_PAYMENT) {
+            ra.addFlashAttribute("error", I18nSupport.msg("flash.f07", "Đơn này không còn ở trạng thái chờ thanh toán."));
+            return "redirect:/account/bookings/" + code;
+        }
         if (bookingService.isPaymentExpired(b)) {
             bookingService.markPaymentExpired(b);
             ra.addFlashAttribute("error", I18nSupport.msg("flash.f06", "Thời gian thanh toán đã hết hạn, vui lòng chọn lại phòng."));
