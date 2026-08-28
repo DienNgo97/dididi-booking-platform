@@ -20,7 +20,10 @@ public enum UserNotificationType {
     GROUP_MEMBER_JOINED("ic-users"),
     GROUP_PAYMENT_SPLIT("ic-credit-card"),
     /** Khuyến mãi cá nhân hoá: sinh nhật / khách quay lại / tri ân hạng / chào mừng. */
-    PROMO_GRANTED("ic-gift");
+    PROMO_GRANTED("ic-gift"),
+    /** Ví vendor: rút tiền thành công / thất bại (VW3). */
+    PAYOUT_PAID("ic-credit-card"),
+    PAYOUT_FAILED("ic-x");
 
     private final String icon;
 

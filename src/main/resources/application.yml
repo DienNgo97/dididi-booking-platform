@@ -106,6 +106,15 @@ app:
   # BUOC PHAI la false o production -> da ep cung trong application-prod.yml.
   payment:
     mock-enabled: ${PAYMENT_MOCK_ENABLED:true}
+  # ---- Ví vendor (VW, 19/08): rút doanh thu sau hoa hồng ----
+  # ---- Đối soát công nợ B2B với đối tác API (ST, 27/08) ----
+  settlement:
+    flight-commission-rate: 0.05   # nền tảng giữ 5% mỗi vé, phần còn lại là công nợ trả hãng
+  payout:
+    # Mock "ngân hàng" tự chi REQUESTED->PAID sau vài giây (dev/demo). Prod ÉP false -> admin xử lý tay.
+    mock-enabled: ${PAYOUT_MOCK_ENABLED:true}
+    mock-fail-percent: 5          # ~5% giao dịch giả lập thất bại để demo nhánh lỗi
+    min-amount: 500000            # rút tối thiểu 500k/lần
   # ---- VNPay sandbox (Phase 8a). Lay tmn-code + hash-secret tu dang ky sandbox tai sandbox.vnpayment.vn ----
   vnpay:
     tmn-code: ${VNPAY_TMN_CODE:}
