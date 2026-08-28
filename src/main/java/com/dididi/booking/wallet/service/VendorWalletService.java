@@ -164,6 +164,47 @@ public class VendorWalletService {
         return payoutRepository.save(p);
     }
 
+    // ================= ADMIN CHI TIỀN THỦ CÔNG (P0-1, 28/08) =================
+    // Ở PRODUCTION mock ngân hàng bị ép TẮT nên KHÔNG có đường nào đưa yêu cầu ra khỏi REQUESTED
+    // -> tiền vendor bị giữ chỗ treo vĩnh viễn. Hai hàm dưới là đường xử lý tay của admin:
+    // admin chuyển khoản ngoài hệ thống rồi ghi nhận kết quả vào đây.
+
+    /** Admin xác nhận ĐÃ chuyển khoản cho vendor (kèm mã UNC) -> sinh bút toán PAYOUT. */
+    @Transactional
+    public PayoutRequest adminMarkPaid(Long payoutId, String transactionRef) {
+        if (isBlank(transactionRef)) {
+            throw new BusinessException("PAYMENT_REF_REQUIRED",
+                    I18nSupport.msg("err.PAYMENT_REF_REQUIRED", "Vui lòng nhập mã UNC/chuyển khoản."),
+                    HttpStatus.BAD_REQUEST);
+        }
+        PayoutRequest p = openPayout(payoutId);
+        completePayout(p, transactionRef.trim());   // idempotent theo payoutId
+        return p;
+    }
+
+    /** Admin từ chối/ghi nhận chuyển khoản thất bại -> tiền nhả về khả dụng cho vendor rút lại. */
+    @Transactional
+    public PayoutRequest adminMarkFailed(Long payoutId, String reason) {
+        PayoutRequest p = openPayout(payoutId);
+        failPayout(p, (reason == null || reason.isBlank())
+                ? I18nSupport.msg("err.PAYOUT_REJECTED_DEFAULT", "Admin từ chối yêu cầu rút tiền.")
+                : reason.trim());
+        return p;
+    }
+
+    /** Chỉ yêu cầu CHƯA chốt mới xử lý được; đã PAID/FAILED/CANCELLED thì dừng (chống bấm hai lần). */
+    private PayoutRequest openPayout(Long payoutId) {
+        PayoutRequest p = payoutRepository.findById(payoutId)
+                .orElseThrow(() -> new BusinessException("NOT_FOUND", "Không tìm thấy yêu cầu rút", HttpStatus.NOT_FOUND));
+        if (p.getStatus() != PayoutStatus.REQUESTED && p.getStatus() != PayoutStatus.PROCESSING) {
+            throw new BusinessException("PAYOUT_ALREADY_SETTLED",
+                    I18nSupport.msg("err.PAYOUT_ALREADY_SETTLED",
+                            "Yêu cầu này đã được xử lý xong (trạng thái {0}).", p.getStatus().name()),
+                    HttpStatus.CONFLICT);
+        }
+        return p;
+    }
+
     // ================= TÀI KHOẢN NGÂN HÀNG =================
 
     @Transactional
