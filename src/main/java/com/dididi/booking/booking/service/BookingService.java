@@ -212,17 +212,33 @@ public class BookingService {
     }
 
     /** Xac nhan ghe voi flight-provider khi thanh toan thanh cong (chi don ve co chon cho). Best-effort. */
+    /** Watchdog gọi lại khi lần xác nhận trước thất bại (P0-4). Trả về true nếu ghế đã chốt được. */
+    @Transactional
+    public boolean retryConfirmSeats(Booking b) {
+        confirmFlightSeats(b);
+        bookingRepository.save(b);
+        return b.isSeatsConfirmed();
+    }
+
     private void confirmFlightSeats(Booking b) {
         if (b == null || b.getType() != BookingType.FLIGHT
                 || b.getSeatCodes() == null || b.getSeatCodes().isBlank() || b.getTargetId() == null) {
             return;
         }
         flightRepository.findById(b.getTargetId()).ifPresent(f -> {
-            if (f.getExternalId() == null) return;
+            if (f.getExternalId() == null) {
+                b.setSeatsConfirmed(true);          // chuyến cục bộ: không có ghế bên ngoài để xác nhận
+                return;
+            }
             try {
                 flightAdapter.confirmSeats(f.getExternalId(), b.getPublicCode());
+                b.setSeatsConfirmed(true);
             } catch (Exception ex) {
-                log.warn("Confirm seats failed for {}: {}", b.getPublicCode(), ex.toString());
+                // P0-4: KHÔNG nuốt lỗi nữa. Tiền đã thu mà ghế bên hãng còn đang GIỮ — sẽ tự nhả
+                // sau ~20 phút và bán cho người khác. Đánh dấu để watchdog thử lại + báo động admin.
+                b.setSeatsConfirmed(false);
+                log.error("[ops] Xác nhận ghế THẤT BẠI cho {} — ghế bên hãng vẫn đang giữ, watchdog sẽ thử lại: {}",
+                        b.getPublicCode(), ex.toString());
             }
         });
     }

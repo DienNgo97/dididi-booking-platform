@@ -18,6 +18,23 @@ import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
+    /**
+     * WATCHDOG P0-3: Payment đã PAID nhưng Booking KHÔNG ở trạng thái CONFIRMED —
+     * khách đã mất tiền mà đơn không sống. Đây chính là loại lệch mà trước đây không ai rà.
+     */
+    @Query("select b from Booking b where b.status <> com.dididi.booking.booking.domain.enums.BookingStatus.CONFIRMED " +
+            "and exists (select 1 from com.dididi.booking.payment.domain.entity.Payment p " +
+            "            where p.bookingId = b.id " +
+            "            and p.status = com.dididi.booking.payment.domain.enums.PaymentStatus.PAID)")
+    List<Booking> findPaidButNotConfirmed();
+
+    /** WATCHDOG P0-4: đơn vé CONFIRMED có chọn ghế nhưng chưa xác nhận được ghế với hãng. */
+    @Query("select b from Booking b " +
+            "where b.type = com.dididi.booking.booking.domain.enums.BookingType.FLIGHT " +
+            "and b.status = com.dididi.booking.booking.domain.enums.BookingStatus.CONFIRMED " +
+            "and b.seatCodes is not null and b.seatCodes <> '' and b.seatsConfirmed = false")
+    List<Booking> findConfirmedFlightsWithUnconfirmedSeats();
+
     /** Đơn vé bay có targetId trỏ vào chuyến KHÔNG còn tồn tại (dữ liệu treo — ST5). */
     @Query("select b from Booking b where b.type = com.dididi.booking.booking.domain.enums.BookingType.FLIGHT " +
             "and not exists (select 1 from com.dididi.booking.flight.domain.entity.Flight f where f.id = b.targetId)")

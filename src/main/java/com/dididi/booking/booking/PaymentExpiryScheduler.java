@@ -74,7 +74,9 @@ public class PaymentExpiryScheduler {
                 // suy ra la "khach chua tra tien" — do la cach giet nham don da mat tien.
                 // Tam hoan huy, NHUNG chi trong mot cua so co han: neu cu hoan mai thi don PENDING
                 // se ket vinh vien khi VNPay hong lau — dung lai cai bug ma minh vua chua.
-                if (outcome == PaymentReconciliationService.Outcome.UNREACHABLE) {
+                // P0-3: khách đang nhập OTP -> hoãn huỷ như trường hợp không hỏi được (có giới hạn).
+                if (outcome == PaymentReconciliationService.Outcome.IN_PROGRESS
+                        || outcome == PaymentReconciliationService.Outcome.UNREACHABLE) {
                     boolean stillWorthWaiting = b.getCreatedAt() != null && b.getCreatedAt()
                             .isAfter(Instant.now().minus(Duration.ofMinutes(BookingService.HOLD_MINUTES * 2L)));
                     if (stillWorthWaiting) {
@@ -82,8 +84,8 @@ public class PaymentExpiryScheduler {
                                 b.getPublicCode());
                         continue;
                     }
-                    log.warn("Van chua hoi duoc VNPay ve {} sau {} phut — huy theo quy trinh cu",
-                            b.getPublicCode(), BookingService.HOLD_MINUTES * 2);
+                    log.warn("Van chua ngã ngũ voi VNPay ve {} sau {} phut ({}) — huy theo quy trinh cu",
+                            b.getPublicCode(), BookingService.HOLD_MINUTES * 2, outcome);
                 }
             }
             try {
