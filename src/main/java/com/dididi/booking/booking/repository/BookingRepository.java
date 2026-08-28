@@ -18,6 +18,21 @@ import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
+    /** Đơn vé bay có targetId trỏ vào chuyến KHÔNG còn tồn tại (dữ liệu treo — ST5). */
+    @Query("select b from Booking b where b.type = com.dididi.booking.booking.domain.enums.BookingType.FLIGHT " +
+            "and not exists (select 1 from com.dididi.booking.flight.domain.entity.Flight f where f.id = b.targetId)")
+    List<Booking> findFlightBookingsWithDanglingTarget();
+
+    /**
+     * Đơn vé bay trỏ vào chuyến CÓ TỒN TẠI nhưng SAI HÃNG so với số hiệu trong tiêu đề đơn
+     * (di sản DemoDataSeeder cũ gán targetId ngẫu nhiên) — nguy hiểm hơn cả treo vì đối soát
+     * sẽ quy nhầm doanh thu cho hãng khác mà không ai phát hiện.
+     */
+    @Query("select b from Booking b, com.dididi.booking.flight.domain.entity.Flight f " +
+            "where f.id = b.targetId and b.type = com.dididi.booking.booking.domain.enums.BookingType.FLIGHT " +
+            "and b.title not like concat(f.airlineCode, '%')")
+    List<Booking> findFlightBookingsWithAirlineMismatch();
+
     /** Tìm kiếm admin theo mã đơn / tiêu đề, kèm lọc status/cancelStatus tuỳ chọn (thanh tìm kiếm tab Đơn đặt). */
     @Query("""
             SELECT b FROM Booking b
