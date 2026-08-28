@@ -82,6 +82,24 @@ public class RefundService {
                     "Chỉ hoàn tiền được đơn đã xác nhận (CONFIRMED). Trạng thái hiện tại: " + b.getStatus(),
                     HttpStatus.CONFLICT);
         }
+        // CHÍNH SÁCH CỬA SỔ KHIẾU NẠI (VW4, chốt với Jay 19/08): quá checkOut + 3 ngày thì KHÔNG còn
+        // hoàn tiền — kể cả SUPER_ADMIN. Đây là điểm thắt DUY NHẤT của mọi đường hoàn (duyệt huỷ cũng
+        // đi qua đây), và là bất biến giữ cho ví vendor không bao giờ âm: tiền chỉ trở thành "khả dụng
+        // rút" (VendorWalletService) đúng lúc quyền hoàn tiền hết hạn.
+        // NGOẠI LỆ duy nhất: đơn đang có yêu cầu huỷ TREO (CancelStatus.REQUESTED — vốn chỉ nộp được
+        // từ trước nhận phòng 48h, tức luôn TRONG hạn) -> admin xử lý muộn vẫn hoàn được, khách không
+        // bị thiệt vì admin chậm; tiền tương ứng đã bị ví GIỮ LẠI nên không thể bị rút trước.
+        boolean pendingComplaint = b.getCancelStatus() == com.dididi.booking.booking.domain.enums.CancelStatus.REQUESTED;
+        java.time.LocalDate refundDeadline = (b.getCheckOut() != null)
+                ? b.getCheckOut().plusDays(com.dididi.booking.wallet.service.VendorWalletService.COMPLAINT_WINDOW_DAYS)
+                : null;
+        if (!pendingComplaint && refundDeadline != null && java.time.LocalDate.now().isAfter(refundDeadline)) {
+            throw new BusinessException("REFUND_WINDOW_CLOSED",
+                    com.dididi.booking.common.i18n.I18nSupport.msg("err.REFUND_WINDOW_CLOSED",
+                            "Đã quá thời hạn hoàn tiền ({0}, tức 3 ngày sau trả phòng không có khiếu nại). Doanh thu đơn này đã được chuyển cho đối tác.",
+                            refundDeadline.toString()),
+                    HttpStatus.CONFLICT);
+        }
         // Nguong duyet: khoan >= threshold can SUPER_ADMIN.
         if (b.getAmount() != null && b.getAmount().compareTo(superAdminThreshold) >= 0 && !isSuperAdmin) {
             throw new BusinessException("NEEDS_SUPER_ADMIN",
