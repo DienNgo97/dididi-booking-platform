@@ -70,6 +70,26 @@ public interface PartnerSettlementRepository extends JpaRepository<PartnerSettle
     List<Object[]> aggregateOrphans(@Param("start") LocalDate start, @Param("end") LocalDate end,
                                     @Param("startDt") LocalDateTime startDt, @Param("endDt") LocalDateTime endDt);
 
+    /**
+     * P1-2 — LỖ HỔNG CỦA CHÍNH LƯỚI AN TOÀN: đơn CONFIRMED thiếu mốc ngày dịch vụ
+     * (khách sạn không có checkOut, vé không có travelDate) thì KHÔNG rơi vào kỳ nào — không vào
+     * tổng doanh thu, cũng không vào bucket mồ côi. Phương trình vẫn báo "CÂN" trong khi tiền có
+     * thật mà không kỳ nào nhận. Đếm riêng, không lọc theo kỳ, và cho hiện trên mọi kỳ.
+     */
+    @Query("select count(b), coalesce(sum(b.amount), 0) from Booking b " +
+            "where b.status = com.dididi.booking.booking.domain.enums.BookingStatus.CONFIRMED " +
+            "and ((b.type = com.dididi.booking.booking.domain.enums.BookingType.HOTEL and b.checkOut is null) " +
+            "  or (b.type = com.dididi.booking.booking.domain.enums.BookingType.FLIGHT and b.travelDate is null))")
+    List<Object[]> aggregateUndatable();
+
+    /** Danh sách đơn không quy được kỳ — để admin truy và vá dữ liệu. */
+    @Query("select b from Booking b " +
+            "where b.status = com.dididi.booking.booking.domain.enums.BookingStatus.CONFIRMED " +
+            "and ((b.type = com.dididi.booking.booking.domain.enums.BookingType.HOTEL and b.checkOut is null) " +
+            "  or (b.type = com.dididi.booking.booking.domain.enums.BookingType.FLIGHT and b.travelDate is null)) " +
+            "order by b.id")
+    List<com.dididi.booking.booking.domain.entity.Booking> undatableBookings();
+
     /** Chi tiết đơn của 1 đối tác trong kỳ — cho file đối soát CSV. */
     @Query("select b from Booking b, com.dididi.booking.hotel.domain.entity.Hotel h " +
             "where h.id = b.targetId and b.type = com.dididi.booking.booking.domain.enums.BookingType.HOTEL " +

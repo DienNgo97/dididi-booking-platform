@@ -63,7 +63,10 @@ public class PartnerSettlementService {
     public record Overview(String periodYm, long totalCount, BigDecimal totalGross,
                            BigDecimal vendorWalletGross, BigDecimal partnerGross,
                            BigDecimal platformGross, BigDecimal orphanGross,
-                           long orphanCount, boolean balanced, boolean periodClosable) {}
+                           long orphanCount, boolean balanced, boolean periodClosable,
+                           // P1-2: đơn CONFIRMED không có mốc ngày dịch vụ -> không thuộc kỳ nào.
+                           // Không lọc theo kỳ (chúng vô hình với mọi kỳ) nên hiện ở mọi kỳ tới khi vá xong.
+                           long undatableCount, BigDecimal undatableGross) {}
 
     public record PeriodView(Overview overview, List<Row> rows) {}
 
@@ -112,11 +115,16 @@ public class PartnerSettlementService {
         rows.add(new Row("VENDOR_WALLET", "Ví vendor (KS đối tác trực tiếp)", "WALLET",
                 vendor[0], vnd(vendor[1]), null, null, BigDecimal.ZERO, "N/A", false, null));
 
+        long[] undatable = parse2(repository.aggregateUndatable());
+
         BigDecimal sumParts = vnd(vendor[1]).add(partnerGross).add(vnd(platform[1])).add(vnd(orphan[1]));
-        boolean balanced = sumParts.compareTo(vnd(total[1])) == 0 && orphan[0] == 0;
+        // Phương trình chỉ được coi là CÂN khi vừa khớp số, vừa không có đơn nào rơi ra ngoài lưới:
+        // mồ côi (mất KS/chuyến bay nguồn) = 0 VÀ không quy được kỳ (thiếu mốc ngày) = 0.
+        boolean balanced = sumParts.compareTo(vnd(total[1])) == 0 && orphan[0] == 0 && undatable[0] == 0;
 
         Overview ov = new Overview(periodYm, total[0], vnd(total[1]), vnd(vendor[1]), partnerGross,
-                vnd(platform[1]), vnd(orphan[1]), orphan[0], balanced, closable);
+                vnd(platform[1]), vnd(orphan[1]), orphan[0], balanced, closable,
+                undatable[0], vnd(undatable[1]));
         return new PeriodView(ov, rows);
     }
 
