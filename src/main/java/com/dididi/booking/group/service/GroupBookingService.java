@@ -277,6 +277,28 @@ public class GroupBookingService {
         return g != null ? g.getToken() : "";
     }
 
+    /**
+     * P1-6: đơn có nằm trong tập ĐANG trả gộp không?
+     *
+     * <p>Khi chủ nhóm bấm "trả cả nhóm", các phòng của thành viên vẫn ở PENDING_PAYMENT và KHÔNG có
+     * Payment riêng — tiền thu một lần cho cả tập. Job hết hạn giữ chỗ nhìn từng đơn thấy "chưa
+     * thanh toán" nên huỷ, trong khi khách đang nhập OTP: khách trả đủ tiền mà mất phòng.</p>
+     *
+     * <p>Có TRẦN thời gian ({@code window}) tính từ lúc chốt tập: khách bỏ ngang giữa chừng thì đơn
+     * phải được nhả lại cho người khác, không giam phòng vĩnh viễn.</p>
+     */
+    @Transactional(readOnly = true)
+    public boolean dangTraGop(Booking b, java.time.Duration window) {
+        if (b == null || b.getGroupId() == null) return false;
+        GroupBooking g = groupRepo.findById(b.getGroupId()).orElse(null);
+        if (g == null || g.getPayGroupBookingIds() == null || g.getPayGroupBookingIds().isBlank()) {
+            return false;
+        }
+        if (!parseIds(g.getPayGroupBookingIds()).contains(b.getId())) return false;
+        java.time.Instant chotLuc = g.getUpdatedAt() != null ? g.getUpdatedAt() : g.getCreatedAt();
+        return chotLuc != null && chotLuc.isAfter(java.time.Instant.now().minus(window));
+    }
+
     private static Set<Long> parseIds(String csv) {
         Set<Long> out = new LinkedHashSet<>();
         if (csv == null || csv.isBlank()) return out;
