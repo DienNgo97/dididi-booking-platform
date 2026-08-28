@@ -308,7 +308,10 @@ public class DemoDataSeeder implements CommandLineRunner {
         b.setPublicCode(nextCode());
         b.setUserId(userId);
         b.setType(BookingType.FLIGHT);
-        b.setTargetId(1L + rnd.nextInt(230));   // tham chiếu 1 chuyến provider (1..230); chỉ để liên kết, hiển thị dùng field đơn
+        // ST5 (27/08): targetId phải trỏ CHUYẾN THẬT cùng hãng — trước đây gán bừa 1..230 làm
+        // đối soát quy nhầm hãng/treo liên kết sau re-sync (FlightTargetBackfill đã tự lành dữ liệu cũ).
+        var vnFlight = flightRepository.findFirstByAirlineCodeOrderByDepartureTimeAsc("VN");
+        b.setTargetId(vnFlight.map(com.dididi.booking.flight.domain.entity.Flight::getId).orElse(null));
         b.setTitle("VN" + (100 + rnd.nextInt(900)) + " " + frm + "→" + to);
         b.setTravelDate(dep);
         b.setQuantity(1);

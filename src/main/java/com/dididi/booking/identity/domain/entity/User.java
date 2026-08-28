@@ -63,6 +63,16 @@ public class User extends BaseEntity {
     @Column(name = "password_set", columnDefinition = "TINYINT(1) NOT NULL DEFAULT 1")
     private boolean passwordSet = true;
 
+    // ---- Tài khoản ngân hàng nhận tiền rút ví (chỉ dùng cho VENDOR — VW2, 19/08) ----
+    @Column(name = "bank_name", length = 120)
+    private String bankName;
+
+    @Column(name = "bank_account_no", length = 40)
+    private String bankAccountNo;
+
+    @Column(name = "bank_account_holder", length = 120)
+    private String bankAccountHolder;
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
@@ -98,4 +108,11 @@ public class User extends BaseEntity {
 
     public boolean isPasswordSet() { return passwordSet; }
     public void setPasswordSet(boolean passwordSet) { this.passwordSet = passwordSet; }
+
+    public String getBankName() { return bankName; }
+    public void setBankName(String bankName) { this.bankName = bankName; }
+    public String getBankAccountNo() { return bankAccountNo; }
+    public void setBankAccountNo(String bankAccountNo) { this.bankAccountNo = bankAccountNo; }
+    public String getBankAccountHolder() { return bankAccountHolder; }
+    public void setBankAccountHolder(String bankAccountHolder) { this.bankAccountHolder = bankAccountHolder; }
 }

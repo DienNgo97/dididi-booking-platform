@@ -32,10 +32,27 @@ public class I18nSupport {
         MessageSource s = source;
         Locale loc = LocaleContextHolder.getLocale();
         if (s == null || loc == null || "vi".equals(loc.getLanguage())) {
-            return fallbackVi;
+            return formatFallback(fallbackVi, args);
         }
         try {
             return s.getMessage(key, args, fallbackVi, loc);
+        } catch (Exception e) {
+            return formatFallback(fallbackVi, args);
+        }
+    }
+
+    /**
+     * Fix VW7 (19/08): nhánh trả fallback trước đây trả chuỗi THÔ nên "{0}" không được thay tham số
+     * (lộ ở message "rút tối thiểu là {0}đ."). Chỉ format khi CÓ args — chuỗi không tham số giữ nguyên
+     * từng ký tự (an toàn cho ~190 điểm gọi cũ, kể cả chuỗi chứa nháy đơn/ngoặc nhọn ngẫu nhiên).
+     * Chuỗi có args vốn đã phải theo luật MessageFormat (nháy đơn gõ đôi) từ đợt i18n TC-B-29.
+     */
+    private static String formatFallback(String fallbackVi, Object... args) {
+        if (args == null || args.length == 0 || fallbackVi == null) {
+            return fallbackVi;
+        }
+        try {
+            return new java.text.MessageFormat(fallbackVi, Locale.forLanguageTag("vi")).format(args);
         } catch (Exception e) {
             return fallbackVi;
         }

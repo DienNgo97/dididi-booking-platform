@@ -34,3 +34,6 @@ logging:
 app:
   payment:
     mock-enabled: false
+  # Ngan hang gia lap chi tien vi vendor TUYET DOI khong duoc bat o production.
+  payout:
+    mock-enabled: false

@@ -34,6 +34,10 @@ public interface FlightRepository extends JpaRepository<Flight, Long> {
      */
     List<Flight> findByExternalIdLessThanOrderByDepartureTime(Long externalId);
 
+    java.util.Optional<Flight> findFirstByFlightNumberOrderByDepartureTimeAsc(String flightNumber);
+
+    java.util.Optional<Flight> findFirstByAirlineCodeOrderByDepartureTimeAsc(String airlineCode);
+
     /**
      * Tru ghe nguyen tu cho ve cuc bo (BP-BK-01): chi tru khi con du ghe.
      * Tra ve so dong da cap nhat (1 = tru thanh cong, 0 = khong du ghe / het ve) -> chong oversell.
