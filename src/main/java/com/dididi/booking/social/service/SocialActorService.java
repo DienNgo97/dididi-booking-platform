@@ -83,8 +83,7 @@ public class SocialActorService {
         } else {
             name = "Thành viên Dididi";
         }
-        String avatarUrl = (p != null && p.getAvatarKey() != null)
-                ? "/community/avatar/u/" + id + "?v=" + Integer.toHexString(p.getAvatarKey().hashCode()) : null;
+        String avatarUrl = p != null ? SocialProfileService.avatarUrl(id, p.getAvatarKey()) : null;
         return new ActorView("USER", id, name, handle, avatarUrl, "/community/u/" + handle);
     }
 

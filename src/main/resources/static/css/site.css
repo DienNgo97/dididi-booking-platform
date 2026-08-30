@@ -1528,3 +1528,7 @@ body:has(.sx-layout), body:has(.sx-single){
 .dm-pick{cursor:pointer}
 .dm-pick input[type=checkbox]{width:18px;height:18px;flex:none;accent-color:var(--brand,#7c5cff)}
 .dm-groupsubmit{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+
+/* Avatar tren thanh nav: dung chung anh voi ho so Cong dong (AV3). */
+.dd-ava.has-img{background:#e9edf4;padding:0;overflow:hidden}
+.dd-ava.has-img img{width:100%;height:100%;object-fit:cover;display:block}

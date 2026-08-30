@@ -6,6 +6,7 @@ import com.dididi.booking.identity.repository.UserRepository;
 import com.dididi.booking.social.domain.entity.SocialProfile;
 import com.dididi.booking.social.domain.enums.ProfileVisibility;
 import com.dididi.booking.social.repository.SocialProfileRepository;
+import com.dididi.booking.storage.StorageService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +22,33 @@ public class SocialProfileService {
 
     private final SocialProfileRepository profileRepository;
     private final UserRepository userRepository;
+    private final StorageService storage;
 
-    public SocialProfileService(SocialProfileRepository profileRepository, UserRepository userRepository) {
+    public SocialProfileService(SocialProfileRepository profileRepository, UserRepository userRepository,
+                                StorageService storage) {
         this.profileRepository = profileRepository;
         this.userRepository = userRepository;
+        this.storage = storage;
+    }
+
+    /**
+     * URL ảnh đại diện dùng chung cho MỌI nơi hiển thị. Đặt ở đây (chỗ giữ avatarKey) để phần đuôi
+     * cache-bust chỉ có một công thức — trước đây 3 chỗ tự tính, chỗ hex chỗ thập phân.
+     * Ảnh được cache 7 ngày nên thiếu đuôi ?v= là đổi ảnh xong vẫn thấy ảnh cũ.
+     */
+    public static String avatarUrl(Long userId, String avatarKey) {
+        return anhUrl("/community/avatar/u/", userId, avatarKey);
+    }
+
+    public static String coverUrl(Long userId, String coverKey) {
+        return anhUrl("/community/cover/u/", userId, coverKey);
+    }
+
+    private static String anhUrl(String base, Long userId, String key) {
+        if (userId == null || key == null || key.isBlank()) {
+            return null;                      // không có ảnh -> UI vẽ chữ cái đầu
+        }
+        return base + userId + "?v=" + Integer.toHexString(key.hashCode());
     }
 
     /** Lay ho so cua user, tao moi (handle mac dinh) neu chua co. */
@@ -98,16 +122,33 @@ public class SocialProfileService {
         return profileRepository.save(p);
     }
 
+    /**
+     * ẢNH ĐẠI DIỆN DÙNG CHUNG: đây là chỗ lưu ảnh DUY NHẤT của một người trong toàn hệ thống —
+     * trang tài khoản, header, cộng đồng, tin nhắn đều đọc về đây. Nhờ vậy không cần cơ chế đồng
+     * bộ nào cả, hai hồ sơ không có đường nào lệch nhau được.
+     */
     public void setAvatarKey(Long userId, String key) {
         SocialProfile p = getOrCreate(userId);
+        String cu = p.getAvatarKey();
         p.setAvatarKey(key);
         profileRepository.save(p);
+        xoaAnhCu(cu, key);
     }
 
     public void setCoverKey(Long userId, String key) {
         SocialProfile p = getOrCreate(userId);
+        String cu = p.getCoverKey();
         p.setCoverKey(key);
         profileRepository.save(p);
+        xoaAnhCu(cu, key);
+    }
+
+    /** Đổi ảnh thì dọn file cũ trên MinIO — không dọn thì mỗi lần đổi lại bỏ lại một file mồ côi. */
+    private void xoaAnhCu(String keyCu, String keyMoi) {
+        if (keyCu == null || keyCu.isBlank() || keyCu.equals(keyMoi)) {
+            return;
+        }
+        storage.remove(keyCu);   // best-effort, đã tự nuốt lỗi bên trong
     }
 
     public void adjustPostsCount(Long userId, int delta) {

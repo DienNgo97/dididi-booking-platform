@@ -18,8 +18,10 @@
         <section class="sx-side-card">
             <h3 th:text="#{community.settings.avatar}">Ảnh đại diện</h3>
             <div class="sx-avatar-row">
+                <!-- Dùng me.avatarUrl (SocialProfileService.avatarUrl) thay vì tự ghép URL: trước đây
+                     trang này tính ?v= theo hệ 10 còn chỗ khác hệ 16 -> cùng 1 ảnh mà 2 URL, tải 2 lần. -->
                 <span class="sx-ava lg" id="avaPreview">
-                    <img th:if="${profile.avatarKey != null}" th:src="@{/community/avatar/u/{id}(id=${profile.userId},v=${profile.avatarKey.hashCode()})}" alt=""/>
+                    <img th:if="${profile.avatarKey != null}" th:src="${me.avatarUrl}" alt=""/>
                     <span th:unless="${profile.avatarKey != null}" class="sx-ava-ph"
                           th:text="${#strings.toUpperCase(#strings.substring(profile.displayName != null ? profile.displayName : profile.handle,0,1))}">D</span>
                 </span>
