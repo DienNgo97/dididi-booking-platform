@@ -140,7 +140,7 @@ public class MessagingWebController {
         if (!messagingService.isGroup(convId)) {
             return "redirect:/community/messages/" + convId;   // hội thoại 1-1 không có thành viên để thêm
         }
-        model.addAttribute("people", discoveryService.search(uid, q, 24));
+        model.addAttribute("people", nguoiChuaVaoNhom(uid, q, convId));
         model.addAttribute("query", q == null ? "" : q);
         model.addAttribute("me", actorService.userActor(uid));
         model.addAttribute("convId", convId);
@@ -193,9 +193,32 @@ public class MessagingWebController {
 
     /** Tìm người để thêm vào nhóm (dùng lại kết quả tìm kiếm dạng fragment). */
     @GetMapping("/community/messages/people-search")
-    public String peopleSearch(@RequestParam(required = false) String q, Authentication auth, Model model) {
-        model.addAttribute("people", discoveryService.search(currentUser.id(auth), q, 24));
+    public String peopleSearch(@RequestParam(required = false) String q,
+                               @RequestParam(required = false) Long convId, Authentication auth, Model model) {
+        model.addAttribute("people", nguoiChuaVaoNhom(currentUser.id(auth), q, convId));
         return "social/group-new :: picker";
+    }
+
+    /**
+     * Bỏ khỏi kết quả những người ĐANG ở trong nhóm. Backend vốn đã bỏ qua họ, nhưng để họ hiện
+     * trong danh sách chọn thì người dùng tưởng mình mời được rồi bấm xong chẳng thấy gì thay đổi.
+     */
+    private List<com.dididi.booking.social.api.dto.UserCardView> nguoiChuaVaoNhom(Long uid, String q, Long convId) {
+        List<com.dididi.booking.social.api.dto.UserCardView> people = discoveryService.search(uid, q, 24);
+        if (convId == null) {
+            return people;
+        }
+        java.util.Set<Long> daCo = new java.util.HashSet<>();
+        for (com.dididi.booking.social.api.dto.ActorView m : messagingService.members(convId, uid)) {
+            daCo.add(m.getId());
+        }
+        List<com.dididi.booking.social.api.dto.UserCardView> out = new java.util.ArrayList<>(people.size());
+        for (com.dididi.booking.social.api.dto.UserCardView c : people) {
+            if (!daCo.contains(c.getUserId())) {
+                out.add(c);
+            }
+        }
+        return out;
     }
 
     @PostMapping("/community/messages/start")

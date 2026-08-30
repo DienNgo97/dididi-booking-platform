@@ -76,6 +76,8 @@
 <div th:replace="~{social/fragments :: scripts}"></div>
 <script th:inline="javascript">
     var MSG = { pickOne: /*[[#{community.dm.pickOne}]]*/ 'Hãy chọn ít nhất một người.' };
+    // Tim kiem trong man "Them thanh vien" phai loc nguoi da o trong nhom -> can convId.
+    var CONV_ID = /*[[${convId}]]*/ null;
     (function () {
         var input = document.getElementById('sxPeopleSearch');
         var box = document.getElementById('sxPeopleResults');
@@ -124,7 +126,9 @@
             if (q === lastQ) return;
             lastQ = q;
             remember();
-            fetch('/community/messages/people-search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+            var url = '/community/messages/people-search?q=' + encodeURIComponent(q)
+                    + (CONV_ID ? '&convId=' + CONV_ID : '');
+            fetch(url, { credentials: 'same-origin' })
                 .then(function (r) {
                     // Het phien -> 401 JSON (fix S4) hoac redirect /login: dung nhoi vao khung ket qua.
                     if (!r.ok) { return null; }
