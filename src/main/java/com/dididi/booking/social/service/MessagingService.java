@@ -177,14 +177,17 @@ public class MessagingService {
                 throw new BusinessException("GROUP_TOO_BIG",
                         "Nhóm tối đa " + MAX_GROUP_MEMBERS + " thành viên", HttpStatus.BAD_REQUEST);
             }
-            // Người từng rời nhóm: dùng lại bản ghi cũ để không vi phạm unique (conversation_id, user_id).
-            // GIỮ NGUYÊN mốc xoá cũ của họ — nếu họ từng tự xoá đoạn chat thì vào lại không được
-            // moi lại đúng phần họ đã bỏ đi.
+            // Người từng ở trong nhóm: dùng lại bản ghi cũ để không vi phạm unique
+            // (conversation_id, user_id), và XOÁ mốc cắt để họ đọc được cả lịch sử như người mới.
+            // Trước đây định giữ mốc cũ để tôn trọng việc họ tự xoá đoạn chat, nhưng cùng một cột
+            // thì không phân biệt được "tự xoá" với mốc do lần thêm trước để lại — giữ lại thành ra
+            // chặn nhầm, mà nhóm họ đang ở trong thì lịch sử vốn không có gì phải giấu.
             ConversationParticipant old = participantRepository.findByConversationIdAndUserId(convId, id).orElse(null);
             if (old != null) {
                 old.setLeftAt(null);
                 old.setHiddenAt(null);
                 old.setArchivedAt(null);
+                old.setClearedBeforeMessageId(0);
                 old.setLastReadMessageId(Math.max(old.getLastReadMessageId(), lastId));
                 participantRepository.save(old);
             } else {
