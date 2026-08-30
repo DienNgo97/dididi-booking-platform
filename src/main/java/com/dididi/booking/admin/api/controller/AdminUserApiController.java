@@ -32,12 +32,15 @@ public class AdminUserApiController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher events;
+    private final com.dididi.booking.identity.service.ProfileService profileService;
 
     public AdminUserApiController(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                                  ApplicationEventPublisher events) {
+                                  ApplicationEventPublisher events,
+                                  com.dididi.booking.identity.service.ProfileService profileService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.events = events;
+        this.profileService = profileService;
     }
 
     @Operation(summary = "Danh sách user (phân trang, lọc theo role + status tuỳ chọn)")
@@ -144,6 +147,35 @@ public class AdminUserApiController {
                     events.publishEvent(new AuditEvent(actorId,
                             "CHANGE_USER_ROLE", "USER", id, "role=" + role));
                     return ResponseEntity.ok(ApiResponse.ok(AdminUserDto.from(u), "Role updated"));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Ngày sinh của khách CHỈ NHẬP MỘT LẦN (chống đặt "sinh nhật giả" để lấy voucher), nên đây là
+     * đường thoát duy nhất khi khách gõ nhầm. Thao tác này mở lại quyền nhận quà nên luôn ghi audit
+     * kèm giá trị CŨ -> MỚI. Để trống ngày = xoá, khách được tự nhập lại một lần nữa.
+     */
+    @Operation(summary = "Sửa ngày sinh của khách (đường thoát khi nhập nhầm) — có audit")
+    @PatchMapping("/{id}/birth-date")
+    public ResponseEntity<ApiResponse<AdminUserDto>> changeBirthDate(@PathVariable Long id,
+                                                                     @RequestParam(required = false) String birthDate,
+                                                                     Authentication auth) {
+        java.time.LocalDate moi;
+        try {
+            moi = (birthDate == null || birthDate.isBlank()) ? null : java.time.LocalDate.parse(birthDate.trim());
+        } catch (Exception ex) {
+            throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không hợp lệ (yyyy-MM-dd)", HttpStatus.BAD_REQUEST);
+        }
+        return userRepository.findById(id)
+                .map(u -> {
+                    Long actorId = Long.valueOf(auth.getName());
+                    java.time.LocalDate cu = profileService.adminSetBirthDate(id, moi);
+                    events.publishEvent(new AuditEvent(actorId, "CHANGE_USER_BIRTHDATE", "USER", id,
+                            "Sửa ngày sinh của " + u.getEmail() + ": " + cu + " -> " + moi
+                                    + (moi == null ? " (xoá — khách được nhập lại)" : "")));
+                    return ResponseEntity.ok(ApiResponse.ok(
+                            AdminUserDto.from(userRepository.findById(id).orElse(u)), "Đã cập nhật ngày sinh"));
                 })
                 .orElse(ResponseEntity.notFound().build());
     }

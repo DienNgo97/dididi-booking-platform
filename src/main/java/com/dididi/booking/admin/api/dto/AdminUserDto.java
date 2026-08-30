@@ -5,6 +5,7 @@ import com.dididi.booking.identity.domain.enums.Role;
 import com.dididi.booking.identity.domain.enums.UserStatus;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 /** View user cho màn hình admin (Phase 4b). KHÔNG bao giờ trả passwordHash. */
 public record AdminUserDto(
@@ -15,11 +16,13 @@ public record AdminUserDto(
         Role role,
         UserStatus status,
         Long vendorId,
-        Instant createdAt) {
+        Instant createdAt,
+        /** Khách chỉ nhập được một lần; admin sửa hộ khi khách gõ nhầm (có audit). */
+        LocalDate birthDate) {
 
     public static AdminUserDto from(User u) {
         return new AdminUserDto(
                 u.getId(), u.getEmail(), u.getFullName(), u.getPhone(),
-                u.getRole(), u.getStatus(), u.getVendorId(), u.getCreatedAt());
+                u.getRole(), u.getStatus(), u.getVendorId(), u.getCreatedAt(), u.getBirthDate());
     }
 }
