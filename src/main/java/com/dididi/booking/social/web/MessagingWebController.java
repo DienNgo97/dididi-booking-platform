@@ -7,7 +7,6 @@ import com.dididi.booking.social.domain.entity.Message;
 import com.dididi.booking.social.service.MessagingService;
 import com.dididi.booking.social.service.PostService;
 import com.dididi.booking.social.service.SocialActorService;
-import com.dididi.booking.social.service.SocialDiscoveryService;
 import com.dididi.booking.social.service.SocialViewService;
 import com.dididi.booking.storage.StorageService;
 import com.dididi.booking.web.CurrentUser;
@@ -36,17 +35,15 @@ public class MessagingWebController {
     private final SocialViewService viewService;
     private final SocialActorService actorService;
     private final PostService postService;
-    private final SocialDiscoveryService discoveryService;
 
     public MessagingWebController(CurrentUser currentUser, MessagingService messagingService,
                                   SocialViewService viewService, SocialActorService actorService,
-                                  PostService postService, SocialDiscoveryService discoveryService) {
+                                  PostService postService) {
         this.currentUser = currentUser;
         this.messagingService = messagingService;
         this.viewService = viewService;
         this.actorService = actorService;
         this.postService = postService;
-        this.discoveryService = discoveryService;
     }
 
     @GetMapping("/community/messages")
@@ -123,7 +120,7 @@ public class MessagingWebController {
     @GetMapping("/community/messages/group/new")
     public String groupForm(@RequestParam(required = false) String q, Authentication auth, Model model) {
         Long uid = currentUser.id(auth);
-        model.addAttribute("people", discoveryService.search(uid, q, 24));
+        model.addAttribute("people", messagingService.banBeCoTheMoi(uid, q, null));
         model.addAttribute("query", q == null ? "" : q);
         model.addAttribute("me", actorService.userActor(uid));
         model.addAttribute("convId", null);
@@ -140,7 +137,7 @@ public class MessagingWebController {
         if (!messagingService.isGroup(convId)) {
             return "redirect:/community/messages/" + convId;   // hội thoại 1-1 không có thành viên để thêm
         }
-        model.addAttribute("people", nguoiChuaVaoNhom(uid, q, convId));
+        model.addAttribute("people", messagingService.banBeCoTheMoi(uid, q, convId));
         model.addAttribute("query", q == null ? "" : q);
         model.addAttribute("me", actorService.userActor(uid));
         model.addAttribute("convId", convId);
@@ -195,31 +192,14 @@ public class MessagingWebController {
     @GetMapping("/community/messages/people-search")
     public String peopleSearch(@RequestParam(required = false) String q,
                                @RequestParam(required = false) Long convId, Authentication auth, Model model) {
-        model.addAttribute("people", nguoiChuaVaoNhom(currentUser.id(auth), q, convId));
+        Long uid = currentUser.id(auth);
+        if (convId != null) {
+            messagingService.requireConversation(convId, uid);   // không dò danh sách nhóm người khác
+        }
+        model.addAttribute("people", messagingService.banBeCoTheMoi(uid, q, convId));
         return "social/group-new :: picker";
     }
 
-    /**
-     * Bỏ khỏi kết quả những người ĐANG ở trong nhóm. Backend vốn đã bỏ qua họ, nhưng để họ hiện
-     * trong danh sách chọn thì người dùng tưởng mình mời được rồi bấm xong chẳng thấy gì thay đổi.
-     */
-    private List<com.dididi.booking.social.api.dto.UserCardView> nguoiChuaVaoNhom(Long uid, String q, Long convId) {
-        List<com.dididi.booking.social.api.dto.UserCardView> people = discoveryService.search(uid, q, 24);
-        if (convId == null) {
-            return people;
-        }
-        java.util.Set<Long> daCo = new java.util.HashSet<>();
-        for (com.dididi.booking.social.api.dto.ActorView m : messagingService.members(convId, uid)) {
-            daCo.add(m.getId());
-        }
-        List<com.dididi.booking.social.api.dto.UserCardView> out = new java.util.ArrayList<>(people.size());
-        for (com.dididi.booking.social.api.dto.UserCardView c : people) {
-            if (!daCo.contains(c.getUserId())) {
-                out.add(c);
-            }
-        }
-        return out;
-    }
 
     @PostMapping("/community/messages/start")
     public String start(@RequestParam Long toUserId, Authentication auth, RedirectAttributes ra) {

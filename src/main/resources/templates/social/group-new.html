@@ -20,6 +20,7 @@
                 <h1 th:text="${convId == null} ? #{community.dm.newGroup} : #{community.dm.addMember}">Tạo nhóm chat</h1>
                 <p th:if="${convId == null}" th:text="#{community.dm.newGroupSub}">Đặt tên nhóm rồi chọn người muốn mời.</p>
                 <p th:if="${convId != null}" th:text="#{community.dm.addToGroup(${groupName})}">Thêm người vào nhóm.</p>
+                <p class="dm-grouphint" th:text="#{community.dm.mutualOnly}">Chỉ hiện những người theo dõi qua lại với bạn.</p>
             </div>
 
             <!-- Ô tìm nằm NGOÀI form gửi để Enter không vô tình submit khi chưa chọn ai. -->
@@ -42,19 +43,19 @@
                     <div th:fragment="picker">
                         <div th:if="${#lists.isEmpty(people)}" class="sx-empty">
                             <svg th:replace="~{fragments/icons :: i('users','')}"></svg>
-                            <p th:text="#{community.people.empty}">Không tìm thấy ai phù hợp.</p>
+                            <p th:text="#{community.dm.noMutual}">Chỉ mời được người theo dõi qua lại với bạn.</p>
                         </div>
                         <div class="sx-userlist" th:unless="${#lists.isEmpty(people)}">
-                            <label th:each="card : ${people}" class="sx-usercard dm-pick" th:unless="${card.self}">
-                                <input type="checkbox" name="memberIds" th:value="${card.userId}"/>
+                            <label th:each="p : ${people}" class="sx-usercard dm-pick">
+                                <input type="checkbox" name="memberIds" th:value="${p.id}"/>
                                 <span class="sx-ava" aria-hidden="true">
-                                    <img th:if="${card.actor.avatarUrl}" th:src="${card.actor.avatarUrl}" alt=""/>
-                                    <span th:unless="${card.actor.avatarUrl}" class="sx-ava-ph"
-                                          th:text="${#strings.toUpperCase(#strings.substring(card.actor.name,0,1))}">D</span>
+                                    <img th:if="${p.avatarUrl}" th:src="${p.avatarUrl}" alt=""/>
+                                    <span th:unless="${p.avatarUrl}" class="sx-ava-ph"
+                                          th:text="${#strings.toUpperCase(#strings.substring(p.name,0,1))}">D</span>
                                 </span>
                                 <span class="sx-user-meta">
-                                    <span class="sx-name" th:text="${card.actor.name}">Tên</span>
-                                    <span class="sx-handle" th:text="'@' + ${card.actor.handle}">@handle</span>
+                                    <span class="sx-name" th:text="${p.name}">Tên</span>
+                                    <span class="sx-handle" th:text="'@' + ${p.handle}">@handle</span>
                                 </span>
                             </label>
                         </div>

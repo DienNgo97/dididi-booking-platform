@@ -10,6 +10,7 @@ import com.dididi.booking.social.api.dto.PostView;
 import com.dididi.booking.social.domain.entity.Conversation;
 import com.dididi.booking.social.domain.entity.ConversationParticipant;
 import com.dididi.booking.social.domain.entity.Message;
+import com.dididi.booking.social.domain.enums.ActorType;
 import com.dididi.booking.social.domain.enums.ConversationType;
 import com.dididi.booking.social.domain.enums.MessageType;
 import com.dididi.booking.social.repository.ConversationParticipantRepository;
@@ -55,13 +56,15 @@ public class MessagingService {
     private final SocialViewService viewService;
     private final PostRepository postRepository;
     private final PostService postService;
+    private final FollowService followService;
 
     public MessagingService(ConversationRepository conversationRepository,
                             ConversationParticipantRepository participantRepository,
                             MessageRepository messageRepository, SocialMediaService mediaService,
                             UserRepository userRepository, SocialActorService actorService,
                             SocialViewService viewService, PostRepository postRepository,
-                            PostService postService) {
+                            PostService postService, FollowService followService) {
+        this.followService = followService;
         this.conversationRepository = conversationRepository;
         this.participantRepository = participantRepository;
         this.messageRepository = messageRepository;
@@ -134,6 +137,7 @@ public class MessagingService {
             if (userRepository.findById(id).isEmpty()) {
                 throw new BusinessException("NO_USER", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND);
             }
+            requireTheoDoiLanNhau(meId, id);
         }
         Conversation c = new Conversation();
         c.setType(ConversationType.GROUP);
@@ -157,8 +161,9 @@ public class MessagingService {
         Set<Long> already = current.stream().map(ConversationParticipant::getUserId).collect(Collectors.toSet());
         List<String> added = new ArrayList<>();
         int count = current.size();
-        // Người mới vào chỉ đọc được từ đây trở đi — không moi lại đoạn hội thoại trước khi họ vào.
-        long floor = messageRepository.findFirstByConversationIdOrderByIdDesc(convId)
+        // Người mới ĐỌC ĐƯỢC cả lịch sử nhóm, nhưng coi như đã đọc tới đây để badge chưa đọc chỉ
+        // đếm tin phát sinh sau khi họ vào — không nhảy vọt vì cả đoạn hội thoại cũ.
+        long lastId = messageRepository.findFirstByConversationIdOrderByIdDesc(convId)
                 .map(Message::getId).orElse(0L);
         for (Long id : userIds == null ? List.<Long>of() : userIds) {
             if (id == null || already.contains(id)) {
@@ -167,21 +172,23 @@ public class MessagingService {
             if (userRepository.findById(id).isEmpty()) {
                 throw new BusinessException("NO_USER", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND);
             }
+            requireTheoDoiLanNhau(meId, id);
             if (++count > MAX_GROUP_MEMBERS) {
                 throw new BusinessException("GROUP_TOO_BIG",
                         "Nhóm tối đa " + MAX_GROUP_MEMBERS + " thành viên", HttpStatus.BAD_REQUEST);
             }
             // Người từng rời nhóm: dùng lại bản ghi cũ để không vi phạm unique (conversation_id, user_id).
+            // GIỮ NGUYÊN mốc xoá cũ của họ — nếu họ từng tự xoá đoạn chat thì vào lại không được
+            // moi lại đúng phần họ đã bỏ đi.
             ConversationParticipant old = participantRepository.findByConversationIdAndUserId(convId, id).orElse(null);
             if (old != null) {
                 old.setLeftAt(null);
                 old.setHiddenAt(null);
                 old.setArchivedAt(null);
-                old.setClearedBeforeMessageId(floor);
-                old.setLastReadMessageId(floor);
+                old.setLastReadMessageId(Math.max(old.getLastReadMessageId(), lastId));
                 participantRepository.save(old);
             } else {
-                addParticipant(convId, id, false, floor);
+                addParticipant(convId, id, false, 0L, lastId);
             }
             already.add(id);
             added.add(displayName(id));
@@ -535,18 +542,98 @@ public class MessagingService {
     // ---------- helpers ----------
 
     private void addParticipant(Long convId, Long userId, boolean owner) {
-        addParticipant(convId, userId, owner, 0L);
+        addParticipant(convId, userId, owner, 0L, 0L);
     }
 
-    /** floor = mốc bắt đầu nhìn thấy: 0 khi hội thoại vừa tạo, id tin cuối khi thêm vào nhóm đang chạy. */
-    private void addParticipant(Long convId, Long userId, boolean owner, long floor) {
+    /**
+     * floor = mốc bắt đầu nhìn thấy (0 = xem được cả lịch sử);
+     * lastRead = coi như đã đọc tới đâu, để badge chưa đọc không nhảy vọt vì đoạn hội thoại cũ.
+     */
+    private void addParticipant(Long convId, Long userId, boolean owner, long floor, long lastRead) {
         ConversationParticipant p = new ConversationParticipant();
         p.setConversationId(convId);
         p.setUserId(userId);
-        p.setLastReadMessageId(floor);
+        p.setLastReadMessageId(lastRead);
         p.setClearedBeforeMessageId(floor);
         p.setOwner(owner);
         participantRepository.save(p);
+    }
+
+    /**
+     * Chỉ mời được người THEO DÕI QUA LẠI. Không có ràng buộc này thì ai cũng lôi người lạ vào
+     * nhóm được — đúng cái kiểu spam mà chặn tin nhắn cá nhân cũng không tránh nổi.
+     */
+    private void requireTheoDoiLanNhau(Long meId, Long otherId) {
+        if (!theoDoiLanNhau(meId, otherId)) {
+            throw new BusinessException("NOT_MUTUAL_FOLLOW",
+                    displayName(otherId) + " chưa theo dõi lại bạn nên không thể thêm vào nhóm",
+                    HttpStatus.FORBIDDEN);
+        }
+    }
+
+    /**
+     * Danh sách người MỜI VÀO NHÓM ĐƯỢC: theo dõi qua lại, chưa ở trong nhóm, khớp từ khoá tìm.
+     *
+     * Không dùng SocialDiscoveryService: hàm gợi ý của nó cố tình LOẠI người mình đã theo dõi
+     * (nó phục vụ việc tìm người mới để kết nối), đúng ngược với nhu cầu ở đây.
+     */
+    @Transactional(readOnly = true)
+    public List<ActorView> banBeCoTheMoi(Long meId, String q, Long convIdLoaiTru) {
+        Set<Long> daCo = new java.util.HashSet<>();
+        if (convIdLoaiTru != null) {
+            for (ConversationParticipant p : participantRepository.findByConversationIdAndLeftAtIsNull(convIdLoaiTru)) {
+                daCo.add(p.getUserId());
+            }
+        }
+        String term = q == null ? "" : q.trim().toLowerCase(java.util.Locale.ROOT);
+        if (term.startsWith("@")) {
+            term = term.substring(1);
+        }
+        // Lấy 1 lần danh sách người theo dõi mình rồi giao với danh sách mình theo dõi —
+        // hỏi từng người một sẽ thành N+1 ngay trên màn tạo nhóm.
+        Set<Long> hoTheoDoiMinh = new java.util.HashSet<>();
+        for (com.dididi.booking.social.domain.entity.Follow f : followService.activeFollowersOf(meId)) {
+            hoTheoDoiMinh.add(f.getFollowerUserId());
+        }
+        List<ActorView> out = new ArrayList<>();
+        for (com.dididi.booking.social.domain.entity.Follow f : followService.activeFollowsOf(meId)) {
+            if (f.getFolloweeType() != ActorType.USER) {
+                continue;                                   // trang khách sạn không mời vào nhóm được
+            }
+            Long other = f.getFolloweeId();
+            if (other == null || other.equals(meId) || daCo.contains(other)) {
+                continue;
+            }
+            if (!hoTheoDoiMinh.contains(other)) {
+                continue;                                   // họ chưa theo dõi lại
+            }
+            ActorView a = actorService.userActor(other);
+            if (a == null || !khopTuKhoa(a, term)) {
+                continue;
+            }
+            out.add(a);
+        }
+        out.sort(java.util.Comparator.comparing(a -> a.getName() == null ? "" : a.getName()));
+        return out.size() > 50 ? out.subList(0, 50) : out;
+    }
+
+    private static boolean khopTuKhoa(ActorView a, String term) {
+        if (term.isEmpty()) {
+            return true;
+        }
+        String name = a.getName() == null ? "" : a.getName().toLowerCase(java.util.Locale.ROOT);
+        String handle = a.getHandle() == null ? "" : a.getHandle().toLowerCase(java.util.Locale.ROOT);
+        return name.contains(term) || handle.contains(term);
+    }
+
+    /** Hai người có theo dõi nhau (cả hai chiều đều ACTIVE) hay không. */
+    @Transactional(readOnly = true)
+    public boolean theoDoiLanNhau(Long a, Long b) {
+        if (a == null || b == null || a.equals(b)) {
+            return false;
+        }
+        return followService.isActiveFollower(a, ActorType.USER, b)
+                && followService.isActiveFollower(b, ActorType.USER, a);
     }
 
     private Conversation requireGroup(Long convId, Long meId) {

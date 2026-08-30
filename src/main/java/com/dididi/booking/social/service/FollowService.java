@@ -130,6 +130,13 @@ public class FollowService {
         return followRepository.findByFollowerUserIdAndStatus(followerUserId, FollowStatus.ACTIVE);
     }
 
+    /** Những người đang theo dõi mình (ACTIVE) — lấy 1 lần để khỏi hỏi từng người một. */
+    @Transactional(readOnly = true)
+    public List<Follow> activeFollowersOf(Long ownerUserId) {
+        return followRepository.findByFolloweeTypeAndFolloweeIdAndStatusOrderByIdDesc(
+                ActorType.USER, ownerUserId, FollowStatus.ACTIVE);
+    }
+
     @Transactional(readOnly = true)
     public List<Follow> pendingRequestsFor(Long ownerUserId) {
         return followRepository.findByFolloweeTypeAndFolloweeIdAndStatusOrderByIdDesc(
