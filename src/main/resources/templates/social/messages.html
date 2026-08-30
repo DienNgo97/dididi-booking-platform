@@ -16,32 +16,7 @@
         <div th:replace="~{social/fragments :: railLeft('messages')}"></div>
         <main class="sx-main sx-dmmain">
             <div class="dm-layout dm-inbox-mode">
-                <aside class="dm-list">
-                    <div class="dm-list-head">
-                        <h2 th:text="#{community.nav.messages}">Tin nhắn</h2>
-                        <a href="/community/people" class="sx-iconbtn" th:title="#{community.dm.new}"><svg th:replace="~{fragments/icons :: i('pencil','')}"></svg></a>
-                    </div>
-                    <div class="dm-list-body">
-                        <div th:if="${#lists.isEmpty(conversations)}" class="dm-list-empty">
-                            <p th:text="#{community.dm.emptyList}">Chưa có cuộc trò chuyện nào.</p>
-                            <a href="/community/people" class="btn ghost" th:text="#{community.dm.findPeople}">Tìm người để nhắn</a>
-                        </div>
-                        <a th:each="c : ${conversations}" th:href="${c.url}" class="dm-conv" th:classappend="${c.unread > 0} ? 'unread' : ''">
-                            <span class="sx-ava" aria-hidden="true">
-                                <img th:if="${c.other.avatarUrl}" th:src="${c.other.avatarUrl}" alt=""/>
-                                <span th:unless="${c.other.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(c.other.name,0,1))}">D</span>
-                            </span>
-                            <div class="dm-conv-body">
-                                <div class="dm-conv-top">
-                                    <b th:text="${c.other.name}">Tên</b>
-                                    <span class="sx-time" th:attr="data-ts=${c.lastMessageAtMs}"></span>
-                                </div>
-                                <span class="dm-conv-preview" th:text="${c.preview != null ? c.preview : #messages.msg('community.dm.start')}">tin nhắn cuối</span>
-                            </div>
-                            <span class="dm-unread" th:if="${c.unread > 0}" th:text="${c.unread}">0</span>
-                        </a>
-                    </div>
-                </aside>
+                <div th:replace="~{social/dm-fragments :: convList}"></div>
 
                 <section class="dm-thread dm-empty">
                     <div class="dm-empty-inner">

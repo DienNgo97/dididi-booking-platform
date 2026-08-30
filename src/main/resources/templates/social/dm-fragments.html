@@ -3,7 +3,12 @@
 <body>
 
 <!-- ===== 1 bong bong tin nhan ===== -->
-<div th:fragment="message(m)" class="dm-msg" th:classappend="${m.mine} ? 'mine' : ''" th:attr="data-id=${m.id}">
+<th:block th:fragment="message(m)">
+<!-- Dong he thong cua nhom: khong bong bong, khong avatar - hien giua khung nhu Messenger. -->
+<div th:if="${m.system}" class="dm-sysline" th:attr="data-id=${m.id}">
+    <span th:text="${m.content}">Ai đó đã vào nhóm</span>
+</div>
+<div th:unless="${m.system}" class="dm-msg" th:classappend="${m.mine} ? 'mine' : ''" th:attr="data-id=${m.id}">
     <span th:unless="${m.mine}" class="sx-ava xs" aria-hidden="true">
         <img th:if="${m.sender.avatarUrl}" th:src="${m.sender.avatarUrl}" alt=""/>
         <span th:unless="${m.sender.avatarUrl}" class="sx-ava-ph" th:text="${#strings.toUpperCase(#strings.substring(m.sender.name,0,1))}">D</span>
@@ -26,6 +31,72 @@
         </th:block>
     </div>
 </div>
+</th:block>
+
+<!--
+  ===== Cot trai: danh sach hoi thoai =====
+  Dung chung cho hop thu (messages.html), muc Luu tru va khung chat (thread.html) de 3 trang khong
+  bao gio lech nhau. Doc thang tu model: conversations, convId (co the null), archivedMode, archivedCount.
+-->
+<aside th:fragment="convList" class="dm-list">
+    <div class="dm-list-head">
+        <h2 th:text="${archivedMode} ? #{community.dm.archived} : #{community.nav.messages}">Tin nhắn</h2>
+        <span class="dm-head-actions">
+            <a href="/community/messages/group/new" class="sx-iconbtn" th:title="#{community.dm.newGroup}"><svg th:replace="~{fragments/icons :: i('users','')}"></svg></a>
+            <a href="/community/people" class="sx-iconbtn" th:title="#{community.dm.new}"><svg th:replace="~{fragments/icons :: i('pencil','')}"></svg></a>
+        </span>
+    </div>
+    <a th:if="${archivedMode}" href="/community/messages" class="dm-archlink">
+        <svg th:replace="~{fragments/icons :: i('arrow-left','')}"></svg>
+        <span th:text="#{community.dm.backToInbox}">Về hộp thư</span>
+    </a>
+    <!-- Không viết !archivedMode trong ${}: nếu trang nào quên set thuộc tính, SpEL !null ném 500. -->
+    <a th:if="${(archivedMode == null or archivedMode == false) and archivedCount != null and archivedCount > 0}"
+       href="/community/messages/archived" class="dm-archlink">
+        <svg th:replace="~{fragments/icons :: i('archive','')}"></svg>
+        <span th:text="#{community.dm.archived}">Lưu trữ</span>
+        <b th:text="${archivedCount}">0</b>
+    </a>
+    <div class="dm-list-body">
+        <div th:if="${#lists.isEmpty(conversations)}" class="dm-list-empty">
+            <p th:text="${archivedMode} ? #{community.dm.emptyArchived} : #{community.dm.emptyList}">Chưa có cuộc trò chuyện nào.</p>
+            <a th:unless="${archivedMode}" href="/community/people" class="btn ghost" th:text="#{community.dm.findPeople}">Tìm người để nhắn</a>
+        </div>
+        <div th:each="c : ${conversations}" class="dm-conv-wrap">
+            <a th:href="${c.url}" class="dm-conv"
+               th:classappend="${c.id == convId} ? 'active' : (${c.unread > 0} ? 'unread' : '')">
+                <span class="sx-ava" aria-hidden="true">
+                    <img th:if="${c.other.avatarUrl}" th:src="${c.other.avatarUrl}" alt=""/>
+                    <span th:unless="${c.other.avatarUrl}" class="sx-ava-ph" th:classappend="${c.group} ? 'grp' : ''"
+                          th:text="${#strings.toUpperCase(#strings.substring(c.other.name,0,1))}">D</span>
+                </span>
+                <div class="dm-conv-body">
+                    <div class="dm-conv-top">
+                        <b th:text="${c.other.name}">Tên</b>
+                        <span class="sx-time" th:attr="data-ts=${c.lastMessageAtMs}"></span>
+                    </div>
+                    <span class="dm-conv-preview" th:text="${c.preview != null ? c.preview : #messages.msg('community.dm.start')}">tin nhắn cuối</span>
+                </div>
+                <span class="dm-unread" th:if="${c.unread > 0}" th:text="${c.unread}">0</span>
+            </a>
+            <div class="dm-conv-actions">
+                <form th:action="@{'/community/messages/' + ${c.id} + '/archive'}" method="post">
+                    <input type="hidden" name="on" th:value="${c.archived} ? 'false' : 'true'"/>
+                    <button type="submit" class="sx-iconbtn"
+                            th:attr="title=${c.archived} ? #{community.dm.unarchive} : #{community.dm.archive},aria-label=${c.archived} ? #{community.dm.unarchive} : #{community.dm.archive}">
+                        <svg th:replace="~{fragments/icons :: i('archive','')}"></svg>
+                    </button>
+                </form>
+                <form th:action="@{'/community/messages/' + ${c.id} + '/delete'}" method="post">
+                    <button type="submit" class="sx-iconbtn danger"
+                            th:attr="data-confirm=${c.group} ? #{community.dm.deleteGroupConfirm} : #{community.dm.deleteConfirm},title=#{community.dm.delete},aria-label=#{community.dm.delete}">
+                        <svg th:replace="~{fragments/icons :: i('trash','')}"></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</aside>
 
 <!-- ===== nhieu tin (poll/render) ===== -->
 <th:block th:fragment="messages">
