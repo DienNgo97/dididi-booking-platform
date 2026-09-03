@@ -146,6 +146,37 @@
     <!-- ============ Thông tin cá nhân ============ -->
     <div class="card pf-card">
         <h3 style="margin-top:0" th:text="#{profile.personal}">Thông tin cá nhân</h3>
+
+        <!-- Ảnh đại diện: LƯU CHUNG với hồ sơ Cộng đồng, đổi bên nào bên kia cũng đổi theo. -->
+        <div class="pf-row">
+            <div class="pf-l">
+                <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('camera','')}"></svg></span>
+                <div style="flex:1;min-width:0">
+                    <div class="pf-t" th:text="#{profile.avatar}">Ảnh đại diện</div>
+                    <div class="sx-avatar-row" style="margin-top:8px">
+                        <span class="sx-ava lg" id="avaPreview">
+                            <img th:if="${avatarUrl}" th:src="${avatarUrl}" alt=""/>
+                            <span th:unless="${avatarUrl}" class="sx-ava-ph"
+                                  th:text="${#strings.toUpperCase(#strings.substring(user.fullName != null and !user.fullName.isBlank() ? user.fullName : user.email,0,1))}">D</span>
+                        </span>
+                        <form th:action="@{/account/profile/avatar}" method="post" enctype="multipart/form-data" class="sx-upload-form">
+                            <label class="sx-filepick">
+                                <svg th:replace="~{fragments/icons :: i('image','')}"></svg>
+                                <span class="sx-filepick-name" th:text="#{profile.avatarPick}">Chọn ảnh…</span>
+                                <input type="file" name="file" accept="image/*" hidden required data-preview="#avaPreview"/>
+                            </label>
+                            <button type="submit" class="btn" th:text="#{profile.save}">Lưu</button>
+                        </form>
+                    </div>
+                    <div class="muted" style="font-size:12px;margin-top:6px" th:text="#{profile.avatarHint}">Ảnh này dùng chung cho cả hồ sơ Cộng đồng.</div>
+                    <form th:if="${avatarUrl}" th:action="@{/account/profile/avatar/remove}" method="post" style="margin-top:6px">
+                        <button type="submit" class="sx-linklike"
+                                th:attr="data-confirm=#{profile.avatarRemoveConfirm}" th:text="#{profile.avatarRemove}">Gỡ ảnh</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <div class="pf-row">
             <div class="pf-l">
                 <span class="pf-ic"><svg th:replace="~{fragments/icons :: i('user','')}"></svg></span>
@@ -200,5 +231,36 @@
 
 </div>
 <div th:replace="~{fragments/site :: footer}"></div>
+<script>
+    // Xem trước ảnh vừa chọn. Bản đầy đủ nằm trong social/fragments (DDSocial), nhưng trang này
+    // không nạp bộ script đó — chép riêng đoạn tối thiểu còn hơn kéo cả polling/follow sang đây.
+    (function () {
+        var lbl = document.querySelector('.sx-filepick');
+        if (!lbl) return;
+        var input = lbl.querySelector('input[type=file]');
+        var name = lbl.querySelector('.sx-filepick-name');
+        var dflt = name ? name.textContent : '';
+        if (!input) return;
+        input.addEventListener('change', function () {
+            if (!(input.files && input.files.length)) {
+                if (name) name.textContent = dflt;
+                lbl.classList.remove('has-file');
+                return;
+            }
+            var f = input.files[0];
+            if (name) name.textContent = f.name;
+            lbl.classList.add('has-file');
+            var box = document.querySelector(input.getAttribute('data-preview') || '');
+            if (!box || !/^image\//.test(f.type)) return;
+            var url = URL.createObjectURL(f);
+            var im = box.querySelector('img');
+            if (im) { im.src = url; return; }
+            var ph = box.querySelector('.sx-ava-ph');
+            if (ph) ph.style.display = 'none';
+            var ni = document.createElement('img'); ni.src = url; ni.alt = '';
+            box.appendChild(ni);
+        });
+    })();
+</script>
 </body>
 </html>

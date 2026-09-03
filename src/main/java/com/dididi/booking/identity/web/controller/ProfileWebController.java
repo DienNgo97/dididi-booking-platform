@@ -7,9 +7,12 @@ import com.dididi.booking.identity.domain.entity.User;
 import com.dididi.booking.identity.domain.enums.UserStatus;
 import com.dididi.booking.identity.service.AccountService;
 import com.dididi.booking.identity.service.ProfileService;
+import com.dididi.booking.social.service.SocialMediaService;
+import com.dididi.booking.social.service.SocialProfileService;
 import com.dididi.booking.web.CurrentUser;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
@@ -17,6 +20,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
@@ -29,12 +33,17 @@ public class ProfileWebController {
     private final CurrentUser currentUser;
     private final ProfileService profileService;
     private final AccountService accountService;
+    private final SocialProfileService socialProfileService;
+    private final SocialMediaService socialMediaService;
 
     public ProfileWebController(CurrentUser currentUser, ProfileService profileService,
-                                AccountService accountService) {
+                                AccountService accountService, SocialProfileService socialProfileService,
+                                SocialMediaService socialMediaService) {
         this.currentUser = currentUser;
         this.profileService = profileService;
         this.accountService = accountService;
+        this.socialProfileService = socialProfileService;
+        this.socialMediaService = socialMediaService;
     }
 
     private static String sessionId(HttpServletRequest req) {
@@ -49,7 +58,43 @@ public class ProfileWebController {
         User u = currentUser.require(auth);
         model.addAttribute("user", u);
         model.addAttribute("emailVerified", u.getStatus() == UserStatus.ACTIVE);
+        model.addAttribute("avatarUrl", avatarUrl(u.getId()));
         return "account/profile";
+    }
+
+    /**
+     * ẢNH ĐẠI DIỆN — ghi vào ĐÚNG chỗ mà tab Cộng đồng đang dùng (social_profiles.avatar_key).
+     * Cố tình KHÔNG tạo cột ảnh riêng cho tài khoản: hai chỗ lưu thì kiểu gì cũng có ngày lệch
+     * nhau, còn một chỗ thì không có đường nào lệch được.
+     */
+    @PostMapping("/account/profile/avatar")
+    public String updateAvatar(@RequestParam("file") MultipartFile file,
+                               Authentication auth, RedirectAttributes ra) {
+        Long uid = currentUser.id(auth);
+        try {
+            if (file == null || file.isEmpty()) {
+                throw new BusinessException("NO_FILE", "Vui lòng chọn ảnh", HttpStatus.BAD_REQUEST);
+            }
+            socialProfileService.setAvatarKey(uid, socialMediaService.uploadAvatar(file));
+            ra.addFlashAttribute("message", I18nSupport.msg("flash.f59", "Đã cập nhật ảnh đại diện."));
+        } catch (BusinessException ex) {
+            ra.addFlashAttribute("error", ex.getMessage());
+        }
+        return "redirect:/account/profile";
+    }
+
+    /** Gỡ ảnh, quay về hiển thị chữ cái đầu. */
+    @PostMapping("/account/profile/avatar/remove")
+    public String removeAvatar(Authentication auth, RedirectAttributes ra) {
+        socialProfileService.setAvatarKey(currentUser.id(auth), null);
+        ra.addFlashAttribute("message", I18nSupport.msg("flash.f60", "Đã gỡ ảnh đại diện."));
+        return "redirect:/account/profile";
+    }
+
+    private String avatarUrl(Long userId) {
+        return socialProfileService.findByUserId(userId)
+                .map(p -> SocialProfileService.avatarUrl(userId, p.getAvatarKey()))
+                .orElse(null);
     }
 
     // ---------------- Thông tin cá nhân ----------------

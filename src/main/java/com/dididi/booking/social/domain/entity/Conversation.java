@@ -30,6 +30,10 @@ public class Conversation extends BaseEntity {
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
+    /** Tên nhóm (chỉ dùng cho hội thoại GROUP; hội thoại 1-1 lấy tên người kia làm tiêu đề). */
+    @Column(length = 120)
+    private String title;
+
     @Column(name = "last_message_at")
     private Instant lastMessageAt;
 
@@ -42,6 +46,8 @@ public class Conversation extends BaseEntity {
     public void setPairKey(String pairKey) { this.pairKey = pairKey; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
     public Instant getLastMessageAt() { return lastMessageAt; }
     public void setLastMessageAt(Instant lastMessageAt) { this.lastMessageAt = lastMessageAt; }
     public String getLastMessagePreview() { return lastMessagePreview; }

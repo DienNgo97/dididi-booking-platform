@@ -19,4 +19,10 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     /** Dem tin chua doc (id > lastRead, khong phai do minh gui). */
     long countByConversationIdAndIdGreaterThanAndSenderIdNot(Long conversationId, long afterId, Long senderId);
+
+    /**
+     * Như trên nhưng bỏ qua các tin cũ hơn mốc xoá của người xem: sau khi xoá đoạn chat,
+     * khung chat chỉ nạp lại từ tin mới về sau.
+     */
+    List<Message> findByConversationIdAndIdGreaterThanOrderByIdDesc(Long conversationId, long afterId, Pageable pageable);
 }
