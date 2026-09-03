@@ -35,4 +35,6 @@ public class MessageView {
 
     public boolean isImage() { return "IMAGE".equals(type); }
     public boolean isPostShare() { return "POST_SHARE".equals(type); }
+    /** Dòng hệ thống của nhóm (tạo nhóm, thêm/rời thành viên, đổi tên) — hiện giữa khung, không bong bóng. */
+    public boolean isSystem() { return "SYSTEM".equals(type); }
 }

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${convId == null} ? #{community.dm.newGroup} : #{community.dm.addMember}">Tạo nhóm chat</title>
+    <link rel="stylesheet" href="/css/site.css"/>
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+</head>
+<body>
+<div th:replace="~{fragments/site :: nav}"></div>
+<div class="wrap">
+    <div th:replace="~{fragments/site :: flash}"></div>
+    <div th:replace="~{social/fragments :: tabs('messages')}"></div>
+
+    <div class="sx-layout">
+        <div th:replace="~{social/fragments :: railLeft('messages')}"></div>
+        <main class="sx-main">
+            <div class="sx-pagehead">
+                <h1 th:text="${convId == null} ? #{community.dm.newGroup} : #{community.dm.addMember}">Tạo nhóm chat</h1>
+                <p th:if="${convId == null}" th:text="#{community.dm.newGroupSub}">Đặt tên nhóm rồi chọn người muốn mời.</p>
+                <p th:if="${convId != null}" th:text="#{community.dm.addToGroup(${groupName})}">Thêm người vào nhóm.</p>
+                <p class="dm-grouphint" th:text="#{community.dm.mutualOnly}">Chỉ hiện những người theo dõi qua lại với bạn.</p>
+            </div>
+
+            <!-- Ô tìm nằm NGOÀI form gửi để Enter không vô tình submit khi chưa chọn ai. -->
+            <div class="sx-people-search">
+                <svg th:replace="~{fragments/icons :: i('search','')}"></svg>
+                <input id="sxPeopleSearch" type="search" th:value="${query}"
+                       th:placeholder="#{community.people.searchPh}" autocomplete="off"/>
+            </div>
+
+            <form class="dm-groupform"
+                  th:action="${convId == null} ? @{/community/messages/group} : @{'/community/messages/' + ${convId} + '/members'}"
+                  method="post">
+                <label th:if="${convId == null}" class="dm-groupname">
+                    <span th:text="#{community.dm.groupName}">Tên nhóm</span>
+                    <input type="text" name="title" maxlength="120" required th:placeholder="#{community.dm.groupNamePh}"/>
+                </label>
+
+                <div id="sxPeopleResults">
+                    <!-- ===== fragment danh sach chon nguoi (SSR + live-search) ===== -->
+                    <div th:fragment="picker">
+                        <div th:if="${#lists.isEmpty(people)}" class="sx-empty">
+                            <svg th:replace="~{fragments/icons :: i('users','')}"></svg>
+                            <p th:text="#{community.dm.noMutual}">Chỉ mời được người theo dõi qua lại với bạn.</p>
+                        </div>
+                        <div class="sx-userlist" th:unless="${#lists.isEmpty(people)}">
+                            <label th:each="p : ${people}" class="sx-usercard dm-pick">
+                                <input type="checkbox" name="memberIds" th:value="${p.id}"/>
+                                <span class="sx-ava" aria-hidden="true">
+                                    <img th:if="${p.avatarUrl}" th:src="${p.avatarUrl}" alt=""/>
+                                    <span th:unless="${p.avatarUrl}" class="sx-ava-ph"
+                                          th:text="${#strings.toUpperCase(#strings.substring(p.name,0,1))}">D</span>
+                                </span>
+                                <span class="sx-user-meta">
+                                    <span class="sx-name" th:text="${p.name}">Tên</span>
+                                    <span class="sx-handle" th:text="'@' + ${p.handle}">@handle</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dm-groupsubmit">
+                    <a th:href="${convId == null} ? '/community/messages' : '/community/messages/' + ${convId}"
+                       class="btn ghost" th:text="#{community.action.cancel}">Huỷ</a>
+                    <button type="submit" class="btn"
+                            th:text="${convId == null} ? #{community.dm.createGroup} : #{community.dm.addMember}">Tạo nhóm</button>
+                </div>
+            </form>
+        </main>
+        <div th:replace="~{social/fragments :: railRight}"></div>
+    </div>
+</div>
+<div th:replace="~{fragments/site :: footer}"></div>
+<div th:replace="~{social/fragments :: scripts}"></div>
+<script th:inline="javascript">
+    var MSG = { pickOne: /*[[#{community.dm.pickOne}]]*/ 'Hãy chọn ít nhất một người.' };
+    // Tim kiem trong man "Them thanh vien" phai loc nguoi da o trong nhom -> can convId.
+    var CONV_ID = /*[[${convId}]]*/ null;
+    (function () {
+        var input = document.getElementById('sxPeopleSearch');
+        var box = document.getElementById('sxPeopleResults');
+        if (!input || !box) return;
+        var timer = null, lastQ = input.value;
+        // Giu lai nguoi da tich truoc khi thay danh sach: doi ket qua tim kiem khong duoc lam mat lua chon.
+        var picked = {};
+        function remember() {
+            box.querySelectorAll('input[name=memberIds]').forEach(function (cb) {
+                if (cb.checked) { picked[cb.value] = 1; } else { delete picked[cb.value]; }
+            });
+        }
+        function restore() {
+            box.querySelectorAll('input[name=memberIds]').forEach(function (cb) {
+                if (picked[cb.value]) { cb.checked = true; }
+            });
+        }
+        box.addEventListener('change', remember);
+        // Nguoi da tich roi bi loc khoi ket qua tim kiem hien tai van phai duoc gui di.
+        var form = box.closest('form');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                remember();
+                // Chan gui rong: backend nem BusinessException -> trinh duyet hien JSON tho, rat xau.
+                if (!Object.keys(picked).length) {
+                    e.preventDefault();
+                    window.appAlert ? window.appAlert(MSG.pickOne) : alert(MSG.pickOne);
+                    return;
+                }
+                var visible = {};
+                box.querySelectorAll('input[name=memberIds]').forEach(function (cb) { visible[cb.value] = 1; });
+                Object.keys(picked).forEach(function (id) {
+                    if (visible[id]) { return; }
+                    var h = document.createElement('input');
+                    h.type = 'hidden'; h.name = 'memberIds'; h.value = id;
+                    form.appendChild(h);
+                });
+            });
+        }
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); run(input.value); } });
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () { run(input.value); }, 280);
+        });
+        function run(q) {
+            if (q === lastQ) return;
+            lastQ = q;
+            remember();
+            var url = '/community/messages/people-search?q=' + encodeURIComponent(q)
+                    + (CONV_ID ? '&convId=' + CONV_ID : '');
+            fetch(url, { credentials: 'same-origin' })
+                .then(function (r) {
+                    // Het phien -> 401 JSON (fix S4) hoac redirect /login: dung nhoi vao khung ket qua.
+                    if (!r.ok) { return null; }
+                    if (r.redirected && r.url.indexOf('/login') >= 0) { window.location = '/login'; return null; }
+                    return r.text();
+                })
+                .then(function (html) { if (html != null) { box.innerHTML = html; restore(); } })
+                .catch(function () {});
+        }
+    })();
+</script>
+</body>
+</html>

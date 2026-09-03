@@ -8,11 +8,14 @@ import com.dididi.booking.identity.repository.UserRepository;
 import com.dididi.booking.identity.service.AccountService;
 import com.dididi.booking.identity.service.ProfileService;
 import com.dididi.booking.identity.service.RefreshTokenService;
+import com.dididi.booking.social.service.SocialMediaService;
+import com.dididi.booking.social.service.SocialProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -32,13 +35,18 @@ public class ProfileApiController {
     private final ProfileService profileService;
     private final AccountService accountService;
     private final RefreshTokenService refreshTokenService;
+    private final SocialProfileService socialProfileService;
+    private final SocialMediaService socialMediaService;
 
     public ProfileApiController(UserRepository userRepository, ProfileService profileService,
-                                AccountService accountService, RefreshTokenService refreshTokenService) {
+                                AccountService accountService, RefreshTokenService refreshTokenService,
+                                SocialProfileService socialProfileService, SocialMediaService socialMediaService) {
         this.userRepository = userRepository;
         this.profileService = profileService;
         this.accountService = accountService;
         this.refreshTokenService = refreshTokenService;
+        this.socialProfileService = socialProfileService;
+        this.socialMediaService = socialMediaService;
     }
 
     private Long uid(Authentication auth) {
@@ -64,7 +72,31 @@ public class ProfileApiController {
         out.put("phoneVerified", u.isPhoneVerified());
         out.put("role", u.getRole().name());
         out.put("emailVerified", u.getStatus() == UserStatus.ACTIVE);
+        // Ảnh đại diện dùng chung với hồ sơ Cộng đồng; null = app vẽ chữ cái đầu.
+        out.put("avatarUrl", socialProfileService.findByUserId(u.getId())
+                .map(p -> SocialProfileService.avatarUrl(u.getId(), p.getAvatarKey())).orElse(null));
         return ApiResponse.ok(out);
+    }
+
+    @Operation(summary = "Đổi ảnh đại diện (dùng chung với hồ sơ Cộng đồng)")
+    @PostMapping("/avatar")
+    public ApiResponse<Map<String, Object>> updateAvatar(@RequestPart("image") MultipartFile image,
+                                                         Authentication auth) {
+        Long id = uid(auth);
+        if (image == null || image.isEmpty()) {
+            throw new BusinessException("NO_FILE", "Vui lòng chọn ảnh", HttpStatus.BAD_REQUEST);
+        }
+        String key = socialMediaService.uploadAvatar(image);
+        socialProfileService.setAvatarKey(id, key);
+        return ApiResponse.ok(Map.of("avatarUrl", SocialProfileService.avatarUrl(id, key)),
+                "Đã cập nhật ảnh đại diện.");
+    }
+
+    @Operation(summary = "Gỡ ảnh đại diện")
+    @DeleteMapping("/avatar")
+    public ApiResponse<Void> removeAvatar(Authentication auth) {
+        socialProfileService.setAvatarKey(uid(auth), null);
+        return ApiResponse.ok(null, "Đã gỡ ảnh đại diện.");
     }
 
     @Operation(summary = "Cập nhật tên hiển thị")

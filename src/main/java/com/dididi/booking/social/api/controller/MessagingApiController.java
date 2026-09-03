@@ -2,6 +2,7 @@ package com.dididi.booking.social.api.controller;
 
 import com.dididi.booking.common.dto.ApiResponse;
 import com.dididi.booking.common.exception.BusinessException;
+import com.dididi.booking.social.api.dto.ActorView;
 import com.dididi.booking.social.api.dto.ConversationView;
 import com.dididi.booking.social.api.dto.MessageView;
 import com.dididi.booking.social.domain.entity.Conversation;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -108,6 +110,98 @@ public class MessagingApiController {
     @GetMapping("/dm/unread-count")
     public ApiResponse<Map<String, Object>> unread(Authentication auth) {
         return ApiResponse.ok(Map.of("count", messagingService.dmUnreadTotal(uid(auth))));
+    }
+
+    // ----- xoá / lưu trữ cuộc trò chuyện (chỉ ảnh hưởng phía người gọi) -----
+
+    @Operation(summary = "Hộp thư Lưu trữ")
+    @GetMapping("/conversations/archived")
+    public ApiResponse<List<ConversationView>> archivedInbox(Authentication auth) {
+        return ApiResponse.ok(messagingService.archivedInbox(uid(auth)));
+    }
+
+    @Operation(summary = "Xoá cuộc trò chuyện ở phía mình (người kia vẫn giữ lịch sử)")
+    @DeleteMapping("/conversations/{convId}")
+    public ApiResponse<Void> deleteConversation(@PathVariable Long convId, Authentication auth) {
+        messagingService.deleteConversation(uid(auth), convId);
+        return ApiResponse.ok(null, "Đã xoá cuộc trò chuyện");
+    }
+
+    @Operation(summary = "Lưu trữ / bỏ lưu trữ cuộc trò chuyện")
+    @PostMapping("/conversations/{convId}/archive")
+    public ApiResponse<Void> archive(@PathVariable Long convId,
+                                     @RequestParam(defaultValue = "true") boolean on, Authentication auth) {
+        messagingService.archiveConversation(uid(auth), convId, on);
+        return ApiResponse.ok(null, on ? "Đã lưu trữ" : "Đã bỏ lưu trữ");
+    }
+
+    // ----- nhóm chat -----
+
+    @Operation(summary = "Tạo nhóm chat")
+    @PostMapping("/conversations/group")
+    public ApiResponse<Map<String, Object>> createGroup(@RequestParam String title,
+                                                        @RequestParam(name = "memberIds", required = false) List<Long> memberIds,
+                                                        Authentication auth) {
+        Conversation c = messagingService.createGroup(uid(auth), title, memberIds);
+        return ApiResponse.ok(Map.of("conversationId", c.getId()), "Đã tạo nhóm");
+    }
+
+    /**
+     * Danh sách người MỜI VÀO NHÓM ĐƯỢC (theo dõi qua lại). App mobile cần endpoint riêng vì
+     * /users/search trả cả người lạ — mời họ sẽ ăn 403 NOT_MUTUAL_FOLLOW.
+     * convId (tuỳ chọn) = nhóm đang mở, để bỏ luôn người đã ở trong nhóm.
+     */
+    @Operation(summary = "Bạn bè có thể mời vào nhóm (theo dõi qua lại)")
+    @GetMapping("/conversations/invitable")
+    public ApiResponse<List<ActorView>> invitable(@RequestParam(required = false) String q,
+                                                  @RequestParam(required = false) Long convId,
+                                                  Authentication auth) {
+        Long uid = uid(auth);
+        if (convId != null) {
+            messagingService.requireConversation(convId, uid);
+        }
+        return ApiResponse.ok(messagingService.banBeCoTheMoi(uid, q, convId));
+    }
+
+    @Operation(summary = "Thành viên nhóm (phần tử đầu là chủ nhóm)")
+    @GetMapping("/conversations/{convId}/members")
+    public ApiResponse<Map<String, Object>> members(@PathVariable Long convId, Authentication auth) {
+        Long uid = uid(auth);
+        return ApiResponse.ok(Map.of(
+                "group", messagingService.isGroup(convId),
+                "owner", messagingService.isOwner(convId, uid),
+                "members", messagingService.members(convId, uid)));
+    }
+
+    @Operation(summary = "Thêm thành viên (mọi thành viên đều thêm được)")
+    @PostMapping("/conversations/{convId}/members")
+    public ApiResponse<Void> addMembers(@PathVariable Long convId,
+                                        @RequestParam(name = "memberIds") List<Long> memberIds,
+                                        Authentication auth) {
+        messagingService.addMembers(uid(auth), convId, memberIds);
+        return ApiResponse.ok(null, "Đã thêm thành viên");
+    }
+
+    @Operation(summary = "Xoá thành viên khỏi nhóm (chỉ chủ nhóm)")
+    @DeleteMapping("/conversations/{convId}/members/{userId}")
+    public ApiResponse<Void> removeMember(@PathVariable Long convId, @PathVariable Long userId,
+                                          Authentication auth) {
+        messagingService.removeMember(uid(auth), convId, userId);
+        return ApiResponse.ok(null, "Đã xoá thành viên");
+    }
+
+    @Operation(summary = "Đổi tên nhóm (chỉ chủ nhóm)")
+    @PostMapping("/conversations/{convId}/rename")
+    public ApiResponse<Void> rename(@PathVariable Long convId, @RequestParam String title, Authentication auth) {
+        messagingService.renameGroup(uid(auth), convId, title);
+        return ApiResponse.ok(null, "Đã đổi tên nhóm");
+    }
+
+    @Operation(summary = "Rời nhóm")
+    @PostMapping("/conversations/{convId}/leave")
+    public ApiResponse<Void> leave(@PathVariable Long convId, Authentication auth) {
+        messagingService.leaveGroup(uid(auth), convId);
+        return ApiResponse.ok(null, "Đã rời nhóm");
     }
 
     @Operation(summary = "Tải ảnh trong tin nhắn (chỉ thành viên hội thoại)")

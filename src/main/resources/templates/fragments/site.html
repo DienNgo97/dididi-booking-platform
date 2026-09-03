@@ -30,15 +30,21 @@
         </span>
         <span sec:authorize="isAuthenticated()" class="dd dd-acc">
             <button class="dd-btn" type="button">
-                <span class="dd-ava" aria-hidden="true"
-                      th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${#strings.toUpperCase(#strings.substring(navFullName,0,1))} : 'D'">D</span>
+                <span class="dd-ava" aria-hidden="true" th:classappend="${navAvatarUrl} ? 'has-img' : ''">
+                    <img th:if="${navAvatarUrl}" th:src="${navAvatarUrl}" alt=""/>
+                    <span th:unless="${navAvatarUrl}"
+                          th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${#strings.toUpperCase(#strings.substring(navFullName,0,1))} : 'D'">D</span>
+                </span>
                 <b th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${navFullName} : #{nav.account}">Tài khoản</b>
                 <span class="dd-caret"><svg th:replace="~{fragments/icons :: i('chevron-down','')}"></svg></span>
             </button>
             <div class="dd-menu">
                 <div class="dd-head">
-                    <span class="dd-ava lg" aria-hidden="true"
-                          th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${#strings.toUpperCase(#strings.substring(navFullName,0,1))} : 'D'">D</span>
+                    <span class="dd-ava lg" aria-hidden="true" th:classappend="${navAvatarUrl} ? 'has-img' : ''">
+                        <img th:if="${navAvatarUrl}" th:src="${navAvatarUrl}" alt=""/>
+                        <span th:unless="${navAvatarUrl}"
+                              th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${#strings.toUpperCase(#strings.substring(navFullName,0,1))} : 'D'">D</span>
+                    </span>
                     <div class="dd-id">
                         <b th:text="${navFullName != null and !#strings.isEmpty(navFullName)} ? ${navFullName} : #{nav.account}">Tài khoản</b>
                         <small th:text="#{nav.memberSub}">Thành viên Dididi</small>

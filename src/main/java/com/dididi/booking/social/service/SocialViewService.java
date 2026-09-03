@@ -204,10 +204,8 @@ public class SocialViewService {
         String followState = followService.state(viewerId, ActorType.USER, target.getUserId());
         long followers = followService.followersCount(ActorType.USER, target.getUserId());
         boolean canViewPosts = owner || !target.isPrivate() || "ACTIVE".equals(followState);
-        String avatarUrl = target.getAvatarKey() != null
-                ? "/community/avatar/u/" + target.getUserId() + "?v=" + ver(target.getAvatarKey()) : null;
-        String coverUrl = target.getCoverKey() != null
-                ? "/community/cover/u/" + target.getUserId() + "?v=" + ver(target.getCoverKey()) : null;
+        String avatarUrl = SocialProfileService.avatarUrl(target.getUserId(), target.getAvatarKey());
+        String coverUrl = SocialProfileService.coverUrl(target.getUserId(), target.getCoverKey());
         return new ProfileView(target.getUserId(), target.getHandle(), target.getDisplayName(), target.getBio(),
                 avatarUrl, coverUrl, target.getLink(), target.isPrivate(), target.getPostsCount(),
                 followers, target.getFollowingCount(), owner, followState, canViewPosts);
@@ -246,9 +244,6 @@ public class SocialViewService {
     }
 
     /** Phien ban anh (cache-bust): doi khi key doi -> trinh duyet tai lai anh moi. */
-    private static String ver(String key) {
-        return key == null ? "0" : Integer.toHexString(key.hashCode());
-    }
 
     private static String messageFor(NotificationType t) {
         return switch (t) {
