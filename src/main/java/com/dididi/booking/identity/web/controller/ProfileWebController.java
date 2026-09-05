@@ -110,7 +110,10 @@ public class ProfileWebController {
         return "redirect:/account/profile";
     }
 
-    /** Ngày sinh (cho chương trình quà sinh nhật). Để trống = xoá ngày sinh. */
+    /**
+     * Ngày sinh (cho chương trình quà sinh nhật) — CHỈ NHẬP MỘT LẦN, không tự xoá được.
+     * Nhập nhầm thì liên hệ CSKH để admin sửa (có ghi audit).
+     */
     @PostMapping("/account/profile/birthday")
     public String updateBirthday(@RequestParam(required = false) String birthDate,
                                  Authentication auth, RedirectAttributes ra) {
@@ -118,7 +121,7 @@ public class ProfileWebController {
             java.time.LocalDate d = (birthDate == null || birthDate.isBlank())
                     ? null : java.time.LocalDate.parse(birthDate.trim());
             profileService.updateBirthDate(currentUser.id(auth), d);
-            ra.addFlashAttribute("message", d == null ? "Đã xoá ngày sinh." : "Đã cập nhật ngày sinh.");
+            ra.addFlashAttribute("message", "Đã lưu ngày sinh. Thông tin này chỉ nhập một lần.");
         } catch (BusinessException ex) {
             ra.addFlashAttribute("error", ex.getMessage());
         } catch (Exception ex) {

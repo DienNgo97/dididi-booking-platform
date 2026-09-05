@@ -67,6 +67,8 @@ public class ProfileApiController {
         out.put("fullName", u.getFullName());
         out.put("phone", u.getPhone());
         out.put("birthDate", u.getBirthDate() == null ? null : u.getBirthDate().toString());
+        // Ngày sinh chỉ nhập một lần -> app mobile dựa vào cờ này để khoá ô nhập.
+        out.put("birthDateLocked", u.getBirthDate() != null);
         out.put("phoneVerified", u.isPhoneVerified());
         out.put("role", u.getRole().name());
         out.put("emailVerified", u.getStatus() == UserStatus.ACTIVE);
@@ -104,7 +106,7 @@ public class ProfileApiController {
         return ApiResponse.ok(null, "Đã cập nhật tên hiển thị.");
     }
 
-    @Operation(summary = "Cập nhật ngày sinh (yyyy-MM-dd, để trống = xoá) — dùng cho quà sinh nhật")
+    @Operation(summary = "Đặt ngày sinh (yyyy-MM-dd) — CHỈ MỘT LẦN, dùng cho quà sinh nhật")
     @PostMapping("/birthday")
     public ApiResponse<Void> updateBirthday(@RequestBody Map<String, String> body, Authentication auth) {
         String raw = body.get("birthDate");
@@ -115,7 +117,7 @@ public class ProfileApiController {
             throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không hợp lệ (yyyy-MM-dd)", HttpStatus.BAD_REQUEST);
         }
         profileService.updateBirthDate(uid(auth), d);
-        return ApiResponse.ok(null, d == null ? "Đã xoá ngày sinh." : "Đã cập nhật ngày sinh.");
+        return ApiResponse.ok(null, "Đã lưu ngày sinh. Thông tin này chỉ nhập một lần.");
     }
 
     @Operation(summary = "Đổi mật khẩu (đăng xuất các phiên khác)")

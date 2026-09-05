@@ -200,15 +200,27 @@
                 <div style="flex:1;min-width:0">
                     <div class="pf-t" th:text="#{profile.birthDate}">Ngày sinh</div>
                     <div class="pf-v" th:text="${user.birthDate != null} ? ${#temporals.format(user.birthDate,'dd/MM/yyyy')} : '—'">—</div>
-                    <div class="muted" style="font-size:12px" th:text="#{profile.birthDateHint}">Thêm ngày sinh để nhận quà sinh nhật hằng năm từ Dididi.</div>
-                    <details class="pf">
-                        <summary class="btn ghost" style="margin-top:8px" th:text="#{profile.edit}">Sửa</summary>
-                        <form class="pf-form" th:action="@{/account/profile/birthday}" method="post">
-                            <input type="date" name="birthDate"
-                                   th:value="${user.birthDate != null} ? ${#temporals.format(user.birthDate,'yyyy-MM-dd')} : ''"/>
-                            <button class="btn" type="submit" th:text="#{profile.save}">Lưu</button>
-                        </form>
-                    </details>
+                    <!-- Chưa có ngày sinh: cho nhập, nói rõ chỉ nhập được một lần -->
+                    <div th:if="${user.birthDate == null}">
+                        <div class="muted" style="font-size:12px" th:text="#{profile.birthDateHint}">Thêm ngày sinh để nhận quà sinh nhật hằng năm từ Dididi.</div>
+                        <details class="pf">
+                            <summary class="btn ghost" style="margin-top:8px" th:text="#{profile.edit}">Sửa</summary>
+                            <form class="pf-form" th:action="@{/account/profile/birthday}" method="post">
+                                <input type="date" name="birthDate" required/>
+                                <button class="btn" type="submit"
+                                        th:attr="data-confirm=#{profile.birthDateConfirm}"
+                                        th:text="#{profile.save}">Lưu</button>
+                            </form>
+                            <div class="muted" style="font-size:12px;margin-top:6px" th:text="#{profile.birthDateOnce}">
+                                Lưu ý: ngày sinh chỉ nhập được một lần và không tự sửa lại được.
+                            </div>
+                        </details>
+                    </div>
+                    <!-- Đã có: khoá lại, chỉ CSKH mới đổi hộ -->
+                    <div th:if="${user.birthDate != null}" class="muted" style="font-size:12px"
+                         th:text="#{profile.birthDateLocked}">
+                        Ngày sinh chỉ nhập một lần nên không sửa lại được. Nếu nhập nhầm, vui lòng liên hệ chăm sóc khách hàng.
+                    </div>
                 </div>
             </div>
         </div>

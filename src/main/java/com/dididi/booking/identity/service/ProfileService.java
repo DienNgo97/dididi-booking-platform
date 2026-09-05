@@ -42,22 +42,54 @@ public class ProfileService {
 
     /**
      * Cập nhật ngày sinh — dùng cho chương trình QUÀ SINH NHẬT.
-     * Cho phép xoá (null). Chặn ngày tương lai và tuổi phi lý (>120).
+     *
+     * <p>CHỈ NHẬP MỘT LẦN. Trước đây khách sửa thoải mái, thậm chí xoá về null rồi nhập lại: đặt
+     * ngày sinh = hôm nay là có quà ngay, năm sau lại đổi cho tiện — "sinh nhật" thành thứ khách tự
+     * chọn chứ không phải dữ liệu thật. (Việc nhận TRÙNG trong cùng năm thì unique
+     * (type, user_id, cycleKey=năm) của PromoGrant đã chặn sẵn.)</p>
+     *
+     * <p>Gõ nhầm thì admin sửa hộ được ({@link #adminSetBirthDate}) và lần sửa đó có ghi audit.</p>
      */
     @Transactional
     public void updateBirthDate(Long userId, java.time.LocalDate birthDate) {
-        if (birthDate != null) {
-            java.time.LocalDate today = java.time.LocalDate.now();
-            if (birthDate.isAfter(today)) {
-                throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không thể ở tương lai", HttpStatus.BAD_REQUEST);
-            }
-            if (birthDate.isBefore(today.minusYears(120))) {
-                throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không hợp lệ", HttpStatus.BAD_REQUEST);
-            }
-        }
         User u = get(userId);
+        if (u.getBirthDate() != null) {
+            throw new BusinessException("BIRTHDATE_LOCKED",
+                    "Ngày sinh chỉ nhập được một lần. Nếu nhập nhầm, vui lòng liên hệ chăm sóc khách hàng để được sửa.",
+                    HttpStatus.CONFLICT);
+        }
+        if (birthDate == null) {
+            throw new BusinessException("INVALID_BIRTHDATE", "Vui lòng chọn ngày sinh", HttpStatus.BAD_REQUEST);
+        }
+        validateBirthDate(birthDate);
         u.setBirthDate(birthDate);
         userRepository.save(u);
+    }
+
+    /**
+     * ADMIN đặt lại ngày sinh cho khách (đường thoát khi khách gõ nhầm). Trả về giá trị CŨ để bên
+     * gọi ghi audit "từ gì sang gì" — thao tác này mở lại quyền nhận quà nên phải có dấu vết.
+     */
+    @Transactional
+    public java.time.LocalDate adminSetBirthDate(Long userId, java.time.LocalDate birthDate) {
+        if (birthDate != null) {
+            validateBirthDate(birthDate);
+        }
+        User u = get(userId);
+        java.time.LocalDate cu = u.getBirthDate();
+        u.setBirthDate(birthDate);          // admin được phép xoá (null) để khách tự nhập lại
+        userRepository.save(u);
+        return cu;
+    }
+
+    private void validateBirthDate(java.time.LocalDate birthDate) {
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (birthDate.isAfter(today)) {
+            throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không thể ở tương lai", HttpStatus.BAD_REQUEST);
+        }
+        if (birthDate.isBefore(today.minusYears(120))) {
+            throw new BusinessException("INVALID_BIRTHDATE", "Ngày sinh không hợp lệ", HttpStatus.BAD_REQUEST);
+        }
     }
 
     /**
